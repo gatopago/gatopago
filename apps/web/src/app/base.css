@@ -1,0 +1,13 @@
+@import "tailwindcss";
+@import "../consumer/theme.css";
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Recursive Variable', system-ui, sans-serif; background: #fff8f0; color: #0b0b0f; }
+  button, input, select, textarea { font: inherit; }
+}
+.web-notice { margin: 3rem auto; padding: 2rem; max-width: 42rem; line-height: 1.7; }
+.web-notice a { color: #9f292e; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+}

@@ -1,0 +1,956 @@
+/* Migrated from client/src/index.css; selectors are isolated from marketing. */
+@reference "../app/base.css";
+.consumer-ui {
+  color-scheme: light;
+  --recursive-linear: "MONO" 0, "CASL" 0, "slnt" 0, "CRSV" .5;
+  --recursive-casual: "MONO" 0, "CASL" 1, "slnt" 0, "CRSV" .5;
+  --recursive-mono: "MONO" 1, "CASL" 0, "slnt" 0, "CRSV" .5;
+  --ease-enter: cubic-bezier(.16, 1, .3, 1);
+  --ease-exit: cubic-bezier(.4, 0, 1, 1);
+  --ease-press: cubic-bezier(.2, .8, .2, 1);
+}
+
+.consumer-ui {
+  background: #0b0b0f;
+  color-scheme: light;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.consumer-ui {
+  min-height: 100dvh;
+  margin: 0;
+  background: #0b0b0f;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-variation-settings: var(--recursive-linear);
+  font-size: 16px;
+  line-height: 1.55;
+  letter-spacing: -.01em;
+}
+
+.consumer-ui::before,
+.consumer-ui::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  min-height: 100vh;
+  min-height: 100lvh;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.consumer-ui::before {
+  background:
+    radial-gradient(760px circle at 14% -8%, rgb(248 82 57 / .18), transparent 48%),
+    radial-gradient(620px circle at 92% 18%, rgb(207 52 51 / .12), transparent 48%),
+    #0b0b0f;
+}
+
+.consumer-ui::after {
+  opacity: .2;
+  background-image:
+    linear-gradient(90deg, transparent 31px, rgb(248 82 57 / .08) 32px),
+    linear-gradient(transparent 31px, rgb(248 82 57 / .06) 32px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(to bottom, black, transparent 54%);
+}
+
+.consumer-ui {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.consumer-ui > * { width: 100%; }
+
+.consumer-ui .app-frame {
+  position: relative;
+  isolation: isolate;
+  background: var(--color-canvas);
+  color: var(--color-text);
+}
+
+.consumer-ui .app-frame::after {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 20px;
+  width: 44px;
+  height: 6px;
+  background: var(--color-cat-500);
+  box-shadow: -14px 0 0 var(--color-cat-700);
+  content: "";
+  pointer-events: none;
+}
+
+.consumer-ui .app-frame > * { position: relative; z-index: 1; }
+
+@media (min-width: 640px) {
+  .consumer-ui .app-frame {
+    border: 2px solid rgb(255 248 240 / 76%);
+    box-shadow: 12px 0 0 rgb(207 52 51 / .72), 24px 0 0 rgb(248 82 57 / .12);
+  }
+}
+
+@layer base {
+  .consumer-ui h1, .consumer-ui h2, .consumer-ui h3 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-variation-settings: var(--recursive-casual);
+    font-weight: 720;
+    letter-spacing: -.035em;
+    line-height: 1.06;
+  }
+
+  .consumer-ui p { margin-block: 0; }
+
+  .consumer-ui button, .consumer-ui input, .consumer-ui select, .consumer-ui textarea { font: inherit; }
+
+  .consumer-ui button {
+    cursor: pointer;
+    border: 0;
+    background: none;
+    color: inherit;
+    touch-action: manipulation;
+  }
+
+  .consumer-ui a {
+    color: inherit;
+    text-decoration: none;
+    touch-action: manipulation;
+  }
+
+  .consumer-ui button, .consumer-ui a { -webkit-tap-highlight-color: rgb(248 82 57 / .14); }
+}
+
+.consumer-ui :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-cat-500);
+  outline-offset: 3px;
+}
+
+.consumer-ui :where(button, input, select, textarea):disabled { cursor: not-allowed; }
+
+.consumer-ui input, .consumer-ui textarea, .consumer-ui select {
+  caret-color: var(--color-cat-500);
+}
+
+.consumer-ui ::selection {
+  background: rgb(248 82 57 / .32);
+  color: var(--color-on-cat);
+}
+
+.consumer-ui .type-linear { font-variation-settings: var(--recursive-linear); }
+.consumer-ui .type-casual { font-variation-settings: var(--recursive-casual); }
+.consumer-ui .type-mono,
+.consumer-ui .tabular {
+  font-variation-settings: var(--recursive-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+.consumer-ui .pixel-art,
+.consumer-ui .meli-sprite {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+:where(.consumer-ui) .meli-sprite {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  user-select: none;
+  filter: drop-shadow(5px 5px 0 rgb(207 52 51 / .22));
+  transform-origin: 50% 82%;
+}
+
+.consumer-ui .cat-glyph {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.consumer-ui .cat-glyph .meli-sprite { width: 100%; }
+
+.consumer-ui .brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-variation-settings: var(--recursive-casual);
+  font-weight: 760;
+  letter-spacing: -.035em;
+}
+
+.consumer-ui .meli-motion-idle { animation: meli-idle 5.2s ease-in-out infinite; }
+.consumer-ui .meli-motion-purr { animation: purr 680ms var(--ease-enter) both; }
+.consumer-ui .meli-motion-peek { animation: meli-peek 3.8s ease-in-out infinite; }
+.consumer-ui .meli-motion-deliver { animation: meli-deliver 1.7s ease-in-out infinite; }
+
+.consumer-ui .meli-motion-idle,
+.consumer-ui .meli-motion-purr,
+.consumer-ui .meli-motion-peek,
+.consumer-ui .meli-motion-deliver { will-change: transform; }
+
+@keyframes meli-peek {
+  0%, 42%, 100% { transform: translate3d(0, 0, 0) rotate(0); }
+  48%, 62% { transform: translate3d(4px, 0, 0) rotate(1deg); }
+}
+
+@keyframes meli-deliver {
+  0%, 100% { transform: translate3d(-2px, 0, 0); }
+  50% { transform: translate3d(4px, 0, 0); }
+}
+
+.consumer-ui .interactive-surface,
+.consumer-ui .select-menu-option {
+  transition:
+    transform 160ms var(--ease-press),
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease,
+    box-shadow 160ms var(--ease-press);
+}
+
+.consumer-ui .interactive-surface:active { transform: translate(2px, 2px); }
+
+@media (hover: hover) and (pointer: fine) {
+  .consumer-ui .interactive-surface:hover {
+    transform: translate(-2px, -2px);
+    border-color: var(--color-border-strong);
+  }
+  .consumer-ui .select-menu-option:hover { background-color: var(--color-cat-50); }
+}
+
+/* Dinero y superficies */
+.consumer-ui .finance-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 2px solid var(--color-text);
+  border-radius: 0;
+  padding: 20px;
+  background: var(--color-surface);
+  box-shadow: 6px 6px 0 var(--color-cat-700);
+}
+
+.consumer-ui .finance-panel::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  right: 18px;
+  width: 42px;
+  height: 8px;
+  background: var(--color-cat-500);
+  box-shadow: -12px 0 0 var(--color-cat-700);
+}
+
+.consumer-ui .finance-inset {
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  padding: 14px 16px;
+  background: var(--color-paper-2);
+}
+
+.consumer-ui .finance-section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--color-cat-700);
+  font-family: var(--font-mono);
+  font-variation-settings: var(--recursive-mono);
+  font-size: 11px;
+  font-weight: 680;
+  letter-spacing: .1em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.consumer-ui .finance-section-label::before {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  background: currentColor;
+  box-shadow: 3px 3px 0 rgb(11 11 15 / .12);
+  content: "";
+}
+
+.consumer-ui .finance-summary-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.consumer-ui .finance-summary-row + .finance-summary-row { margin-top: 8px; }
+
+.consumer-ui .pixel-corner {
+  clip-path: polygon(0 0, calc(100% - 8px) 0, calc(100% - 8px) 8px, 100% 8px, 100% 100%, 8px 100%, 8px calc(100% - 8px), 0 calc(100% - 8px));
+}
+
+.consumer-ui .pixel-rail {
+  --packet-size: 10px;
+  position: relative;
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  height: 16px;
+  container-type: inline-size;
+}
+
+.consumer-ui .pixel-rail::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 6px;
+  height: 4px;
+  background: repeating-linear-gradient(90deg, var(--color-text) 0 8px, transparent 8px 12px);
+}
+
+.consumer-ui .pixel-rail > span {
+  position: absolute;
+  left: 0;
+  top: 3px;
+  width: var(--packet-size);
+  height: var(--packet-size);
+  background: var(--color-cat-500);
+  box-shadow: -12px 0 0 rgb(248 82 57 / .34), -24px 0 0 rgb(248 82 57 / .12);
+}
+
+.consumer-ui .pixel-rail-active > span {
+  animation: var(--animate-packet);
+  will-change: transform, opacity;
+}
+.consumer-ui .pixel-rail-done::before { background: var(--color-growth); }
+.consumer-ui .pixel-rail-done > span {
+  left: calc(100% - var(--packet-size));
+  background: var(--color-growth);
+  box-shadow: -12px 0 0 rgb(40 123 85 / .28);
+}
+.consumer-ui .pixel-rail-future::before { opacity: .48; }
+
+/* Skeletons Meli: geometría real, contraste suave y barrido continuo. */
+.consumer-ui .skeleton {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgb(11 11 15 / .16);
+  background: linear-gradient(90deg, var(--color-surface-2), var(--color-surface-3));
+  box-shadow: inset 3px 0 0 rgb(248 82 57 / .16);
+}
+
+.consumer-ui .skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 38%;
+  background: linear-gradient(90deg, transparent, rgb(255 253 249 / .76), rgb(248 82 57 / .12), transparent);
+  transform: translate3d(-120%, 0, 0);
+  animation: skeleton-sweep 1.8s cubic-bezier(.45, 0, .55, 1) infinite;
+  will-change: transform;
+}
+
+@keyframes skeleton-sweep { to { transform: translate3d(360%, 0, 0); } }
+
+.consumer-ui .skeleton.skeleton-accent {
+  border-color: var(--color-cat-700);
+  background: var(--color-cat-500);
+  box-shadow: 4px 4px 0 var(--color-cat-700);
+}
+
+.consumer-ui .skeleton.skeleton-ink {
+  border-color: var(--color-text);
+  background: var(--color-text);
+  box-shadow: 4px 4px 0 var(--color-cat-700);
+}
+
+.consumer-ui .skeleton.skeleton-accent::after,
+.consumer-ui .skeleton.skeleton-ink::after {
+  background: linear-gradient(90deg, transparent, rgb(255 248 240 / .42), transparent);
+}
+
+/* Controles segmentados */
+.consumer-ui .seg-track {
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  background: var(--color-paper-2);
+}
+
+.consumer-ui .seg-item {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 18px;
+  border-radius: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 580;
+  transition: background-color 140ms ease, color 140ms ease, transform 140ms var(--ease-press);
+}
+
+.consumer-ui .seg-item[data-active="true"] {
+  background: var(--color-cat-500);
+  color: var(--color-on-cat);
+  font-weight: 700;
+  box-shadow: inset 0 -3px 0 var(--color-cat-700);
+}
+
+.consumer-ui .seg-track-block { display: flex; width: 100%; }
+.consumer-ui .seg-track-block .seg-item { flex: 1; }
+
+/* El botón de la app es exactamente el botón pixel de la landing. */
+.consumer-ui .btn {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 20px;
+  border: 2px solid currentColor;
+  border-radius: 0;
+  font-family: var(--font-sans);
+  font-variation-settings: var(--recursive-casual);
+  font-size: 14px;
+  font-weight: 760;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    transform 150ms var(--ease-press),
+    box-shadow 150ms var(--ease-press),
+    background-color 160ms ease,
+    color 140ms ease,
+    border-color 140ms ease;
+}
+
+.consumer-ui .btn-block { width: 100%; }
+.consumer-ui .btn-sm { min-height: 42px; height: 42px; padding-inline: 16px; font-size: 13px; }
+
+.consumer-ui .btn-primary,
+.consumer-ui .btn-gradient,
+.consumer-ui .btn-money {
+  border-color: var(--color-cat-500);
+  background: var(--color-cat-500);
+  color: var(--color-on-cat);
+  box-shadow: 4px 4px 0 var(--color-cat-700);
+}
+
+:where(.consumer-ui) .btn-gradient,
+:where(.consumer-ui) .btn-money {
+  background: var(--color-cat-500);
+  box-shadow: 4px 4px 0 var(--color-cat-700);
+}
+
+.consumer-ui .btn-ghost {
+  border-color: var(--color-text);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 4px 4px 0 var(--color-surface-2);
+}
+
+.consumer-ui .btn-danger {
+  border-color: var(--color-text);
+  background: var(--color-danger);
+  color: white;
+  box-shadow: 4px 4px 0 #78162b;
+}
+
+.consumer-ui .btn-text {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.consumer-ui .btn:disabled {
+  border-color: var(--color-border);
+  background: var(--color-surface-3);
+  color: var(--color-text-faint);
+  box-shadow: none;
+}
+
+.consumer-ui .btn:not(:disabled):active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 var(--color-cat-700);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .consumer-ui .btn-primary:not(:disabled):hover,
+  .consumer-ui .btn-gradient:not(:disabled):hover,
+  .consumer-ui .btn-money:not(:disabled):hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--color-cat-700);
+  }
+  .consumer-ui .btn-ghost:not(:disabled):hover { border-color: var(--color-text); background: var(--color-cat-50); transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--color-surface-2); }
+  .consumer-ui .btn-text:hover { color: var(--color-text); text-decoration: underline; }
+}
+
+.consumer-ui .dialog-backdrop {
+  background: rgb(11 11 15 / .76);
+  backdrop-filter: blur(8px);
+}
+
+.consumer-ui .dialog-panel {
+  border: 2px solid var(--color-text);
+  border-radius: 0;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 12px 12px 0 var(--color-cat-700);
+}
+
+.consumer-ui .sheet-handle {
+  width: 56px;
+  height: 8px;
+  margin-inline: auto;
+  background: var(--color-cat-500);
+  box-shadow: 14px 0 0 var(--color-cat-700);
+}
+
+.consumer-ui .receipt-paper {
+  color-scheme: light;
+  color: var(--color-paper-text);
+  background: var(--color-paper);
+  border: 2px solid var(--color-paper-border);
+  box-shadow: 8px 8px 0 var(--color-cat-700);
+}
+
+.consumer-ui .receipt-rail {
+  background: repeating-linear-gradient(90deg, var(--color-cat-500) 0 16px, var(--color-cat-700) 16px 24px, var(--color-cat-300) 24px 32px);
+}
+
+.consumer-ui .scan-line {
+  background: linear-gradient(90deg, transparent, var(--color-cat-700), var(--color-cat-300), transparent);
+  background-size: 100% 2px;
+  background-repeat: no-repeat;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Meli product primitives                                                    */
+/* -------------------------------------------------------------------------- */
+
+.consumer-ui .meli-kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-cat-700);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-variation-settings: var(--recursive-mono);
+  font-weight: 720;
+  letter-spacing: .12em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.consumer-ui .meli-kicker::before {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  background: currentColor;
+  box-shadow: 3px 3px 0 rgb(11 11 15 / .12);
+  content: "";
+}
+
+.consumer-ui .meli-app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.consumer-ui .meli-identity {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+}
+
+.consumer-ui .meli-avatar {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--color-text);
+  background: var(--color-cat-500);
+  color: var(--color-on-cat);
+}
+
+.consumer-ui .meli-avatar .meli-sprite { filter: none; }
+
+.consumer-ui .pwa-install-button {
+  position: relative;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--color-text);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 3px 3px 0 var(--color-cat-500);
+  transition: transform 150ms var(--ease-press), box-shadow 150ms var(--ease-press), background-color 140ms ease;
+}
+
+.consumer-ui .pwa-install-button::after {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 5px;
+  height: 5px;
+  background: var(--color-cat-700);
+  content: "";
+}
+
+.consumer-ui .pwa-install-button:disabled { opacity: .55; }
+.consumer-ui .pwa-install-button:not(:disabled):active {
+  box-shadow: 1px 1px 0 var(--color-cat-500);
+  transform: translate(2px, 2px);
+}
+
+.consumer-ui .meli-login-stage {
+  position: relative;
+  display: grid;
+  width: 100%;
+  max-width: 350px;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid var(--color-text);
+  background:
+    linear-gradient(90deg, transparent 31px, rgb(11 11 15 / .045) 32px),
+    linear-gradient(transparent 31px, rgb(11 11 15 / .045) 32px),
+    var(--color-cat-50);
+  background-size: 32px 32px;
+  box-shadow: 8px 8px 0 var(--color-cat-700);
+}
+
+.consumer-ui .meli-login-stage > span {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 10px;
+  height: 10px;
+  background: var(--color-cat-500);
+  box-shadow: -14px 14px 0 var(--color-pending);
+}
+
+.consumer-ui .meli-login-stage .meli-sprite { filter: drop-shadow(5px 5px 0 rgb(207 52 51 / .2)); }
+
+.consumer-ui .meli-square-action {
+  position: relative;
+  display: inline-flex;
+  min-width: 42px;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 700;
+  transition: transform 150ms var(--ease-press), box-shadow 150ms var(--ease-press), border-color 140ms ease;
+}
+
+.consumer-ui .meli-square-action::after {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 5px;
+  height: 5px;
+  background: var(--color-cat-500);
+  content: "";
+}
+
+.consumer-ui .meli-square-action:active { transform: translate(2px, 2px); }
+
+.consumer-ui .meli-balance-card-app {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid var(--color-text);
+  background: #0b0b0f;
+  color: #fff8f0;
+  box-shadow: 6px 6px 0 var(--color-cat-500);
+}
+
+.consumer-ui .meli-balance-card-app .text-text-muted { color: rgb(255 248 240 / .68); }
+.consumer-ui .meli-balance-card-app .text-text-faint { color: rgb(255 248 240 / .48); }
+.consumer-ui .meli-balance-card-app .text-text { color: #fff8f0; }
+.consumer-ui .meli-balance-card-app .text-cat-300 { color: var(--color-cat-500); }
+.consumer-ui .meli-balance-card-app .skeleton { border-color: rgb(255 248 240 / .14); background: rgb(255 248 240 / .1); }
+.consumer-ui .meli-balance-card-app .select-menu-trigger {
+  border-color: rgb(255 248 240 / .16);
+  background: rgb(255 248 240 / .08);
+  color: #fff8f0;
+}
+.consumer-ui .meli-balance-card-app .select-menu-trigger .text-text { color: #fff8f0; }
+.consumer-ui .meli-balance-card-app .select-menu-trigger .text-text-faint { color: rgb(255 248 240 / .5); }
+
+.consumer-ui .meli-growth-rail {
+  height: 10px;
+  background: rgb(255 248 240 / .12);
+}
+
+.consumer-ui .meli-growth-rail > span {
+  display: block;
+  width: 33%;
+  height: 100%;
+  background: #71d5a1;
+  box-shadow: 4px 0 0 #0b0b0f, 8px 0 0 var(--color-cat-500);
+}
+
+.consumer-ui .meli-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.consumer-ui .meli-quick-action {
+  display: flex;
+  min-width: 0;
+  min-height: 78px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 10px;
+  font-weight: 740;
+  line-height: 1.15;
+  text-align: center;
+  transition: transform 150ms var(--ease-press), box-shadow 150ms var(--ease-press), border-color 140ms ease, background-color 140ms ease;
+}
+
+.consumer-ui .meli-quick-action > span:first-child {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  background: var(--color-cat-500);
+  color: var(--color-on-cat);
+}
+
+.consumer-ui .meli-paper-card {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.consumer-ui .meli-paper-card--strong {
+  border: 2px solid var(--color-text);
+  box-shadow: 6px 6px 0 var(--color-border);
+}
+
+.consumer-ui .meli-ink-card {
+  border: 2px solid var(--color-text);
+  background: #0b0b0f;
+  color: #fff8f0;
+  box-shadow: 6px 6px 0 var(--color-cat-700);
+}
+
+.consumer-ui .meli-path-card-app {
+  position: relative;
+  display: grid;
+  min-height: 112px;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  border: 2px solid var(--color-text);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 0 0 var(--color-cat-700);
+  transition: transform 170ms var(--ease-press), box-shadow 170ms var(--ease-press), background-color 140ms ease;
+}
+
+.consumer-ui .meli-path-card-app > :first-child {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  background: var(--color-text);
+  color: var(--color-canvas);
+}
+
+.consumer-ui .meli-path-card-app:active {
+  background: var(--color-cat-500);
+  box-shadow: 3px 3px 0 var(--color-cat-700);
+  transform: translate(2px, 2px);
+}
+
+.consumer-ui .meli-field,
+.consumer-ui :where(.app-frame, .dialog-panel) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.consumer-ui :where(.app-frame, .dialog-panel) textarea,
+.consumer-ui :where(.app-frame, .dialog-panel) select {
+  border-radius: 0 !important;
+}
+
+.consumer-ui .meli-field {
+  min-height: 52px;
+  width: 100%;
+  border: 2px solid var(--color-text);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding-inline: 14px;
+  transition: box-shadow 150ms var(--ease-press), transform 150ms var(--ease-press);
+}
+
+.consumer-ui .meli-chip {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-variation-settings: var(--recursive-mono);
+  font-weight: 680;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.consumer-ui .meli-chip::before {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  background: currentColor;
+  content: "";
+}
+
+.consumer-ui .primary-nav {
+  border-top: 2px solid var(--color-text);
+  background: rgb(255 248 240 / .96);
+  color: var(--color-text);
+  box-shadow: 0 -6px 0 rgb(207 52 51 / .14);
+  backdrop-filter: blur(12px);
+}
+
+.consumer-ui .primary-nav__item {
+  border: 1px solid transparent;
+  color: var(--color-text-faint);
+  transition: background-color 140ms ease, color 140ms ease, transform 150ms var(--ease-press);
+}
+
+.consumer-ui .primary-nav__item::before {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  background: transparent;
+  content: "";
+  transform: translateX(-50%);
+}
+
+.consumer-ui .primary-nav__item.is-active {
+  border-color: var(--color-text);
+  background: var(--color-cat-500);
+  color: var(--color-on-cat);
+  box-shadow: 3px 3px 0 var(--color-cat-700);
+}
+
+.consumer-ui .primary-nav__item.is-active::before { background: var(--color-text); }
+
+/* Elimina la geometría blanda legacy dentro del producto. Los únicos círculos
+   que sobreviven se marcan explícitamente como token-icon o keep-round. */
+.consumer-ui :where(.app-frame, .dialog-panel) [class*="rounded-"]:not(.token-icon):not(.keep-round) {
+  border-radius: 0 !important;
+}
+
+.consumer-ui .token-icon,
+.consumer-ui .keep-round { border-radius: 999px !important; }
+
+@media (hover: hover) and (pointer: fine) {
+	.consumer-ui .pwa-install-button:not(:disabled):hover {
+		background: var(--color-cat-50);
+		box-shadow: 5px 5px 0 var(--color-cat-500);
+		transform: translate(-2px, -2px);
+	}
+
+  .consumer-ui .meli-square-action:hover,
+  .consumer-ui .meli-quick-action:hover {
+    border-color: var(--color-text);
+    background: var(--color-cat-50);
+    box-shadow: 4px 4px 0 var(--color-cat-700);
+    transform: translate(-2px, -2px);
+  }
+
+  .consumer-ui .meli-path-card-app:hover {
+    background: var(--color-cat-500);
+    box-shadow: 7px 7px 0 var(--color-cat-700);
+    transform: translate(-3px, -3px);
+  }
+
+  .consumer-ui .meli-path-card-app:hover :where(.text-text-muted, .text-text-faint) {
+    color: var(--color-text);
+  }
+}
+
+.consumer-ui ::view-transition-old(root),
+.consumer-ui ::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: var(--ease-enter);
+}
+
+.consumer-ui [data-exporting="true"],
+.consumer-ui [data-exporting="true"] *,
+.consumer-ui [data-exporting="true"]::before,
+.consumer-ui [data-exporting="true"]::after,
+.consumer-ui [data-exporting="true"] *::before,
+.consumer-ui [data-exporting="true"] *::after {
+  animation: none !important;
+  caret-color: transparent !important;
+  transition: none !important;
+}
+
+@media (min-width: 720px) {
+  .consumer-ui::after {
+    background-size: 40px 40px;
+    background-image:
+      linear-gradient(90deg, transparent 39px, rgb(248 82 57 / .07) 40px),
+      linear-gradient(transparent 39px, rgb(248 82 57 / .05) 40px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .consumer-ui *, .consumer-ui *::before, .consumer-ui *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .consumer-ui ::view-transition-old(root),
+  .consumer-ui ::view-transition-new(root) { animation: none !important; }
+
+  .consumer-ui .pixel-rail-active > span {
+    opacity: 1;
+    animation: none !important;
+    transform: translate3d(calc((100cqw - var(--packet-size)) / 2), 0, 0);
+  }
+}

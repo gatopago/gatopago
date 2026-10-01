@@ -1,0 +1,56 @@
+{
+  "name": "@gatopago/web",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.23.0",
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 3000",
+    "dev:wallet-harness": "node test/serve-wallet-overview.mjs",
+    "dev:enrollment-harness": "node test/serve-enrollment.mjs",
+    "dev:backup-policy-harness": "node test/serve-backup-policy.mjs",
+    "dev:backup-commit-harness": "node test/serve-backup-commit.mjs",
+    "dev:balances-harness": "node test/serve-balances.mjs",
+    "dev:transfers-harness": "node test/serve-transfers.mjs",
+    "dev:transfer-review-harness": "node test/serve-transfer-review.mjs",
+    "build": "node scripts/check-release.mjs && node scripts/check-vendor.mjs && next build",
+    "start": "next start --hostname 127.0.0.1 --port 3000",
+    "lint": "eslint . --max-warnings 0",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fontsource-variable/recursive": "5.3.0",
+    "@gatopago/brand": "file:vendor/gatopago-brand-3.1.0.tgz",
+    "@gatopago/environment": "file:vendor/gatopago-environment-3.1.0.tgz",
+    "@gatopago/shared": "file:vendor/gatopago-shared-3.1.0.tgz",
+    "firebase": "12.18.0",
+    "jsqr": "1.4.0",
+    "next": "16.3.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "esbuild": "0.28.1",
+    "eslint": "^10.9.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.11.0",
+    "postcss": "8.5.26",
+    "tailwindcss": "4.3.3",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.67.0",
+    "viem": "2.55.19",
+    "vitest": "4.1.11",
+    "@gatopago/test-fixtures": "file:vendor/gatopago-test-fixtures-3.1.0.tgz",
+    "@simplewebauthn/server": "13.3.2"
+  }
+}

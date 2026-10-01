@@ -1,0 +1,112 @@
+/* Tokens and animations preserved from client/src/index.css. */
+@theme {
+  /* Meli UI — los mismos pigmentos de la landing. */
+  --color-cat-50: #fff0eb;
+  --color-cat-300: #cf3433;
+  --color-cat-500: #f85239;
+  --color-cat-700: #9f292e;
+  --color-cat-900: #601f16;
+  --color-on-cat: #0b0b0f;
+
+  /* El producto vive en Leche/Papel; Ink enmarca y da contraste. */
+  --color-canvas: #fff8f0;
+  --color-canvas-raised: #fffdf9;
+  --color-surface: #fffdf9;
+  --color-surface-2: #eee4d8;
+  --color-surface-3: #e4d7ca;
+  --color-border: #d2c5b9;
+  --color-border-strong: #0b0b0f;
+  --color-text: #0b0b0f;
+  --color-text-muted: #5f5650;
+  --color-text-faint: #6f625b;
+
+  /* Semánticos: comunican estado, no decoran. */
+  --color-growth: #287b55;
+  --color-info: #256aa8;
+  --color-pending: #8a6200;
+  --color-danger: #b62e47;
+
+  /* Leche GatoPago — recibos y superficies documentales. */
+  --color-paper: #fff8f0;
+  --color-paper-2: #fffdf9;
+  --color-paper-border: #0b0b0f;
+  --color-paper-text: #0b0b0f;
+  --color-paper-muted: #5f5650;
+
+  --font-sans: "Recursive Variable", "Recursive", system-ui, sans-serif;
+  --font-display: "Recursive Variable", "Recursive", system-ui, sans-serif;
+  --font-mono: "Recursive Variable", "Recursive", ui-monospace, monospace;
+
+  --radius-pixel: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-pill: 999px;
+  --radius-control: 0;
+  --radius-card: 0;
+  --radius-dialog: 0;
+
+  --shadow-e1: 4px 4px 0 #d2c5b9;
+  --shadow-e2: 6px 6px 0 #cf3433;
+  --shadow-e3: 12px 12px 0 #cf3433;
+  --shadow-pixel: 4px 4px 0 #cf3433;
+  --animate-fade-up: fade-up 260ms cubic-bezier(.16, 1, .3, 1) both;
+  --animate-fade-in: fade-in 180ms ease-out both;
+  --animate-sheet-up: sheet-up 340ms cubic-bezier(.16, 1, .3, 1) both;
+  --animate-pulse-soft: pulse-soft 2.4s ease-in-out infinite;
+  --animate-qr-scan: qr-scan 2.4s cubic-bezier(.45, 0, .55, 1) infinite;
+  --animate-pixel-in: pixel-in 260ms cubic-bezier(.16, 1, .3, 1) both;
+  --animate-purr: purr 680ms cubic-bezier(.16, 1, .3, 1) both;
+  --animate-packet: packet 1850ms steps(22, end) infinite;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translate3d(0, 8px, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes sheet-up {
+    from { opacity: 0; transform: translate3d(0, 40px, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  @keyframes pulse-soft {
+    0%, 100% { opacity: .64; }
+    50% { opacity: 1; }
+  }
+  @keyframes meli-idle {
+    0%, 42%, 58%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(0, -3px, 0); }
+  }
+  @keyframes qr-scan {
+    0%, 100% { transform: translate3d(0, 0, 0); opacity: 0; }
+    12%, 88% { opacity: 1; }
+    50% { transform: translate3d(0, calc(100% - 2px), 0); }
+  }
+  @keyframes pixel-in {
+    from { opacity: 0; transform: translate3d(0, 8px, 0) scale(.985); }
+    to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  }
+  @keyframes purr {
+    0% { transform: translate3d(0, 4px, 0) scale(.98); }
+    55% { transform: translate3d(0, -2px, 0) scale(1.03); }
+    100% { transform: translate3d(0, 0, 0) scale(1); }
+  }
+  @keyframes packet {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, 0, 0);
+    }
+    5% { opacity: 1; }
+    88%, 96% {
+      opacity: 1;
+      transform: translate3d(calc(100cqw - var(--packet-size, 10px)), 0, 0);
+    }
+    100% {
+      opacity: 0;
+      transform: translate3d(calc(100cqw - var(--packet-size, 10px)), 0, 0);
+    }
+  }
+}
+

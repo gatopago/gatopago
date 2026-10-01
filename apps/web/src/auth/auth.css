@@ -1,0 +1,36 @@
+@reference "../app/base.css";
+
+.auth-content { @apply min-w-0; }
+.auth-art { display: grid; place-items: center; height: 11rem; border: 2px solid #0b0b0f; box-shadow: 5px 5px 0 #9f292e; background: #fff0e9; margin-bottom: 1.75rem; }
+.auth-art img { max-width: 10rem; max-height: 10rem; width: auto; height: auto; image-rendering: pixelated; }
+.auth-content > h1 { font-size: clamp(1.65rem, 5vw, 2rem); letter-spacing: -.025em; line-height: 1.2; }
+.auth-panel > h2 { font-size: 1.2rem; }
+.auth-content > p { line-height: 1.6; overflow-wrap: anywhere; }
+.auth-panel { border: 2px solid #0b0b0f; background: #fffdfa; padding: 1.25rem; margin-top: 1.5rem; box-shadow: 4px 4px 0 #d3c6ba; }
+.auth-primary, .auth-secondary { display: block; width: 100%; text-align: center; padding: .95rem .75rem; min-height: 3rem; border: 2px solid #0b0b0f; font-weight: 700; text-decoration: none; color: #0b0b0f; cursor: pointer; margin: .8rem 0; }
+.auth-primary { background: #ff5039; box-shadow: 3px 3px 0 #9f292e; }
+.auth-secondary { background: #fffdfa; }
+.auth-content input:not([class]):not([type="checkbox"]):not([type="radio"]) { display: block; width: 100%; min-height: 3rem; padding: .75rem; margin: .5rem 0 1rem; border: 2px solid #8d8075; background: white; color: #0b0b0f; font-size: 1rem; }
+.account-initialization textarea { display: block; width: 100%; max-width: 100%; min-height: 4rem; resize: vertical; padding: .65rem; margin: .5rem 0 1rem; border: 2px solid #8d8075; background: white; color: #0b0b0f; font-size: 1rem; overflow-wrap: anywhere; }
+.auth-content select:not([class]) { width: 100%; max-width: 100%; min-height: 3rem; padding: .6rem; border: 2px solid #8d8075; background: white; color: #0b0b0f; font-size: 1rem; }
+.account-initialization { border-top: 2px solid #d3c6ba; margin-top: 1.5rem; padding-top: .75rem; }
+.initialization-review { border-left: 3px solid #247bb0; padding-left: .8rem; margin-top: 1rem; }
+.account-initialization li { line-height: 1.5; margin: .65rem 0; }
+.account-initialization code { overflow-wrap: anywhere; font-size: .85rem; }
+.security-actions { border: 0; margin: 0; padding: 0; min-width: 0; }
+.security-actions legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.auth-content label:not([class]) { display: block; font-weight: 650; margin-top: 1rem; }
+.auth-content input[type="radio"] { display: inline-block; width: 1.2rem; min-height: 1.2rem; padding: 0; margin: 0 .65rem 0 0; vertical-align: middle; }
+.backup-factor-options { min-width: 0; border: 1px solid #8d8075; padding: .75rem; }
+.auth-content .backup-factor-options label { display: flex; align-items: center; gap: .65rem; min-height: 3rem; margin-top: .3rem; }
+.auth-content .backup-factor-options input[type="checkbox"], .auth-content .backup-factor-options input[type="radio"] { flex: 0 0 1.25rem; width: 1.25rem; height: 1.25rem; min-height: 1.25rem; padding: 0; margin: 0; }
+.backup-guardian-options { min-width: 0; border: 1px solid #8d8075; padding: .75rem; }
+.auth-content summary { cursor: pointer; padding: .75rem 0; font-weight: 650; }
+.auth-content :disabled { cursor: not-allowed; background: #e7dcd1; color: #645d58; box-shadow: none; }
+.auth-content :focus-visible { outline: 3px solid #247bb0; outline-offset: 4px; }
+.auth-error { padding: 1rem; border: 2px solid #ad293e; background: #f7e7e8; color: #80202f; }
+.auth-error button { padding: .6rem; cursor: pointer; }
+.auth-local { background: #eee3c2; border: 1px solid #866614; padding: .65rem; font-size: .8rem; }
+.auth-challenge { min-height: 3rem; }
+.auth-content footer { text-align: center; margin-top: 2rem; }
+.auth-content footer a { color: #9f292e; }

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" fill="none">
+  
+    <defs>
+      <radialGradient id="skyGlow" cx="18%" cy="8%" r="65%">
+        <stop offset="0%" stop-color="#FF8A72" stop-opacity=".24"/>
+        <stop offset="58%" stop-color="#F85239" stop-opacity=".06"/>
+        <stop offset="100%" stop-color="#0A0A0B" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="pinkGlow" cx="88%" cy="14%" r="66%">
+        <stop offset="0%" stop-color="#F85239" stop-opacity=".18"/>
+        <stop offset="58%" stop-color="#CF3433" stop-opacity=".045"/>
+        <stop offset="100%" stop-color="#0A0A0B" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="goldGlow" cx="62%" cy="96%" r="68%">
+        <stop offset="0%" stop-color="#F6C65B" stop-opacity=".12"/>
+        <stop offset="58%" stop-color="#F6C65B" stop-opacity=".035"/>
+        <stop offset="100%" stop-color="#0A0A0B" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="brandLine" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#F85239"/>
+        <stop offset="50%" stop-color="#CF3433"/>
+        <stop offset="100%" stop-color="#F6C65B"/>
+      </linearGradient>
+      <filter id="logoShadow" x="-60%" y="-60%" width="220%" height="220%">
+        <feDropShadow dx="0" dy="22" stdDeviation="26" flood-color="#000000" flood-opacity=".45"/>
+        <feDropShadow dx="0" dy="0" stdDeviation="18" flood-color="#F85239" flood-opacity=".16"/>
+      </filter>
+      <filter id="softBlur" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="24"/>
+      </filter>
+      <pattern id="glyphs" width="96" height="96" patternUnits="userSpaceOnUse">
+        <text x="12" y="24" fill="rgba(255,255,255,.045)" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">+</text>
+        <text x="64" y="42" fill="rgba(255,255,255,.036)" font-size="16" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">/</text>
+        <text x="34" y="78" fill="rgba(255,255,255,.032)" font-size="17" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">=</text>
+      </pattern>
+    </defs>
+  
+  <rect width="128" height="128" rx="30" fill="#050505"/>
+  <rect width="128" height="128" rx="30" fill="url(#skyGlow)"/>
+  <rect width="128" height="128" rx="30" fill="url(#pinkGlow)" opacity=".9"/>
+  <g transform="translate(28 28) scale(1.125)" opacity="1" shape-rendering="crispEdges">
+  <path fill="#F85239" d="M8 20V8h12v4h4v4h16v-4h4V8h12v12h4v28h-4v4h-8v4H16v-4H8v-4H4V20h4Z"/>
+  <path fill="#CF3433" d="M12 12h8v4h4v8h-4v-4h-8V12Zm32 4h4v-4h8v8h-8v4h-4v-8ZM24 16h4v8h-4v-8Zm12 0h4v8h-4v-8ZM16 48h32v4h-4v4H20v-4h-4v-4Z"/>
+  <path fill="#050505" d="M16 32h8v8h-8v-8Zm24 0h8v8h-8v-8ZM28 40h8v4h-8v-4Zm-4 4h4v4h-8v-4h4Zm12 0h4v4h-8v-4h4ZM4 36h12v4H4v-4Zm0 8h12v4H4v-4Zm44-8h12v4H48v-4Zm0 8h12v4H48v-4Z"/>
+</g>
+</svg>
