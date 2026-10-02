@@ -30,9 +30,9 @@ function fixture(native = true, max = false) {
   const wire = { schema_version: 1, preparation_id: createResourceId('operation'), wallet_id: selected.wallet_id,
     wallet_account_id: selected.wallet_account_id, consent_digest: candidate.digest, review_json: draft.json, review_sha256: draft.digest,
     expires_at: candidate.plan.validUntil, send_enabled: false };
-  const config = buildAuthConfig(parseEnvironment({ ...environments.staging, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
+  const config = buildAuthConfig(parseEnvironment({ ...environments.production, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
     apiKey: `AIza${'a'.repeat(35)}`, appId: '1:123:web:abcdef', turnstileSiteKey: `0x${'a'.repeat(22)}` }) as EnabledAuthConfig;
-  const review = { wire }, preparation = parseTransferPreparation(wire,selected,request,parseEnvironment(environments.staging),f.now);
+  const review = { wire }, preparation = parseTransferPreparation(wire,selected,request,parseEnvironment(environments.production),f.now);
   const confirmation = { id: createResourceId('operation'),state:'held' as const,expires_at:wire.expires_at,
     send_enabled:false,preparation_id:wire.preparation_id,consent_digest:candidate.digest };
   const delivery = { operation_id:confirmation.id,userop_hash:candidate.userOpHash,delivery:'accepted',settlement:'unconfirmed' };
@@ -143,12 +143,47 @@ function flowFixture() {
     funds_reserved:true,settlement:'not_assessed',send_enabled:false },locator,x.f.now);
   const transfers = { assertCurrent:vi.fn(),status:vi.fn(async () => status) };
   const capture = vi.fn(() => ({ commands,transfers }));
-  const flow = new TransferExecutionFlow(capture,x.selected,x.request,x.review,parseEnvironment(environments.staging));
+  const flow = new TransferExecutionFlow(capture,x.selected,x.request,x.review,parseEnvironment(environments.production));
   return { ...x,commands,transfers,capture,flow,status };
 }
 function deferred<T>() { let resolve!: (value:T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise,resolve }; }
 
 describe('Transfer execution lifecycle (commands mocked)', () => {
+  it('retains its non-authorizing locator before the confirmation command', async () => {
+    const x = flowFixture(), order:string[] = [];
+    const flow = new TransferExecutionFlow(x.capture,x.selected,x.request,x.review,parseEnvironment(environments.production),() => { order.push('bookmark'); });
+    x.commands.confirm.mockImplementation(async () => { order.push('confirm'); return parseTransferConfirmationReceipt(x.confirmation,x.preparation); });
+    await flow.confirm([]); expect(order).toEqual(['bookmark','confirm']); expect(flow.snapshot().phase).toBe('reserved');
+    flow.dispose(); x.flow.dispose();
+  });
+  it('does not confirm if its locator cannot be retained', async () => {
+    const x = flowFixture(), flow = new TransferExecutionFlow(x.capture,x.selected,x.request,x.review,parseEnvironment(environments.production),() => { throw new Error('History unavailable'); });
+    await flow.confirm([]); expect(x.commands.confirm).not.toHaveBeenCalled(); expect(flow.canEdit()).toBe(true);
+    expect(flow.snapshot()).toMatchObject({ phase:'ready',error:true,confirmation:null }); flow.dispose(); x.flow.dispose();
+  });
+  it('permits background tracking only after receipt-backed delivery, never uncertain confirmation replay', async () => {
+    const x = flowFixture(); expect(x.flow.canTrack()).toBe(false);
+    x.commands.confirm.mockRejectedValueOnce(new Error('lost confirmation'));
+    await x.flow.confirm([]); expect(x.flow.canTrack()).toBe(false);
+    await x.flow.confirm([]); expect(x.flow.canTrack()).toBe(false);
+    x.commands.deliver.mockRejectedValueOnce(new Error('lost delivery'));
+    await x.flow.deliver(); expect(x.flow.canTrack()).toBe(true);
+    await x.flow.readStatus(); expect(x.flow.canTrack()).toBe(true);
+    expect(x.commands.confirm).toHaveBeenCalledTimes(2); expect(x.commands.deliver).toHaveBeenCalledTimes(1);
+    x.flow.dispose(); expect(x.flow.canTrack()).toBe(false);
+  });
+  it.each(['reconciled','expired','review_required'] as const)('stops tracking a verified %s result', async status => {
+    const x = flowFixture(); await x.flow.confirm([]); await x.flow.deliver(); expect(x.flow.canTrack()).toBe(true);
+    x.transfers.status.mockResolvedValueOnce({ ...x.status, status, funds_reserved: status === 'review_required',
+      historical_confirmation: status === 'expired' ? null : { transaction_hash: `0x${'ab'.repeat(32)}`, outcome: 'execution_succeeded', recorded_at: x.f.now } });
+    await x.flow.readStatus(); expect(x.flow.canTrack()).toBe(false);
+    expect(x.commands.confirm).toHaveBeenCalledTimes(1); expect(x.commands.deliver).toHaveBeenCalledTimes(1); x.flow.dispose();
+  });
+  it('stops automatic tracking on a read error and leaves retry explicit', async () => {
+    const x = flowFixture(); await x.flow.confirm([]); await x.flow.deliver();
+    x.transfers.status.mockRejectedValueOnce(new Error('read failed')); await x.flow.readStatus(); expect(x.flow.canTrack()).toBe(false);
+    await x.flow.readStatus(); expect(x.flow.canTrack()).toBe(true); x.flow.invalidate(); expect(x.flow.canTrack()).toBe(false);
+  });
   it('can discard only an unsubmitted review, including one expired before confirmation', async () => {
     const x = flowFixture(); expect(x.flow.canEdit()).toBe(true);
     x.clock.mockReturnValue(x.confirmation.expires_at*1000); await x.flow.confirm([]);
@@ -308,7 +343,7 @@ describe('Transfer explicit proof collection', () => {
     const runtime = { transferCommands:vi.fn(() => commands),transfers:vi.fn(() => ({ assertCurrent:vi.fn(),status:vi.fn() })),subscribe:vi.fn() };
     const recipient = { username:'daniel',display_name:'Daniel',network_id:x.request.network_id,address:x.request.destination.address,
       verified_at:x.f.now,expires_at:x.f.now+30 };
-    const props = { runtime,uid:'synthetic',selected:x.selected,request:x.request,review:x.review,environment:parseEnvironment(environments.staging),
+    const props = { runtime,uid:'synthetic',selected:x.selected,request:x.request,review:x.review,environment:parseEnvironment(environments.production),
       credentials:[x.credential],metadata:[{ asset_id:x.request.asset_id,decimals:18,symbol:'ETH' }],english:false,recipient };
     const html = renderToStaticMarkup(createElement(TransferReview,props));
     expect(html).toContain('@daniel'); expect(html).toContain(x.request.destination.address);
@@ -319,7 +354,7 @@ describe('Transfer explicit proof collection', () => {
     const x = signingFixture(), commands = { assertCurrent:vi.fn(),confirm:vi.fn(),deliver:vi.fn() };
     const runtime = { transferCommands:vi.fn(() => commands),transfers:vi.fn(() => ({ assertCurrent:vi.fn(),status:vi.fn() })),subscribe:vi.fn() };
     const markup = renderToStaticMarkup(createElement(TransferReview,{ runtime,uid:'synthetic',selected:x.selected,request:x.request,
-      review:x.review,environment:parseEnvironment(environments.staging),credentials:[x.credential],metadata:[{ asset_id:x.request.asset_id,decimals:18,symbol:'ETH' }],english }));
+      review:x.review,environment:parseEnvironment(environments.production),credentials:[x.credential],metadata:[{ asset_id:x.request.asset_id,decimals:18,symbol:'ETH' }],english }));
     expect(markup).toContain(english ? 'Review transfer' : 'Revisar envío');
     expect(markup).toContain(x.request.destination.address); expect(markup).toContain(x.candidate.digest);
     expect(markup).toContain(english ? 'Sign with passkey' : 'Firmar con passkey');

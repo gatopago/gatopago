@@ -6,7 +6,7 @@ import { clientMutationHeaders, CLIENT_STATUS_HEADER } from '@gatopago/shared/v3
 import { buildAuthConfig, type EnabledAuthConfig } from '../src/auth/config';
 import { prepareEnrollment, completeEnrollment, type EnrollmentSubmission } from '../src/wallet/enrollment';
 
-const config = buildAuthConfig(parseEnvironment({ ...environments.staging, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
+const config = buildAuthConfig(parseEnvironment({ ...environments.production, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
   apiKey: `AIza${'a'.repeat(35)}`, appId: '1:123:web:abcdef', turnstileSiteKey: `0x${'a'.repeat(22)}`,
 }) as EnabledAuthConfig;
 const token = async () => 'synthetic.token.signature';
@@ -15,8 +15,8 @@ const id = createResourceId('operation');
 const b64 = (byte: number) => Buffer.alloc(32, byte).toString('base64url');
 const receipt = () => ({ enrollment_id: id, state: 'enrolled', onchain_authority: false });
 const preparation = () => ({ enrollment_id: id, state: 'prepared', expires_at: Math.floor(Date.now() / 1000) + 300,
-  scope: { rpId: environments.staging.webauthn_rp_id, origin: config.webOrigin }, proof_challenge: `0x${'02'.repeat(32)}`,
-  options: { challenge: b64(1), rp: { id: environments.staging.webauthn_rp_id, name: 'GatoPago' },
+  scope: { rpId: environments.production.webauthn_rp_id, origin: config.webOrigin }, proof_challenge: `0x${'02'.repeat(32)}`,
+  options: { challenge: b64(1), rp: { id: environments.production.webauthn_rp_id, name: 'GatoPago' },
     user: { id: b64(3), name: 'GatoPago 12345678', displayName: 'Tu cuenta GatoPago' },
     pubKeyCredParams: [{ type: 'public-key', alg: -7 }], timeout: 60000, attestation: 'none',
     authenticatorSelection: { residentKey: 'required', userVerification: 'required' }, excludeCredentials: [{ type: 'public-key', id: b64(4) }] },
@@ -32,9 +32,9 @@ describe('Enrollment HTTP contract (synthetic server)', () => {
     const result = await prepareEnrollment(config, token, id, signal());
     expect(result).toMatchObject({ kind: 'prepared', id, challenge: `0x${'01'.repeat(32)}`, proofChallenge: `0x${'02'.repeat(32)}` });
     expect(Object.isFrozen(result)).toBe(true);
-    expect(request).toHaveBeenCalledExactlyOnceWith(`${environments.staging.api_origin}/app/v1/security/enrollments`, expect.objectContaining({
+    expect(request).toHaveBeenCalledExactlyOnceWith(`${environments.production.api_origin}/app/v1/security/enrollments`, expect.objectContaining({
       method: 'POST', credentials: 'omit', cache: 'no-store', redirect: 'error', body: JSON.stringify({ request_id: id }),
-      headers: { Authorization: 'Bearer synthetic.token.signature', Accept: 'application/json', 'Content-Type': 'application/json', ...clientMutationHeaders('staging') },
+      headers: { Authorization: 'Bearer synthetic.token.signature', Accept: 'application/json', 'Content-Type': 'application/json', ...clientMutationHeaders('production') },
     }));
   });
   it('requires an admitted user and never creates one during enrollment', async () => {
@@ -42,7 +42,7 @@ describe('Enrollment HTTP contract (synthetic server)', () => {
     vi.stubGlobal('fetch', request);
     await expect(prepareEnrollment(config, token, id, signal())).rejects.toMatchObject({ code: 'enrollment/unavailable' });
     expect(request).toHaveBeenCalledTimes(1);
-    expect(request.mock.calls[0][0]).toBe(`${environments.staging.api_origin}/app/v1/security/enrollments`);
+    expect(request.mock.calls[0][0]).toBe(`${environments.production.api_origin}/app/v1/security/enrollments`);
   });
   it('does not retry an uncertain preparation', async () => {
     const request = vi.fn().mockRejectedValue(new Error('network')); vi.stubGlobal('fetch', request);
@@ -51,7 +51,7 @@ describe('Enrollment HTTP contract (synthetic server)', () => {
   });
   it.each(['scope', 'authority', 'id', 'algorithm', 'verification', 'challenge', 'duplicate', 'future', 'extra'])('rejects a changed %s before it can reach WebAuthn', async (change) => {
     const data = preparation();
-    if (change === 'scope') data.scope.rpId = 'gatopago.com';
+    if (change === 'scope') data.scope.rpId = 'other.gatopago.com';
     if (change === 'authority') data.onchain_authority = true;
     if (change === 'id') data.enrollment_id = createResourceId('operation');
     if (change === 'algorithm') data.options.pubKeyCredParams[0].alg = -257;

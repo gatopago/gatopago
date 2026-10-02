@@ -25,6 +25,19 @@ function selection(input: TransferSelection) {
     wallet_account_id: parseResourceId('walletAccount', value.wallet_account_id), address: getAddress(value.address), manifest };
 }
 
+/** Rebuild a public unsigned review for owned historical display. Expiry and
+ * release admission are deliberately checked separately for every mutation. */
+export function parseOwnedTransferDraft(json: unknown, digest: unknown, selected: TransferSelection,
+  environment: Environment, now = Math.floor(Date.now() / 1000)) {
+  const expected = selection(selected), restored = readTransferDraft(json, digest), { review, candidate } = restored;
+  if (!Number.isSafeInteger(now) || now < review.prepared_at || candidate.request.wallet_id !== expected.wallet_id
+    || candidate.request.network_id !== expected.network_id || review.context.account_id !== expected.account_id
+    || candidate.account !== expected.address || candidate.deployment_digest !== expected.deployment.digest
+    || candidate.plan.entryPoint !== getAddress(expected.manifest.entry_point)
+    || review.scope.origin !== environment.web_origin || review.scope.rpId !== environment.webauthn_rp_id) throw fail();
+  return restored;
+}
+
 /** Rebuilds the exact request and signing digest locally. Not chain evidence or a
  * signing grant: the UI must still obtain explicit consent and server confirmation. */
 export function parseTransferPreparation(input: unknown, selected: TransferSelection, requested: TransferRequest,
@@ -36,7 +49,7 @@ export function parseTransferPreparation(input: unknown, selected: TransferSelec
     || (preparationId !== undefined && input.preparation_id !== preparationId)
     || request.wallet_id !== expected.wallet_id || request.network_id !== expected.network_id || request.client_release_id !== CLIENT_RELEASE_ID) throw fail();
   const id = parseResourceId('operation', input.preparation_id);
-  const restored = readTransferDraft(input.review_json, input.review_sha256), { review, candidate } = restored;
+  const restored = parseOwnedTransferDraft(input.review_json, input.review_sha256, expected, config, now), { review, candidate } = restored;
   if (!Number.isSafeInteger(now) || now < review.prepared_at || now >= candidate.plan.validUntil
     || input.expires_at !== candidate.plan.validUntil || input.consent_digest !== candidate.digest
     || JSON.stringify(candidate.request) !== JSON.stringify(request)

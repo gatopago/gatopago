@@ -53,17 +53,17 @@ export default function AccountInitialization({ runtime, uid, inventory, english
   useEffect(() => { onActiveChange(creationActive || !['idle', 'done', 'closed', 'operation-recorded'].includes(state.phase)); }, [state.phase, creationActive, onActiveChange]);
   const busy = ['preparing', 'restoring', 'proving', 'submitting'].includes(state.phase);
   return <section className="account-initialization" aria-labelledby="initial-account-heading" aria-busy={busy}>
-    <h3 id="initial-account-heading">{en ? 'Initial account configuration' : 'Configuración inicial de tu cuenta'}</h3>
+    <h2 id="initial-account-heading">{en ? '1. Authorize your wallet setup' : '1. Autoriza la configuración de tu wallet'}</h2>
     {!state.consent ? <><p>{resume ? (en ? 'We are reading the existing request with its original key and terms. Reading it does not create another account or request another signature.'
       : 'Consultamos la solicitud existente con su llave y condiciones originales. Leerla no crea otra cuenta ni solicita otra firma.')
-      : (en ? 'Choose a registered key to authorize the initial configuration of your V3 account. No new passkey will be created.'
-        : 'Elige una llave registrada para autorizar la configuración inicial de tu cuenta V3. No se creará otra passkey.')}</p>
-    <label htmlFor="initial-account-key">{en ? 'Key to confirm with' : 'Llave para confirmar'}</label>
+      : (en ? 'Use your registered passkey to authorize your wallet configuration. Next, review the network fee and authorize its creation.'
+        : 'Usa tu passkey registrada para autorizar la configuración de tu wallet. Después revisarás la comisión de red y autorizarás su creación.')}</p>
+    {inventory.data.length > 1 ? <><label htmlFor="initial-account-key">{en ? 'Key to confirm with' : 'Llave para confirmar'}</label>
     <select id="initial-account-key" value={selected} disabled={!!resume || state.phase !== 'idle'} onChange={(event) => setSelected(event.target.value)}>
       {inventory.data.map((key, index) => <option key={key.credential_ref} value={key.credential_ref}>
         {en ? 'Key' : 'Llave'} {index + 1} · {key.credential_ref.slice(-8)}
       </option>)}
-    </select></> : null}
+    </select></> : <p>{en ? 'Your registered passkey is selected.' : 'Tu passkey registrada está seleccionada.'}</p>}</> : null}
     {state.error ? <p className="auth-error" role="alert">{message(state.error, en)}</p> : null}
     {state.review ? <details className="initialization-review" open={state.consent ? undefined : true}>
       <summary>{en ? 'Configuration in this request' : 'Configuración de esta solicitud'}</summary>
@@ -84,7 +84,7 @@ export default function AccountInitialization({ runtime, uid, inventory, english
     </details> : null}
     {!resume && (state.phase === 'idle' || state.phase === 'prepare-retry') ? <button type="button" className="auth-primary btn btn-primary btn-block" disabled={!selected}
       onClick={() => void flow.prepare(selected)}>{state.phase === 'idle'
-        ? (en ? 'Review initial configuration' : 'Revisar configuración inicial')
+        ? (en ? 'Review my wallet setup' : 'Revisar configuración de mi wallet')
         : (en ? 'Retry preparation' : 'Reintentar preparación')}</button> : null}
     {state.phase === 'ready' ? <button type="button" className="auth-primary btn btn-primary btn-block" onClick={() => void flow.confirm()}>
       {en ? 'Authorize this configuration with my key' : 'Autorizar esta configuración con mi llave'}</button> : null}
@@ -95,16 +95,13 @@ export default function AccountInitialization({ runtime, uid, inventory, english
       <button type="button" className="auth-primary btn btn-primary btn-block" onClick={() => void flow.retry()}>{en ? 'Verify the same authorization' : 'Verificar la misma autorización'}</button></> : null}
     {state.phase === 'restart' ? <button type="button" className="auth-secondary btn btn-ghost btn-block" onClick={() => flow.cancel()}>
       {state.submissionStarted ? (en ? 'Check the existing request' : 'Revisar la solicitud existente') : (en ? 'Review again' : 'Revisar de nuevo')}</button> : null}
-    {state.phase === 'done' ? <div role="status"><h4>{en ? 'Consent recorded' : 'Consentimiento registrado'}</h4>
-      <p>{en ? 'The server confirmed your authorization. This consent does not confirm deployment or permission to receive or send funds.'
-        : 'El servidor confirmó tu autorización. Este consentimiento no confirma el despliegue ni la habilitación para recibir o enviar fondos.'}</p>
-      <p>{en ? 'Reference' : 'Referencia'}: <code>{state.reference}</code></p></div> : null}
-    {state.phase === 'operation-recorded' ? <div role="status"><h4>{en ? 'Existing creation process' : 'Proceso de creación existente'}</h4>
+    {state.phase === 'done' ? <p role="status">{en ? 'Configuration authorized. Continue below to create your wallet on the network.' : 'Configuración autorizada. Continúa abajo para crear tu wallet en la red.'}</p> : null}
+    {state.phase === 'operation-recorded' ? <div role="status"><h3>{en ? 'Existing creation process' : 'Proceso de creación existente'}</h3>
       <p>{en ? 'This request already has a creation operation. We will read it below without repeating the initial consent.'
         : 'Esta solicitud ya tiene una operación de creación. La consultaremos abajo sin repetir el consentimiento inicial.'}</p>
       <p>{en ? 'Reference' : 'Referencia'}: <code>{state.reference}</code></p></div> : null}
     {state.consent && ['done', 'operation-recorded'].includes(state.phase) ? <CreationOperationPanel key={state.consent.preparation.initialization_id}
-      runtime={runtime} uid={uid} pin={pin} consent={state.consent} inventory={inventory} knownRecorded={state.phase === 'operation-recorded'}
+      runtime={runtime} uid={uid} pin={pin} consent={state.consent} knownRecorded={state.phase === 'operation-recorded'}
       english={en} onActiveChange={setCreationActive} /> : null}
     {state.phase === 'closed' ? <button type="button" className="auth-secondary btn btn-ghost btn-block" onClick={() => reloadPage()}>
       {en ? 'Reload and check session' : 'Recargar y comprobar sesión'}</button> : null}

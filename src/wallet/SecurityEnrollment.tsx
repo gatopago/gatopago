@@ -37,7 +37,6 @@ export default function SecurityEnrollment({ runtime, uid, english: en = false }
   }));
   const state = useSyncExternalStore(flow.subscribe, flow.snapshot, flow.snapshot);
   const [preference, setPreference] = useState<'default' | 'security-key'>('default');
-  const [initializationActive, setInitializationActive] = useState(false);
   useEffect(() => {
     const unsubscribe = runtime.subscribe((identity) => {
       if (identity?.uid !== uid) flow.invalidate(); else flow.checkSession();
@@ -49,8 +48,7 @@ export default function SecurityEnrollment({ runtime, uid, english: en = false }
     <h2 id="passkey-heading">{en ? 'Your access keys' : 'Tus llaves de acceso'}</h2>
     <p>{en ? 'Your device or password manager keeps the private key. GatoPago verifies and stores its public part.' : 'Tu dispositivo o gestor conserva la llave privada. GatoPago verifica y registra su parte pública.'}</p>
     <p className="auth-local" role="note">{en ? 'Registering a key does not create an onchain account or add a signer to an existing one. One authorized key is enough to use your verified account; adding a backup is optional and requires a separate authorization.' : 'Registrar una llave no crea una cuenta onchain ni añade un firmante a una cuenta existente. Una llave autorizada basta para usar tu cuenta verificada; añadir un respaldo es opcional y requiere una autorización aparte.'}</p>
-    {initializationActive ? <p role="note">{en ? 'Finish or cancel the initial configuration below before registering another key.' : 'Termina o cancela la configuración inicial de abajo antes de registrar otra llave.'}</p> : null}
-    <fieldset className="security-actions" disabled={initializationActive}>
+    <fieldset className="security-actions">
     <legend>{en ? 'Key registration' : 'Registro de llaves'}</legend>
     {state.error ? <p className="auth-error" role="alert">{message(state.error, en)}</p> : null}
     {state.keyMayExist && ['idle', 'restart'].includes(state.phase) ? <p>{en ? 'Cancelling does not remove a saved key or undo a registration already received by the server. A key in your manager alone does not prove registration.' : 'Cancelar no borra una llave guardada ni deshace un registro que ya llegó al servidor. Una llave en tu gestor, por sí sola, no demuestra que el registro esté confirmado.'}</p> : null}
@@ -76,7 +74,6 @@ export default function SecurityEnrollment({ runtime, uid, english: en = false }
     {!['idle', 'restart', 'done', 'closed'].includes(state.phase) ? <button type="button" className="auth-secondary btn btn-ghost btn-block" onClick={() => flow.cancel()}>{en ? 'Cancel registration' : 'Cancelar registro'}</button> : null}
     </fieldset>
     <CredentialInventory key={uid} runtime={runtime} uid={uid} english={en}
-      enrollmentDone={state.phase === 'done'} enrollmentBusy={busy}
-      initializationActive={initializationActive} onInitializationActiveChange={setInitializationActive} />
+      enrollmentDone={state.phase === 'done'} enrollmentBusy={busy} />
   </section>;
 }

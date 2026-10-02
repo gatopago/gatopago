@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { OFFLINE_HTML, OFFLINE_HEADERS } from '../src/pwa/offline';
 import { pwaHeaders, pwaManifest, PWA_ICONS } from '../src/pwa/manifest';
 
-const origin = 'https://staging.gatopago.com';
+const origin = 'https://gatopago.com';
 const source = readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
 const offline = () => new Response(OFFLINE_HTML, { headers: OFFLINE_HEADERS });
 const js = (headers: Record<string, string> = {}, body = '/* public asset */') => new Response(body, {

@@ -22,14 +22,14 @@ function fixture(native = true, max = false) {
   const wire = { schema_version: 1, preparation_id: createResourceId('operation'), wallet_id: selected.wallet_id,
     wallet_account_id: selected.wallet_account_id, consent_digest: candidate.digest, review_json: draft.json, review_sha256: draft.digest,
     expires_at: candidate.plan.validUntil, send_enabled: false };
-  const config = buildAuthConfig(parseEnvironment({ ...environments.staging, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
+  const config = buildAuthConfig(parseEnvironment({ ...environments.production, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
     apiKey: `AIza${'a'.repeat(35)}`, appId: '1:123:web:abcdef', turnstileSiteKey: `0x${'a'.repeat(22)}` }) as EnabledAuthConfig;
   return { f, request, selected, wire, candidate, config };
 }
 
 describe('Consumer transfer preparation reconstruction', () => {
   it.each([[true,false],[false,false],[true,true],[false,true]])('rebuilds native=%s MAX=%s without a signing grant', (native,max) => {
-    const x = fixture(native,max), result = parseTransferPreparation(x.wire,x.selected,x.request,parseEnvironment(environments.staging),x.f.now);
+    const x = fixture(native,max), result = parseTransferPreparation(x.wire,x.selected,x.request,parseEnvironment(environments.production),x.f.now);
     expect(result.candidate).toEqual(x.candidate); expect(result.send_enabled).toBe(false);
     expect(result.candidate.operation.signature).toBe('0x');
   });
@@ -52,13 +52,15 @@ describe('Consumer transfer preparation reconstruction', () => {
       if (fault === 'send') wire.send_enabled = true;
       if (fault === 'id') wire.preparation_id = createResourceId('operation');
       if (fault === 'release') request.client_release_id = 'other-release';
-      expect(() => parseTransferPreparation(wire,selected,request,parseEnvironment(environments[fault === 'environment' ? 'production' : 'staging']),now,x.wire.preparation_id)).toThrow();
+      const environment = parseEnvironment({ ...environments.production, ...(fault === 'environment'
+        ? { web_origin: 'https://other.gatopago.com', webauthn_rp_id: 'other.gatopago.com', webauthn_allowed_origins: ['https://other.gatopago.com'] } : {}) });
+      expect(() => parseTransferPreparation(wire,selected,request,environment,now,x.wire.preparation_id)).toThrow();
     });
   it('rejects extra nested data even after the transport checksum is recomputed', () => {
     const x = fixture(), root = JSON.parse(x.wire.review_json); root.context.router = 'injected';
     const json = JSON.stringify(root);
     expect(() => parseTransferPreparation({ ...x.wire, review_json: json, review_sha256: deploymentDocumentDigest(json) },
-      x.selected,x.request,parseEnvironment(environments.staging),x.f.now)).toThrow();
+      x.selected,x.request,parseEnvironment(environments.production),x.f.now)).toThrow();
   });
   it.each(['prepare','read'] as const)('uses one bounded %s request with captured input', async method => {
     const x = fixture(); vi.spyOn(Date, 'now').mockReturnValue(x.f.now * 1000);

@@ -6,28 +6,71 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { createHash, randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
+import postcss from 'postcss';
+import tailwind from '@tailwindcss/postcss';
 
 const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const verifierFile = resolve(webRoot, 'output/playwright/v3-enrollment-verifier.mjs');
 await build({ outfile: verifierFile, bundle: true, platform: 'node', format: 'esm', entryPoints: [resolve(webRoot, 'test/enrollment-verifier.ts')] });
 const { verifyEnrollment, initializationFixture, prepareInitialization, authorizeInitialization, parseInitializationProof,
-  prepareCreationOperation, authorizeCreationOperation, creationGasWire } = await import(pathToFileURL(verifierFile).href);
+  prepareCreationOperation, authorizeCreationOperation, creationGasWire, createResourceId } = await import(pathToFileURL(verifierFile).href);
 const creationPin = initializationFixture().pin;
-const css = await readFile(resolve(webRoot, 'src/app/base.css'), 'utf8') + await readFile(resolve(webRoot, 'src/auth/auth.css'), 'utf8');
-const result = await build({ bundle: true, write: false, platform: 'browser', format: 'iife', jsx: 'automatic',
+const creationNetwork = JSON.parse(creationPin.document).deployment.network_id;
+const from = resolve(webRoot, 'src/app/base.css');
+const css = (await postcss([tailwind()]).process(await readFile(from, 'utf8'), { from })).css
+  + await readFile(resolve(webRoot, 'src/auth/auth.css'), 'utf8') + await readFile(resolve(webRoot, 'src/consumer/consumer.css'), 'utf8');
+const result = await build({ plugins: [{ name: 'fixture-turnstile', setup(build) {
+  build.onResolve({ filter: /^next\/link$/ }, () => ({ path: 'fixture-link', namespace: 'fixture' }));
+  build.onResolve({ filter: /^\.\/Turnstile$/ }, () => ({ path: 'fixture-turnstile', namespace: 'fixture' }));
+  build.onLoad({ filter: /^fixture-link$/, namespace: 'fixture' }, () => ({ loader: 'tsx', resolveDir: webRoot, contents: `
+    export default function Link({ href, children, prefetch, replace, onNavigate, ...props }) { return <a href={href} {...props} onClick={event => onNavigate?.({ preventDefault: () => event.preventDefault() })}>{children}</a>; }` }));
+  build.onLoad({ filter: /^fixture-turnstile$/, namespace: 'fixture' }, () => ({ loader: 'tsx', resolveDir: webRoot, contents: `
+    export function Turnstile({ onState }) { return <button type="button" onClick={() => onState({ status: 'verified', token: 'synthetic' })}>Verificar seguridad (prueba)</button>; }` }));
+} }], bundle: true, write: false, platform: 'browser', format: 'iife', jsx: 'automatic',
   define: { 'process.env.NODE_ENV': '"development"' },
   stdin: { sourcefile: 'enrollment-harness.tsx', resolveDir: webRoot, loader: 'tsx', contents: `
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import SecurityEnrollment from './src/wallet/SecurityEnrollment';
+import WalletOnboarding from './src/wallet/WalletOnboarding';
+import { PasskeyAccess } from './src/auth/PasskeyAccess';
 import { parseCredentialInventory } from '@gatopago/shared/v3/credential-inventory';
 import { parseInitializationHistory, parseInitializationRestoration } from '@gatopago/shared/v3/initialization-wire';
 import { parseCreationPreview } from '@gatopago/shared/v3/creation-operation-wire';
 let current = 'a', calls = 0, uncertain = false, inventoryFailure = false;
 const listeners = new Set();
 const runtime = {
+  async prepareRegistration(input, signal) {
+    const value = await this.enrollment(current).prepare('op_' + crypto.randomUUID(), signal);
+    return { ...value, userName: input.username, displayName: input.name };
+  },
+  async completeRegistration(id, submission, signal) { return this.enrollment(current).complete(id, submission, signal); },
   subscribe(callback) { listeners.add(callback); callback({ uid: current }); return () => listeners.delete(callback); },
   initializationProfile() { return ${JSON.stringify(creationPin)}; },
+  async wallets(uid, signal) {
+    const response = await fetch('/fixture/receiving?uid=' + uid, { signal, cache: 'no-store' });
+    return (await response.json()).wallets;
+  },
+  balances(uid) {
+    return { async accounts(walletId, _after, signal) {
+      const response = await fetch('/fixture/receiving?uid=' + uid, { signal, cache: 'no-store' });
+      const value = await response.json();
+      return { data: value.accounts.filter(account => account.wallet_id === walletId), next_cursor: null };
+    } };
+  },
+  profile(uid) {
+    const assertCurrent = () => { if (uid !== current) throw { code: 'auth/session-changed' }; };
+    async function request(method, body, signal) {
+      assertCurrent();
+      const response = await fetch('/fixture/receiving?uid=' + uid, { method, signal, cache: 'no-store',
+        ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}) });
+      assertCurrent(); if (!response.ok) throw new Error('fixture-profile');
+      return (await response.json()).profile;
+    }
+    return { assertCurrent, read: signal => request('GET', null, signal),
+      rename: (displayName, signal) => request('POST', { displayName }, signal),
+      publish: (username, walletId, accountId, signal) => request('POST', { username, walletId, accountId }, signal) };
+  },
   async creationOperation(uid) {
     const assertCurrent = () => { if (uid !== current) throw { code: 'auth/session-changed' }; };
     assertCurrent();
@@ -94,24 +137,50 @@ const runtime = {
 };
 function Harness() {
   const [uid, setUid] = useState('a'); const [english, setEnglish] = useState(false);
+  const [view, setView] = useState('access');
   function switchUser() { current = current === 'a' ? 'b' : 'a'; listeners.forEach(callback => callback({ uid: current })); setUid(current); }
-  return <main className="auth-shell"><h1>Seguridad V3 — prueba local</h1>
+  return <main className="consumer-ui"><div className="auth-frame auth-content"><h1>Alta y wallet V3 — prueba local</h1>
     <p>Identidad sintética: {uid}. Sin fondos.</p>
-    <nav><button onClick={switchUser}>Cambiar usuario</button><button onClick={() => { uncertain = !uncertain; }}>Simular confirmación incierta</button><button onClick={() => { inventoryFailure = !inventoryFailure; }}>Simular error de lista</button><button onClick={() => setEnglish(value => !value)}>ES / EN</button></nav>
-    <section className="auth-panel"><SecurityEnrollment key={uid} runtime={runtime} uid={uid} english={english} /></section>
-  </main>;
+    <nav><button onClick={() => setView('access')}>Ver acceso</button><button onClick={() => setView('wallet')}>Ver wallet</button><button onClick={() => setView('keys')}>Ver llaves</button><button onClick={() => fetch('/fixture/confirm', { method: 'POST' })}>Simular confirmación de red</button><button onClick={switchUser}>Cambiar usuario</button><button onClick={() => { uncertain = !uncertain; }}>Simular confirmación incierta</button><button onClick={() => { inventoryFailure = !inventoryFailure; }}>Simular error de lista</button><button onClick={() => setEnglish(value => !value)}>ES / EN</button></nav>
+    <section className="auth-panel">{view === 'access' ? <PasskeyAccess key={uid} runtime={runtime} config={{ mode: 'firebase', turnstileSiteKey: 'synthetic' }} english={english} onSignedIn={() => setView('wallet')} onRegistered={() => setView('wallet')} />
+      : view === 'wallet' ? <WalletOnboarding key={uid} runtime={runtime} uid={uid} english={english} /> : <SecurityEnrollment key={uid} runtime={runtime} uid={uid} english={english} />}</section>
+  </div></main>;
 }
 createRoot(document.getElementById('root')).render(<StrictMode><Harness /></StrictMode>);
 ` } });
 const scope = { rpId: 'localhost', origin: 'http://localhost:4178' };
 const attempts = new Map(), credentials = new Map(), initializations = new Map(), operations = new Map();
+const profiles = new Map();
 const stats = { prepared: 0, verified: 0, replayed: 0, rejected: 0, listed: 0, initializationPrepared: 0, initializationAuthorized: 0, initializationReplayed: 0,
-  initializationListed: 0, initializationRestored: 0, creationPrepared: 0, creationAuthorized: 0, creationReplayed: 0, creationRead: 0 };
+  initializationListed: 0, initializationRestored: 0, creationPrepared: 0, creationAuthorized: 0, creationReplayed: 0, creationRead: 0,
+  profileRenamed: 0, usernamePublished: 0 };
+async function receivingFixture(request, response) {
+  const uid = new URL(request.url, scope.origin).searchParams.get('uid');
+  if (!['a', 'b'].includes(uid)) throw new Error('wrong-owner');
+  let profile = profiles.get(uid) ?? { user_id: uid, display_name: 'Daniel', username: 'daniel',
+    username_reserved_until: null, username_published_at: null, receiving_wallet_id: null };
+  const accounts = Array.from(operations.values()).filter(op => op.uid === uid && op.bootstrap).map(op => ({
+    id: op.bootstrap.wallet_account_id, wallet_id: op.bootstrap.wallet_id, network_id: creationNetwork,
+  }));
+  if (request.method === 'POST') {
+    let raw = ''; for await (const chunk of request) { raw += chunk; if (Buffer.byteLength(raw) > 4096) throw new Error('too-large'); }
+    const body = JSON.parse(raw);
+    if (body.displayName) { profile = { ...profile, display_name: body.displayName }; stats.profileRenamed++; }
+    else {
+      if (profile.username_published_at !== null || !accounts.some(account => account.id === body.accountId && account.wallet_id === body.walletId)) throw new Error('wrong-selection');
+      profile = { ...profile, username: body.username, username_reserved_until: null,
+        username_published_at: Math.floor(Date.now() / 1000), receiving_wallet_id: body.walletId }; stats.usernamePublished++;
+    }
+    profiles.set(uid, profile);
+  }
+  response.setHeader('Content-Type', 'application/json');
+  response.end(JSON.stringify({ profile, wallets: { data: accounts.map(account => ({ id: account.wallet_id, status: 'active' })), next_cursor: null }, accounts }));
+}
 function operationView(operation) {
   const now = Math.floor(Date.now() / 1000);
   return { ...operation.wire, observed_at: now, receipt: { ...operation.wire.receipt, authorization_expired: now >= operation.wire.receipt.expires_at },
-    lifecycle: { job_state: operation.wire.receipt.state === 'authorized' ? 'ready' : 'not_requested', reason: null,
-      observation: null, bootstrap: null, account_readiness: 'not_assessed' } };
+    lifecycle: { job_state: operation.bootstrap ? 'complete' : operation.wire.receipt.state === 'authorized' ? 'ready' : 'not_requested', reason: operation.bootstrap ? 'projected' : null,
+      observation: operation.bootstrap ? { epoch: 1, observed_at: now, status: 'observed', finality: 'finalized', valid_until: now + 60, transaction_hash: '0x' + 'a'.repeat(64), outcome: 'creation_succeeded' } : null, bootstrap: operation.bootstrap ?? null, account_readiness: 'not_assessed' } };
 }
 async function creationRequest(request, response) {
   let raw = ''; for await (const chunk of request) { raw += chunk; if (Buffer.byteLength(raw) > 8192) throw new Error('too-large'); }
@@ -122,7 +191,7 @@ async function creationRequest(request, response) {
     if (!operation) {
       // Synthetic fixture estimate. It never calls RPC, funds or broadcasts.
       const terms = { verificationGasLimit: 2_000_000n, callGasLimit: 100_000n, preVerificationGas: 150_000n,
-        maxFeePerGas: 1_000_000_000n, maxPriorityFeePerGas: 0n, maximumGasCharge: BigInt(cap) };
+        maxFeePerGas: 1_000_000_000n, maxPriorityFeePerGas: 0n, maximumGasCharge: cap === null ? 2_250_000_000_000_000n : BigInt(cap) };
       if (terms.maximumGasCharge < 2_250_000_000_000_000n) { response.writeHead(422); response.end(JSON.stringify({ code: 'creation/cap-too-low' })); return; }
       const candidate = prepareCreationOperation(initial.input, parseInitializationProof(JSON.parse(initial.proof)), terms, Math.floor(Date.now() / 1000));
       operation = { uid, terms, proof: null, wire: { observed_at: Math.floor(Date.now() / 1000), gas_terms: creationGasWire(terms),
@@ -132,7 +201,7 @@ async function creationRequest(request, response) {
       operations.set(id, operation); stats.creationPrepared++;
       if (uncertain) { response.writeHead(503); response.end(JSON.stringify({ code: 'creation/unavailable' })); return; }
     }
-    if (operation.uid !== uid || operation.terms.maximumGasCharge !== BigInt(cap)) throw new Error('conflict');
+    if (operation.uid !== uid || (cap !== null && operation.terms.maximumGasCharge !== BigInt(cap))) throw new Error('conflict');
     response.end(JSON.stringify(operationView(operation))); return;
   }
   if (request.url !== '/fixture/creation/authorize' || !operation || operation.uid !== uid) throw new Error('wrong-owner');
@@ -210,7 +279,18 @@ async function fixture(request, response) {
 }
 const server = createServer((request, response) => {
   response.setHeader('Cache-Control', 'no-store');
+  if (request.url?.startsWith('/fixture/receiving?')) {
+    void receivingFixture(request, response).catch(() => { response.writeHead(400); response.end('{}'); }); return;
+  }
   if (request.url === '/favicon.ico') { response.writeHead(204); response.end(); return; }
+  if (request.url === '/fixture/confirm' && request.method === 'POST') {
+    const now = Math.floor(Date.now() / 1000);
+    for (const operation of operations.values()) if (operation.wire.receipt.state === 'authorized') {
+      operation.bootstrap = { recorded_at: now, evidence_expires_at: now + 60, wallet_id: createResourceId('wallet'), wallet_account_id: createResourceId('walletAccount') };
+      operation.wire.receipt.delivery_state = 'accepted';
+    }
+    response.end('{}'); return;
+  }
   if (request.url === '/stats' && request.method === 'GET') { response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify(stats)); return; }
   if (request.url?.startsWith('/fixture/creation/') && request.method === 'GET') {
     const url = new URL(request.url, scope.origin), uid = url.searchParams.get('uid'), operation = operations.get(url.pathname.split('/')[3]);

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BrowserAuth } from '../src/auth/browser';
-import { InitializationHistoryStore } from '../src/wallet/initialization-history-store';
+import { InitializationHistoryStore, initialSetupChoice } from '../src/wallet/initialization-history-store';
 import type { InitializationHistoryItem } from '@gatopago/shared/v3/initialization-wire';
 type Session = Awaited<ReturnType<BrowserAuth['initialization']>>;
 const item = (id: number, state: InitializationHistoryItem['state'] = 'expired'): InitializationHistoryItem => ({
@@ -18,6 +18,21 @@ function fixture() {
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
 describe('component-owned history, no automatic creation', () => {
+  it('resumes only a single compatible request after history has been checked', () => {
+    const request = item(1, 'authorized'), digest = request.profile_sha256, keys = [request.credential_ref];
+    expect(initialSetupChoice(page([request]), false, digest, keys)).toBe(request);
+    expect(initialSetupChoice(page([item(2), request]), false, digest, keys)).toBe(request);
+    expect(initialSetupChoice(page([request], 'older'), false, digest, keys)).toBeNull();
+    expect(initialSetupChoice(page([request, item(2, 'prepared')]), false, digest, keys)).toBeNull();
+    expect(initialSetupChoice(page([request]), false, 'another-release', keys)).toBeNull();
+    expect(initialSetupChoice(page([request]), false, digest, [])).toBeNull();
+  });
+  it('does not replace expired requests that already have a creation operation', () => {
+    const request = { ...item(1), creation_operation_recorded: true };
+    expect(initialSetupChoice(page([request]), false, request.profile_sha256, [request.credential_ref])).toBe(request);
+    expect(initialSetupChoice(page([item(1)]), false, request.profile_sha256, [request.credential_ref])).toBeNull();
+    expect(initialSetupChoice(page(), true, request.profile_sha256, [request.credential_ref])).toBe('new');
+  });
   it('does not load at construction; empty history permits explicit new configuration only after a completed read', async () => {
     const t = fixture(); expect(t.store.snapshot()).toEqual({ phase: 'loading' }); expect(t.capture).not.toHaveBeenCalled();
     await t.store.refresh(); expect(t.store.snapshot()).toMatchObject({ phase: 'ready', canStart: true });

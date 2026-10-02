@@ -25,12 +25,8 @@ export function IntegrationNotice({ english: en, identityOnly = false }: { engli
   return <div role="note" className="mb-5 border-l-4 border-warning bg-warning/10 p-4 text-[13px] leading-relaxed">
     {identityOnly
       ? en ? 'Identity is not configured in this environment. This screen does not contain account data.' : 'La identidad no está configurada en este ambiente. Esta pantalla no contiene datos de una cuenta.'
-      : en ? 'This operation is not connected to V3 yet. You can review the form, but nothing will be saved, signed or sent.' : 'Esta operación todavía no está conectada a V3. Puedes revisar el formulario, pero no se guardará, firmará ni enviará nada.'}
+      : en ? 'This feature is not available yet.' : 'Esta función aún no está disponible.'}
   </div>;
-}
-
-export function UnavailableAction({ children }: { children: ReactNode }) {
-  return <button type="button" disabled className="btn btn-primary btn-block mt-5">{children}</button>;
 }
 
 export function ActionCard({ href, title, description, english }: { href: string; title: string; description: string; english: boolean }) {

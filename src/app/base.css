@@ -6,8 +6,6 @@
   body { margin: 0; font-family: var(--font-sans); font-variation-settings: 'MONO' 0, 'CASL' 0, 'slnt' 0, 'CRSV' .5; font-synthesis: none; background: var(--color-canvas); color: var(--color-text); }
   button, input, select, textarea { font: inherit; }
 }
-.web-notice { margin: 3rem auto; padding: 2rem; max-width: 42rem; line-height: 1.7; }
-.web-notice a { color: #9f292e; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
 }

@@ -59,7 +59,8 @@ describe('component-owned initialization consent; HTTP/session mocked, real type
   it('does not initialize a session or invoke a ceremony on construction, subscription or mount', () => {
     const t = fixture(); const remove = t.flow.subscribe(vi.fn()); t.flow.checkSession();
     expect(t.capture).not.toHaveBeenCalled(); expect(t.prove).not.toHaveBeenCalled(); expect(t.flow.snapshot().phase).toBe('idle'); remove();
-    expect(creationProfileForRelease(parseEnvironment(environments.staging))).not.toBeNull(); expect(creationProfileForRelease(parseEnvironment(environments.production))).toBeNull();
+    expect(creationProfileForRelease(parseEnvironment(environments.production))).not.toBeNull();
+    expect(creationProfileForRelease(parseEnvironment({ ...environments.production, wallet_enabled: [] }))).toBeNull();
   });
   it('shows recomputed consent and calls WebAuthn synchronously only from confirmation', async () => {
     const t = fixture(); await t.flow.prepare(t.credentialRef);

@@ -19,6 +19,7 @@ export function WalletBalances({ runtime, uid, walletId, english: en, mode = 'ba
   const monetaryBusy = useSyncExternalStore(subscribeReloadGuard, isReloadBlocked, serverReloadBlocked);
   const heading = useId(), selector = useId();
   useEffect(() => {
+    void store.open();
     const unsubscribe = runtime.subscribe((identity) => { if (identity?.uid !== uid) store.invalidate(); else store.checkSession(); });
     const check = () => store.expire();
     window.addEventListener('focus', check); document.addEventListener('visibilitychange', check);
@@ -28,8 +29,8 @@ export function WalletBalances({ runtime, uid, walletId, english: en, mode = 'ba
   return <section aria-labelledby={heading} aria-busy={busy}>
     <h4 id={heading}>{en ? 'Balance by network' : 'Saldo por red'}</h4>
     {state.phase === 'closed' ? <p role="alert">{en ? 'Your session changed. Sign in again to check balances.' : 'Tu sesión cambió. Vuelve a entrar para consultar el saldo.'}</p> : <>
-      <button type="button" className="auth-secondary btn btn-ghost btn-block" disabled={busy || monetaryBusy} onClick={() => { if (!isReloadBlocked()) void store.loadAccounts(); }}>
-        {en ? 'Check my networks' : 'Consultar mis redes'}</button>
+      <button type="button" className="auth-secondary btn btn-ghost btn-block" disabled={busy || monetaryBusy} onClick={() => { if (!isReloadBlocked()) void store.open(); }}>
+        {en ? 'Refresh networks' : 'Actualizar redes'}</button>
       {busy ? <p role="status">{en ? 'Checking…' : 'Consultando…'}</p> : null}
       {state.page ? <>
         {state.page.data.length ? <label htmlFor={selector}>{en ? 'Account and network' : 'Cuenta y red'}
@@ -52,9 +53,9 @@ export function WalletBalances({ runtime, uid, walletId, english: en, mode = 'ba
       <p>{en ? 'This is an observed onchain balance, not an available-to-spend quote. Receiving and sending still require their own checks.'
         : 'Es un saldo observado en red, no una cotización disponible para gastar. Recibir y enviar requieren sus propias comprobaciones.'}</p>
       {state.selected && mode === 'send' ? <TransferEntry key={`${uid}:${state.selected.wallet_id}:${state.selected.id}`}
-        runtime={runtime} uid={uid} account={state.selected} balance={state.balance} english={en}/> : null}
+        runtime={runtime} uid={uid} account={state.selected} balance={state.balance} english={en} onReconciled={store.refreshAfterTransfer}/> : null}
       {state.selected && mode === 'activity' ? <TransferProgress key={`${uid}:${state.selected.wallet_id}:${state.selected.id}`}
-        runtime={runtime} uid={uid} account={state.selected} english={en} /> : null}
+        runtime={runtime} uid={uid} account={state.selected} english={en} onReconciled={store.refreshAfterTransfer} /> : null}
     </>}
   </section>;
 }

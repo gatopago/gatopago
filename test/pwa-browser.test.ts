@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 function browser(standalone = false) {
-  const win = Object.assign(new EventTarget(), { location: { origin: 'https://staging.gatopago.com', reload: vi.fn() }, matchMedia: vi.fn() });
+  const win = Object.assign(new EventTarget(), { location: { origin: 'https://gatopago.com', reload: vi.fn() }, matchMedia: vi.fn() });
   const display = Object.assign(new EventTarget(), { matches: standalone }); win.matchMedia.mockReturnValue(display);
   const registration = Object.assign(new EventTarget(), { active: {} as object | null, waiting: null as object | null, installing: new EventTarget() });
   const serviceWorker = Object.assign(new EventTarget(), { register: vi.fn().mockResolvedValue(registration) });
@@ -10,7 +10,7 @@ function browser(standalone = false) {
 }
 beforeEach(() => { vi.resetModules(); });
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
-const canonical = 'https://staging.gatopago.com';
+const canonical = 'https://gatopago.com';
 
 describe('browser PWA lifecycle', () => {
   it('does not create runtime state on the server', async () => {
@@ -21,7 +21,7 @@ describe('browser PWA lifecycle', () => {
   it.each([
     [canonical, true, true], ['http://127.0.0.1:3000', true, true], ['http://localhost:3000', true, true],
     [canonical, false, false], ['https://preview.vercel.app', true, false], ['https://gatopago.com.attacker.test', true, false],
-    ['https://api.staging.gatopago.com', true, false], ['http://staging.gatopago.com', true, false],
+    ['https://api.gatopago.com', true, false], ['http://gatopago.com', true, false],
   ])('confines registration to release builds at canonical/loopback origins (%s)', async (origin, release, expected) => {
     const { mayRegisterWorker } = await import('../src/pwa/browser'); expect(mayRegisterWorker(origin, canonical, release)).toBe(expected);
   });

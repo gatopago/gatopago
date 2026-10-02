@@ -1,19 +1,14 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import dynamic from 'next/dynamic';
 import type { BrowserAuth } from '../auth/browser';
 import { CredentialInventoryStore } from './credential-inventory-store';
 
-const InitializationHistory = dynamic(() => import('./InitializationHistory'), { ssr: false });
-
-export default function CredentialInventory({ runtime, uid, english: en, enrollmentDone, enrollmentBusy, initializationActive, onInitializationActiveChange }: {
+export default function CredentialInventory({ runtime, uid, english: en, enrollmentDone, enrollmentBusy }: {
   runtime: BrowserAuth; uid: string; english: boolean; enrollmentDone: boolean; enrollmentBusy: boolean;
-  initializationActive: boolean; onInitializationActiveChange: (active: boolean) => void;
 }) {
   const [store] = useState(() => new CredentialInventoryStore(() => runtime.credentialInventory(uid)));
   const state = useSyncExternalStore(store.subscribe, store.snapshot, store.snapshot);
-  const pin = runtime.initializationProfile();
   useEffect(() => {
     void store.load();
     const unsubscribe = runtime.subscribe((identity) => {
@@ -56,12 +51,8 @@ export default function CredentialInventory({ runtime, uid, english: en, enrollm
           </details>
         </li>)}
       </ul>}
-      {state.inventory.data.length > 0 && !enrollmentBusy ? (pin
-        ? <InitializationHistory key={`${uid}:${pin.digest}`} runtime={runtime} uid={uid} inventory={state.inventory} english={en} pin={pin} onActiveChange={onInitializationActiveChange} />
-        : <p role="note">{en ? 'Initial account configuration is not enabled in this release. Your registered keys remain available; no alternative network will be chosen.'
-          : 'La configuración inicial de cuentas no está habilitada en esta versión. Tus llaves siguen registradas; no se elegirá otra red automáticamente.'}</p>) : null}
     </> : null}
-    {!reauth ? <button type="button" className="auth-secondary btn btn-ghost btn-block" disabled={state.phase === 'loading' || enrollmentBusy || initializationActive}
+    {!reauth ? <button type="button" className="auth-secondary btn btn-ghost btn-block" disabled={state.phase === 'loading' || enrollmentBusy}
       onClick={() => void store.load()}>{en ? 'Refresh registered keys' : 'Actualizar lista de llaves'}</button> : null}
   </section>;
 }

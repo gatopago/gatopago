@@ -12,7 +12,7 @@ function fixture() {
  const pin = { document:f.approval.security_evidence.document,digest:f.context.deployment_digest };
  const wire = { schema_version:1,wallet_id:selected.wallet_id,wallet_account_id:selected.id,network_id:selected.network_id,
   account_id:f.context.account_id,address:f.context.account,deployment:{ ...pin },spend_readiness:'not_assessed',receive_enabled:false,send_enabled:false };
- const config = buildAuthConfig(parseEnvironment({ ...environments.staging,status:'provisioned',firebase_project_id:'v3-runtime-test' }),{
+ const config = buildAuthConfig(parseEnvironment({ ...environments.production,status:'provisioned',firebase_project_id:'v3-runtime-test' }),{
   apiKey:`AIza${'a'.repeat(35)}`,appId:'1:123:web:abcdef',turnstileSiteKey:`0x${'a'.repeat(22)}` }) as EnabledAuthConfig;
  return { f,selected,pin,wire,config };
 }

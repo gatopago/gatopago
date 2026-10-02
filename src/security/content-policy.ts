@@ -1,4 +1,4 @@
-import type { Environment } from '@gatopago/environment';
+import { isLocalEnvironment, type Environment } from '@gatopago/environment';
 import type { WebAuthConfig } from '../auth/config';
 import { LOCAL_AUTH_ORIGIN, LOCAL_WEB_ORIGIN } from '../auth/config';
 import { validNonce } from './nonce';
@@ -9,7 +9,8 @@ export function documentCsp(input: {
 }): string {
   if (!validNonce(input.nonce)) throw new Error('Invalid CSP nonce');
   const { auth, development } = input;
-  if (auth.mode === 'emulator' && (!development || input.environment.environment !== 'staging')) {
+  if (auth.mode === 'emulator' && (!development || !isLocalEnvironment(input.environment) ||
+      input.environment.web_origin !== LOCAL_WEB_ORIGIN)) {
     throw new Error('Emulator CSP cannot enter a release');
   }
   const connections = ["'self'", input.environment.api_origin];

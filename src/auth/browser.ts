@@ -11,7 +11,6 @@ import { prepareEnrollment, completeEnrollment, type EnrollmentSubmission } from
 import { loadCredentialInventory } from '../wallet/credentials';
 import type { initializationClient } from '../wallet/initialization';
 import type { creationOperationClient } from '../wallet/creation-operation';
-import type { backupClient } from '../wallet/backup';
 import { creationProfileForRelease } from '../wallet/creation-release';
 import { accountPinsForRelease } from '../wallet/account-release';
 
@@ -151,6 +150,26 @@ function createBrowserAuth(config: EnabledAuthConfig) {
         },
       };
     },
+    transferRestoration: (expectedUid: string) => {
+      const session = captureSession(expectedUid);
+      return {
+        assertCurrent: session.assertCurrent,
+        restore: async (selected: import('../wallet/transfer-preparation').TransferSelection,
+          bookmark: import('../wallet/transfer-bookmark').TransferBookmark, signal: AbortSignal) => {
+          const snapshot = structuredClone({ selected, bookmark }); session.assertCurrent();
+          const { transferRestorationClient } = await import('../wallet/transfer-restoration'); session.assertCurrent();
+          const result = await transferRestorationClient(config, session.token).restore(snapshot.selected, snapshot.bookmark, signal);
+          session.assertCurrent(); return result;
+        },
+        deliver: async (selected: import('../wallet/transfer-preparation').TransferSelection,
+          bookmark: import('../wallet/transfer-bookmark').TransferBookmark, wire: unknown, signal: AbortSignal) => {
+          const snapshot = structuredClone({ selected, bookmark, wire }); session.assertCurrent();
+          const { transferRestorationClient } = await import('../wallet/transfer-restoration'); session.assertCurrent();
+          const result = await transferRestorationClient(config, session.token).deliver(snapshot.selected, snapshot.bookmark, snapshot.wire, signal);
+          session.assertCurrent(); return result;
+        },
+      };
+    },
     transfers: (expectedUid: string) => {
       const session = captureSession(expectedUid);
       return {
@@ -179,42 +198,6 @@ function createBrowserAuth(config: EnabledAuthConfig) {
           const { balanceClient } = await import('../wallet/balances'); session.assertCurrent();
           const result = await balanceClient(config, session.token).read(selected, signal);
           session.assertCurrent(); return result;
-        },
-      };
-    },
-    backup: async (expectedUid: string, pin: Parameters<typeof backupClient>[2]) => {
-      const session = captureSession(expectedUid), trusted = Object.freeze({ ...pin });
-      const { backupClient: createClient } = await import('../wallet/backup');
-      session.assertCurrent();
-      const client = createClient(config, session.token, trusted);
-      return {
-        assertCurrent: session.assertCurrent,
-        status: async (...args: Parameters<typeof client.status>) => {
-          session.assertCurrent(); const result = await client.status(...args); session.assertCurrent(); return result;
-        },
-        externalProofRequest: (...args: Parameters<typeof client.externalProofRequest>) => {
-          session.assertCurrent(); const result = client.externalProofRequest(...args); session.assertCurrent(); return result;
-        },
-        importExternalProof: async (...args: Parameters<typeof client.importExternalProof>) => {
-          session.assertCurrent(); const result = await client.importExternalProof(...args); session.assertCurrent(); return result;
-        },
-        prepare: async (...args: Parameters<typeof client.prepare>) => {
-          session.assertCurrent(); const result = await client.prepare(...args); session.assertCurrent(); return result;
-        },
-        restore: async (...args: Parameters<typeof client.restore>) => {
-          session.assertCurrent(); const result = await client.restore(...args); session.assertCurrent(); return result;
-        },
-        authorize: async (...args: Parameters<typeof client.authorize>) => {
-          session.assertCurrent(); const result = await client.authorize(...args); session.assertCurrent(); return result;
-        },
-        prepareCommit: async (...args: Parameters<typeof client.prepareCommit>) => {
-          session.assertCurrent(); const result = await client.prepareCommit(...args); session.assertCurrent(); return result;
-        },
-        restoreCommit: async (...args: Parameters<typeof client.restoreCommit>) => {
-          session.assertCurrent(); const result = await client.restoreCommit(...args); session.assertCurrent(); return result;
-        },
-        authorizeCommit: async (...args: Parameters<typeof client.authorizeCommit>) => {
-          session.assertCurrent(); const result = await client.authorizeCommit(...args); session.assertCurrent(); return result;
         },
       };
     },

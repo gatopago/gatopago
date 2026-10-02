@@ -5,7 +5,7 @@ trustPolicy: no-downgrade
 trustPolicyExclude:
   - semver@6.3.1
 overrides:
-  '@gatopago/shared@3.1.0': file:vendor/gatopago-shared-3.1.0.tgz
+  '@gatopago/shared@3.1.1': file:vendor/gatopago-shared-3.1.1.tgz
   # typescript-eslint 8.67.0 supports TypeScript <6.1; keep optional peer
   # resolution aligned with the workspace compiler until that range advances.
   typescript: 6.0.3

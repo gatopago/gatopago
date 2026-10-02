@@ -4,39 +4,58 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
+import postcss from 'postcss';
+import tailwind from '@tailwindcss/postcss';
 const web = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const css = await readFile(resolve(web, 'src/app/base.css'), 'utf8') + await readFile(resolve(web, 'src/auth/auth.css'), 'utf8');
+const from = resolve(web, 'src/app/base.css');
+const css = (await postcss([tailwind()]).process(await readFile(from, 'utf8'), { from })).css
+  + await readFile(resolve(web, 'src/auth/auth.css'), 'utf8') + await readFile(resolve(web, 'src/consumer/consumer.css'), 'utf8');
 const bundle = await build({ bundle: true, write: false, platform: 'browser', format: 'iife', jsx: 'automatic',
   define: { 'process.env.NODE_ENV': '"development"' }, stdin: { resolveDir: web, loader: 'tsx', contents: `
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { TransferProgress } from './src/wallet/TransferProgress';
+import { WalletBalances } from './src/wallet/WalletBalances';
 import { parseTransferStatus } from './src/wallet/transfers';
+import { parseBalanceView } from './src/wallet/balances';
 import { balanceFixture } from './test/balances.fixture';
 const account = balanceFixture().account, listeners = new Set();
-let session = {}, mode = 'pending', reads = 0, notify = () => {};
+let session = {}, mode = 'pending', reads = 0, balanceReads = 0, balanceFailure = false, notify = () => {};
 const reference = 'op_11111111-1111-4111-8111-111111111111';
-const runtime = { subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }, transfers() {
+const runtime = { subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }, balances() {
+  const captured = session, assertCurrent = () => { if (session !== captured) throw new Error('session changed'); };
+  return { assertCurrent, async accounts() { assertCurrent(); return { data: [account], next_cursor: null }; },
+    async read(_selected, signal) {
+      balanceReads++; notify(); signal.throwIfAborted(); assertCurrent();
+      if (balanceFailure) throw new Error('Synthetic balance failure');
+      const next = balanceFixture(); next.wire.wallet_id = account.wallet_id; next.wire.wallet_account_id = account.id;
+      if (mode === 'reconciled') next.wire.balances[1].amount_atomic = '11345987654';
+      return parseBalanceView(next.wire, account);
+    } };
+}, transfers() {
   const captured = session, assertCurrent = () => { if (session !== captured) throw new Error('session changed'); };
   return { assertCurrent, async status(locator, signal) {
     reads++; notify(); assertCurrent();
     if (mode === 'slow') await new Promise(resolve => setTimeout(resolve, 1500));
     signal.throwIfAborted(); assertCurrent(); if (mode === 'error') throw new Error('unavailable');
-    const confirmed = mode === 'confirmed' || mode === 'conflict';
+    const reconciled = mode === 'reconciled' || mode === 'reverted';
+    const confirmed = reconciled || mode === 'confirmed' || mode === 'conflict';
     return parseTransferStatus({ ...locator, userop_hash: '0x' + '11'.repeat(32), status: mode === 'conflict' ? 'review_required'
-      : confirmed ? 'confirmation_recorded' : 'delivery_pending', historical_confirmation: confirmed
-      ? { transaction_hash: '0x' + '22'.repeat(32), outcome: 'execution_succeeded', recorded_at: Math.floor(Date.now()/1000) } : null,
-      settlement: 'not_assessed', send_enabled: false, funds_reserved: true }, locator);
+      : reconciled ? 'reconciled' : confirmed ? 'confirmation_recorded' : 'delivery_pending', historical_confirmation: confirmed
+      ? { transaction_hash: '0x' + '22'.repeat(32), outcome: mode === 'reverted' ? 'execution_reverted' : 'execution_succeeded', recorded_at: Math.floor(Date.now()/1000) } : null,
+      settlement: 'not_assessed', send_enabled: false, funds_reserved: !reconciled }, locator);
   } };
 } };
 function Harness() {
  const [english, setEnglish] = useState(false), [, render] = useState(0); notify = () => render(n => n + 1);
- return <main className="auth-shell"><h1>Seguimiento V3 — prueba local</h1><p>Datos sintéticos. Consultas: {reads}</p><p>{reference}</p>
+ return <main className="consumer-ui"><div className="auth-frame auth-content"><h1>Seguimiento V3 — prueba local</h1>
+  <p>Datos sintéticos. Consultas de envío: {reads}. Lecturas de saldo: {balanceReads}. Sin firmas ni fondos reales.</p><p>{reference}</p>
   <nav><button onClick={() => setEnglish(v => !v)}>ES / EN</button>
    <label>Escenario<select onChange={e => { mode = e.target.value; }}><option value="pending">Pendiente</option><option value="confirmed">Confirmado</option>
-    <option value="conflict">Conflicto</option><option value="error">Error</option><option value="slow">Lento</option></select></label>
+    <option value="conflict">Conflicto</option><option value="reconciled">Reconciliado</option><option value="reverted">Revertido y reconciliado</option>
+    <option value="error">Error</option><option value="slow">Lento</option></select></label>
+   <button onClick={() => { balanceFailure = !balanceFailure; }}>Simular error de saldo</button>
    <button onClick={() => { session = {}; listeners.forEach(fn => fn({ uid: 'other' })); }}>Cambiar sesión</button></nav>
-  <div className="auth-panel"><TransferProgress runtime={runtime} uid="synthetic" account={account} english={english}/></div></main>;
+  <div className="auth-panel"><WalletBalances runtime={runtime} uid="synthetic" walletId={account.wallet_id} english={english} mode="activity" /></div></div></main>;
 }
 createRoot(document.getElementById('root')).render(<StrictMode><Harness /></StrictMode>);
 ` } });

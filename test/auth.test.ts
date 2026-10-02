@@ -4,48 +4,51 @@ import { environmentFromVariables, parseEnvironment } from '@gatopago/environmen
 import { assertBrowserOrigin, authHeaders, buildAuthConfig, LOCAL_AUTH_PROJECT, LOCAL_WEB_ORIGIN, type EnabledAuthConfig } from '../src/auth/config';
 import { createChallengeLifecycle, type ChallengeState } from '../src/auth/turnstile-lifecycle';
 
-const staging = parseEnvironment(environments.staging);
-const local = buildAuthConfig(staging, { nodeEnv: 'development', localAuth: '1' }) as EnabledAuthConfig;
-const remoteEnvironment = { ...staging, status: 'provisioned' as const, firebase_project_id: 'gatopago-staging-test' };
+const production = parseEnvironment(environments.production);
+const localEnvironment = environmentFromVariables({ GATOPAGO_ENVIRONMENT: 'production',
+  GATOPAGO_WEB_ORIGIN: LOCAL_WEB_ORIGIN, GATOPAGO_API_ORIGIN: 'http://localhost:8787',
+  GATOPAGO_BUSINESS_ORIGIN: LOCAL_WEB_ORIGIN, GATOPAGO_WALLET_NETWORKS: 'eip155:421614', FIREBASE_PROJECT_ID: LOCAL_AUTH_PROJECT });
+const local = buildAuthConfig(localEnvironment, { nodeEnv: 'development', localAuth: '1' }) as EnabledAuthConfig;
+const remoteEnvironment = { ...production, status: 'provisioned' as const, firebase_project_id: 'v3-runtime-test' };
 const publicInputs = { apiKey: `AIza${'A'.repeat(35)}`, appId: '1:123456789:web:012345abcdef', turnstileSiteKey: `0x${'A'.repeat(22)}` };
 const remote = buildAuthConfig(remoteEnvironment, publicInputs) as EnabledAuthConfig;
 
 describe('V3 web auth environment', () => {
   it('does not invent Firebase resources for an unprovisioned environment', () => {
-    const unprovisioned = { ...staging, status: 'unprovisioned' as const, firebase_project_id: null, wallet_enabled: [] };
+    const unprovisioned = { ...production, status: 'unprovisioned' as const, firebase_project_id: null, wallet_enabled: [] };
     expect(buildAuthConfig(unprovisioned, {})).toEqual({ mode: 'disabled' });
     expect(() => buildAuthConfig(unprovisioned, publicInputs)).toThrow('not provisioned');
   });
   it.each(['production', 'test', undefined])('rejects emulator in %s', (nodeEnv) => {
-    expect(() => buildAuthConfig(staging, { nodeEnv, localAuth: '1' })).toThrow('development-only');
+    expect(() => buildAuthConfig(localEnvironment, { nodeEnv, localAuth: '1' })).toThrow('development-only');
   });
-  it('rejects emulator for the production deployment environment even in development', () => {
+  it('rejects emulator at remote origins even in development', () => {
     expect(() => buildAuthConfig(parseEnvironment(environments.production), { nodeEnv: 'development', localAuth: '1' })).toThrow();
   });
   it('uses one fixed demo project and loopback only', () => {
     expect(local.firebase.projectId).toBe(LOCAL_AUTH_PROJECT);
     expect(local.apiOrigin).toBeNull();
     expect(() => assertBrowserOrigin(local, LOCAL_WEB_ORIGIN)).not.toThrow();
-    for (const origin of ['http://127.0.0.1:3000', 'http://localhost:3001', staging.web_origin, 'https://example.test']) {
+    for (const origin of ['http://127.0.0.1:3000', 'http://localhost:3001', production.web_origin, 'https://example.test']) {
       expect(() => assertBrowserOrigin(local, origin)).toThrow();
     }
     expect(() => assertBrowserOrigin({ ...local, firebase: { ...local.firebase, projectId: 'real-project' } }, LOCAL_WEB_ORIGIN)).toThrow();
   });
   it('rejects mixed, partial or malformed auth configuration', () => {
-    expect(() => buildAuthConfig(staging, { localAuth: 'true' })).toThrow();
-    expect(() => buildAuthConfig(staging, { nodeEnv: 'development', localAuth: '1', ...publicInputs })).toThrow('mix');
+    expect(() => buildAuthConfig(production, { localAuth: 'true' })).toThrow();
+    expect(() => buildAuthConfig(localEnvironment, { nodeEnv: 'development', localAuth: '1', ...publicInputs })).toThrow('mix');
     for (const field of ['apiKey', 'appId', 'turnstileSiteKey'] as const) {
       expect(() => buildAuthConfig(remoteEnvironment, { ...publicInputs, [field]: '' })).toThrow();
     }
     expect(() => buildAuthConfig({ ...remoteEnvironment, firebase_project_id: LOCAL_AUTH_PROJECT }, publicInputs)).toThrow();
   });
   it('derives authDomain and the Wallet Core origin from the environment, not legacy hosts', () => {
-    expect(remote.firebase.authDomain).toBe('staging.gatopago.com');
-    expect(remote.apiOrigin).toBe('https://api.staging.gatopago.com');
-    expect(() => assertBrowserOrigin(remote, 'https://gatopago.com')).toThrow();
+    expect(remote.firebase.authDomain).toBe('gatopago.com');
+    expect(remote.apiOrigin).toBe('https://api.gatopago.com');
+    expect(() => assertBrowserOrigin(remote, 'https://other.gatopago.com')).toThrow();
   });
   it('uses local Web/API with real Firebase and restricts test Turnstile keys to loopback', () => {
-    const deployment = environmentFromVariables({ GATOPAGO_ENVIRONMENT: 'staging',
+    const deployment = environmentFromVariables({ GATOPAGO_ENVIRONMENT: 'production',
       GATOPAGO_WEB_ORIGIN: 'http://localhost:3000', GATOPAGO_API_ORIGIN: 'http://localhost:8787',
       GATOPAGO_BUSINESS_ORIGIN: 'http://localhost:3000', GATOPAGO_WALLET_NETWORKS: 'eip155:421614',
       FIREBASE_PROJECT_ID: 'v3-local-test' });

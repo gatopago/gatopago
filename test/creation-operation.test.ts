@@ -12,7 +12,7 @@ import { buildAuthConfig, type EnabledAuthConfig } from '../src/auth/config';
 import { initializationFixture } from '@gatopago/test-fixtures/v3-initialization';
 import { fixtureHash } from '@gatopago/test-fixtures/v3-inspection';
 
-const config = buildAuthConfig(parseEnvironment({ ...environments.staging, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
+const config = buildAuthConfig(parseEnvironment({ ...environments.production, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
   apiKey: `AIza${'a'.repeat(35)}`, appId: '1:123:web:abcdef', turnstileSiteKey: `0x${'a'.repeat(22)}`,
 }) as EnabledAuthConfig;
 const signal = () => new AbortController().signal;
@@ -41,13 +41,21 @@ function fixture() {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe('creation resource client and deterministic wire validation', () => {
+  it('asks for automatic terms with an empty body and reconstructs their exact signed ceiling', async () => {
+    const t = fixture(), fetchMock = vi.fn().mockResolvedValue(Response.json(t.value)); vi.stubGlobal('fetch', fetchMock);
+    const review = await t.client.prepare(t.consent, null, signal());
+    expect(review.preview.terms.maximumGasCharge).toBe(t.terms.maximumGasCharge);
+    expect(review.preview.candidate).toEqual(t.candidate);
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: 'POST', body: '{}', cache: 'no-store' });
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
   it('does no I/O on construction and sends only an explicit atomic-unit cap', async () => {
     const fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock); const t = fixture();
     expect(fetchMock).not.toHaveBeenCalled(); expect(t.token).not.toHaveBeenCalled();
     fetchMock.mockResolvedValue(Response.json(t.value));
     const review = await t.client.prepare(t.consent, t.terms.maximumGasCharge.toString(), signal());
     expect(review.preview.candidate).toEqual(t.candidate);
-    expect(fetchMock).toHaveBeenCalledWith(`${environments.staging.api_origin}/app/v1/account-initializations/${t.id}/creation-operation`, expect.objectContaining({
+    expect(fetchMock).toHaveBeenCalledWith(`${environments.production.api_origin}/app/v1/account-initializations/${t.id}/creation-operation`, expect.objectContaining({
       method: 'POST', body: JSON.stringify({ maximum_gas_charge: t.terms.maximumGasCharge.toString() }), cache: 'no-store', credentials: 'omit', redirect: 'error',
       headers: expect.objectContaining({ [CLIENT_RELEASE_HEADERS.generation]: '3' }),
     }));
@@ -65,7 +73,7 @@ describe('creation resource client and deterministic wire validation', () => {
     if (change === 'digest') value.receipt.operation_digest = fixtureHash('a');
     if (change === 'hash') value.receipt.user_op_hash = fixtureHash('a');
     if (change === 'salt') selected.expected.userSaltCommitment = fixtureHash('a');
-    if (change === 'scope') selected.expected.scope.origin = 'https://gatopago.com';
+    if (change === 'scope') selected.expected.scope.origin = 'https://other.gatopago.com';
     if (change === 'key') selected.preparation = { ...selected.preparation, public_key: initializationFixture().input.publicKey };
     if (change === 'lifetime') value.receipt.expires_at += 300;
     if (change === 'proof') value.initial_assertion = encode(initializationFixture().assertion(t.candidate.prepared.digest));
@@ -88,7 +96,7 @@ describe('creation resource client and deterministic wire validation', () => {
   it('requires the selected release pin and original scope before acquiring a token', async () => {
     const t = fixture(), fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock);
     await expect(t.client.restore({ ...t.consent, expected: { ...t.consent.expected, document: '{}' } }, signal())).rejects.toThrow();
-    await expect(t.client.restore({ ...t.consent, expected: { ...t.consent.expected, scope: { rpId: 'gatopago.com', origin: 'https://gatopago.com' } } }, signal())).rejects.toThrow();
+    await expect(t.client.restore({ ...t.consent, expected: { ...t.consent.expected, scope: { rpId: 'other.gatopago.com', origin: 'https://other.gatopago.com' } } }, signal())).rejects.toThrow();
     expect(fetchMock).not.toHaveBeenCalled(); expect(t.token).not.toHaveBeenCalled();
   });
   it('refuses noncanonical caps before I/O and a provider response with another approved cap', async () => {

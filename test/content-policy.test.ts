@@ -3,14 +3,14 @@ import { NextRequest } from 'next/server';
 // This installed Next release still exports the test helper under its middleware name.
 import { unstable_doesMiddlewareMatch as unstable_doesProxyMatch } from 'next/experimental/testing/server';
 import environments from '@gatopago/environment/environments.json';
-import { parseEnvironment } from '@gatopago/environment';
+import { environmentFromVariables, parseEnvironment } from '@gatopago/environment';
 import { documentCsp, documentSecurityHeaders } from '../src/security/content-policy';
 import { NONCE_HEADER, validNonce } from '../src/security/nonce';
 import { proxy, config } from '../src/proxy';
 import { GET as missingPage } from '../src/app/[...missing]/route';
 
 vi.mock('../src/auth/server-config', () => ({ webAuthConfig: () => ({ mode: 'disabled' }) }));
-const environment = parseEnvironment(environments.staging);
+const environment = parseEnvironment(environments.production);
 const nonce = Buffer.alloc(32, 7).toString('base64');
 const defaults = { nonce, environment, auth: { mode: 'disabled' as const }, development: false, secure: true };
 const directives = (value: string) => Object.fromEntries(value.split('; ').map((part) => {
@@ -49,8 +49,8 @@ describe('Document CSP with per-response nonce', () => {
   });
   it('allows only the provisioned identity connections and Turnstile frame, never analytics', () => {
     const policy = directives(documentCsp({ ...defaults, auth: {
-      deployment: environment, mode: 'firebase', environment: 'staging', webOrigin: environment.web_origin,
-      firebase: { apiKey: 'public-fixture', appId: 'fixture', projectId: 'fixture', authDomain: 'staging.gatopago.com' },
+      deployment: environment, mode: 'firebase', environment: 'production', webOrigin: environment.web_origin,
+      firebase: { apiKey: 'public-fixture', appId: 'fixture', projectId: 'fixture', authDomain: 'gatopago.com' },
       apiOrigin: environment.api_origin + '', turnstileSiteKey: 'fixture',
     } }));
     expect(policy['connect-src']).toEqual(["'self'", environment.api_origin,
@@ -60,11 +60,15 @@ describe('Document CSP with per-response nonce', () => {
     expect(JSON.stringify(policy)).not.toMatch(/analytics|tagmanager|walletconnect|reown/);
   });
   it('restricts eval/HMR and the emulator to development, without HTTPS upgrading loopback', () => {
-    const auth = { deployment: environment, mode: 'emulator' as const, environment: 'staging' as const, webOrigin: 'http://localhost:3000',
+    const localEnvironment = environmentFromVariables({ GATOPAGO_ENVIRONMENT: 'production',
+      GATOPAGO_WEB_ORIGIN: 'http://localhost:3000', GATOPAGO_API_ORIGIN: 'http://localhost:8787',
+      GATOPAGO_BUSINESS_ORIGIN: 'http://localhost:3000', GATOPAGO_WALLET_NETWORKS: 'eip155:421614', FIREBASE_PROJECT_ID: 'demo-fixture' });
+    const auth = { deployment: localEnvironment, mode: 'emulator' as const, environment: 'production' as const, webOrigin: 'http://localhost:3000',
       firebase: { apiKey: 'fake', appId: 'fixture', projectId: 'demo-fixture', authDomain: 'localhost' },
       apiOrigin: null, turnstileSiteKey: null };
     expect(() => documentCsp({ ...defaults, auth })).toThrow('release');
-    const policy = directives(documentCsp({ ...defaults, auth, development: true, secure: false }));
+    expect(() => documentCsp({ ...defaults, auth, development: true, secure: false })).toThrow();
+    const policy = directives(documentCsp({ ...defaults, environment: localEnvironment, auth, development: true, secure: false }));
     expect(policy['script-src']).toContain("'unsafe-eval'");
     expect(policy['script-src']).not.toContain("'unsafe-inline'");
     expect(policy['style-src']).toEqual(["'self'", "'unsafe-inline'"]);

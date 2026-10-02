@@ -47,12 +47,14 @@ export function creationOperationClient(config: EnabledAuthConfig, getToken: () 
   }
   const path = (selected: CreationConsent) => `/account-initializations/${selected.preparation.initialization_id}/creation-operation`;
   return {
-    async prepare(input: CreationConsent, maximumGasCharge: string, signal: AbortSignal) {
-      const selected = consent(input), cap = parseCreationCapRequest({ maximum_gas_charge: maximumGasCharge });
-      const result = await walletTransport(config, getToken, signal).request(path(selected), 'POST', { maximum_gas_charge: cap.toString() }, account);
+    async prepare(input: CreationConsent, maximumGasCharge: string | null, signal: AbortSignal) {
+      const selected = consent(input), cap = maximumGasCharge === null ? null : parseCreationCapRequest({ maximum_gas_charge: maximumGasCharge });
+      // Empty request asks for server-admitted terms. It cannot authorize gas,
+      // select providers or silently replace a previously prepared operation.
+      const result = await walletTransport(config, getToken, signal).request(path(selected), 'POST', cap === null ? {} : { maximum_gas_charge: cap.toString() }, account);
       success(result); signal.throwIfAborted();
       const review = view(result.value, selected);
-      if (review.preview.terms.maximumGasCharge !== cap) throw new CreationClientError('creation/invalid');
+      if (cap !== null && review.preview.terms.maximumGasCharge !== cap) throw new CreationClientError('creation/invalid');
       return review;
     },
     async restore(input: CreationConsent, signal: AbortSignal) {

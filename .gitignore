@@ -50,6 +50,7 @@ build/
 .turbo/
 .cache/
 output/
+.playwright-cli/
 coverage/
 logs/
 *.log

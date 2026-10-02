@@ -14,11 +14,12 @@ export function ProfileEditor({ runtime, uid, english: en }: { runtime: BrowserA
   const [profile, setProfile] = useState<Profile | null>(null), [name, setName] = useState(''), [username, setUsername] = useState('');
   const [wallets, setWallets] = useState<WalletPage>({ data: [], next_cursor: null }), [wallet, setWallet] = useState('');
   const [accounts, setAccounts] = useState<AccountPage>({ data: [], next_cursor: null }), [account, setAccount] = useState('');
-  const [busy, setBusy] = useState(false), [closed, setClosed] = useState(false), [error, setError] = useState(''), [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(true), [closed, setClosed] = useState(false), [error, setError] = useState(''), [saved, setSaved] = useState(false);
   const session = useRef<ReturnType<BrowserAuth['profile']> | null>(null), lifecycle = useRef<AbortController | null>(null), pending = useRef(false);
   function apply(value: Profile) { setProfile(value); setName(value.display_name); setUsername(value.username ?? ''); }
   useEffect(() => {
     const controller = new AbortController(); lifecycle.current = controller;
+    pending.current = true;
     let unsubscribe: (() => void) | undefined;
     void (async () => {
       const captured = runtime.profile(uid); session.current = captured;
@@ -27,8 +28,26 @@ export function ProfileEditor({ runtime, uid, english: en }: { runtime: BrowserA
         catch { controller.abort(); setClosed(true); }
       });
       const [value, page] = await Promise.all([captured.read(controller.signal), runtime.wallets(uid, controller.signal)]);
-      captured.assertCurrent(); if (!controller.signal.aborted) { apply(value); setWallets(page); }
-    })().catch(failure => { if (!controller.signal.aborted) setError(profileMessage(failure, en)); });
+      const candidates = page.data.filter(item => item.status === 'active');
+      let singleWallet: string | null = null, singleAccounts: AccountPage | null = null;
+      if (value.username_published_at === null && page.next_cursor === null && candidates.length === 1) {
+        singleWallet = candidates[0].id;
+        try { singleAccounts = await runtime.balances(uid).accounts(singleWallet, null, controller.signal); }
+        catch (failure) { if (!controller.signal.aborted) setError(profileMessage(failure, en)); }
+      }
+      captured.assertCurrent(); if (!controller.signal.aborted) {
+        apply(value); setWallets(page);
+        if (singleWallet) {
+          setWallet(singleWallet); setAccounts(singleAccounts ?? { data: [], next_cursor: null });
+          setAccount(singleAccounts?.next_cursor === null && singleAccounts.data.length === 1 ? singleAccounts.data[0].id : '');
+        }
+      }
+    })().catch(failure => { if (!controller.signal.aborted) setError(profileMessage(failure, en)); })
+      .finally(() => {
+        if (!controller.signal.aborted && lifecycle.current === controller) { pending.current = false; setBusy(false); }
+      });
+    // Read-only setup must not publish a username or authorize an operation.
+    // Keep the same pending guard as explicit actions until selection is ready.
     return () => { controller.abort(); unsubscribe?.(); session.current = null; };
   }, [runtime, uid, en]);
   function run(action: (client: NonNullable<typeof session.current>, signal: AbortSignal) => Promise<void>) {
@@ -37,7 +56,7 @@ export function ProfileEditor({ runtime, uid, english: en }: { runtime: BrowserA
     pending.current = true; setBusy(true); setError(''); setSaved(false);
     void (async () => { client.assertCurrent(); await action(client, controller.signal); client.assertCurrent(); })()
       .catch(failure => { if (!controller.signal.aborted) setError(profileMessage(failure, en)); })
-      .finally(() => { pending.current = false; if (!controller.signal.aborted) setBusy(false); });
+      .finally(() => { if (lifecycle.current === controller) { pending.current = false; if (!controller.signal.aborted) setBusy(false); } });
   }
   if (closed) return <p role="alert">{en ? 'Your session changed. Sign in again.' : 'Tu sesión cambió. Vuelve a entrar.'}</p>;
   if (!profile) return <Panel>{error ? <p role="alert">{error}</p> : <p role="status">{en ? 'Loading profile…' : 'Cargando perfil…'}</p>}
@@ -64,9 +83,12 @@ export function ProfileEditor({ runtime, uid, english: en }: { runtime: BrowserA
         <Field label="Username">{id => <input id={id} value={username} autoComplete="username" autoCapitalize="none" spellCheck={false} required
           pattern="[a-z][a-z0-9_]{4,29}" maxLength={30} disabled={busy} onChange={event => setUsername(event.target.value.toLowerCase())} />}</Field>
         <Field label={en ? 'Receiving wallet' : 'Wallet receptora'}>{id => <select id={id} value={wallet} required disabled={busy} onChange={event => {
+          if (pending.current) return;
           const selected = event.target.value; setWallet(selected); setAccount(''); setAccounts({ data: [], next_cursor: null });
           if (selected) run(async (_client, signal) => {
-            const page = await runtime.balances(uid).accounts(selected, null, signal); if (!signal.aborted) setAccounts(page);
+            const page = await runtime.balances(uid).accounts(selected, null, signal); if (!signal.aborted) {
+              setAccounts(page); setAccount(page.next_cursor === null && page.data.length === 1 ? page.data[0].id : '');
+            }
           });
         }}><option value="">{en ? 'Choose a wallet' : 'Elige una wallet'}</option>
           {wallets.data.filter(w => w.status === 'active').map(w => <option key={w.id} value={w.id}>Wallet · {w.id.slice(-8)}</option>)}</select>}</Field>
@@ -80,7 +102,7 @@ export function ProfileEditor({ runtime, uid, english: en }: { runtime: BrowserA
         })}>{en ? 'More networks' : 'Más redes'}</button> : null}
         <p>{en ? 'Once published, the username and receiving wallet cannot be changed in this version.' : 'Una vez publicados, el username y la wallet receptora no se pueden cambiar en esta versión.'}</p>
         <button className="auth-primary btn btn-primary btn-block" type="submit" disabled={busy || !wallet || !account}>{en ? 'Verify and publish username' : 'Verificar y publicar username'}</button>
-        <a className="auth-secondary btn btn-ghost btn-block" href={localizedPath('/app', en)}>{en ? 'Create or activate my wallet' : 'Crear o activar mi wallet'}</a>
+        <a className="auth-secondary btn btn-ghost btn-block" href={localizedPath('/onboarding', en)}>{en ? 'Continue wallet setup' : 'Continuar creación de wallet'}</a>
       </form>}
       <button type="button" className="auth-secondary btn btn-ghost btn-block" disabled={busy} onClick={() => run(async (client, signal) => {
         const value = await client.read(signal); if (!signal.aborted) apply(value);

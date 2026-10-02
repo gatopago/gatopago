@@ -4,7 +4,7 @@ export type WebAuthConfig =
   | { mode: 'disabled' }
   | {
     mode: 'firebase' | 'emulator';
-    environment: 'staging' | 'production';
+    environment: 'production';
     deployment: Environment;
     webOrigin: string;
     firebase: { apiKey: string; appId: string; projectId: string; authDomain: string };
@@ -25,12 +25,12 @@ export function buildAuthConfig(environment: Environment, input: {
   const env = parseEnvironment(environment);
   if (input.localAuth && input.localAuth !== '1') throw new Error('Invalid local auth switch');
   if (input.localAuth === '1') {
-    if (input.nodeEnv !== 'development' || env.environment !== 'staging') {
+    if (input.nodeEnv !== 'development' || !isLocalEnvironment(env) || env.web_origin !== LOCAL_WEB_ORIGIN) {
       throw new Error('Auth emulator is development-only and cannot enter a release');
     }
     if (input.apiKey || input.appId || input.turnstileSiteKey) throw new Error('Do not mix local and remote auth');
     return {
-      deployment: env, mode: 'emulator', environment: 'staging', webOrigin: LOCAL_WEB_ORIGIN,
+      deployment: env, mode: 'emulator', environment: env.environment, webOrigin: LOCAL_WEB_ORIGIN,
       firebase: { apiKey: 'fake-api-key', projectId: LOCAL_AUTH_PROJECT,
         appId: '1:123456789:web:0000000000000000000000', authDomain: 'localhost' },
       apiOrigin: null, turnstileSiteKey: null,
@@ -65,6 +65,7 @@ export function assertBrowserOrigin(config: EnabledAuthConfig, origin: string): 
   }
 }
 
+/** @internal Next build headers, not a runtime API. */
 export function authHeaders() {
   const privateHeaders = [
     { key: 'Cache-Control', value: 'private, no-store, max-age=0' },

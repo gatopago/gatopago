@@ -23,7 +23,7 @@ export default function ScanScreen({ english: en }: { english: boolean }) {
   }, []);
   function parse(raw: string) {
     const parsed = parseConsumerQr(raw, window.location.origin);
-    setResult(parsed); setError(parsed ? '' : en ? 'Unsupported QR. Use a GatoPago link or an EVM address.' : 'QR no compatible. Usa un enlace GatoPago o una dirección EVM.');
+    setResult(parsed); setError(parsed ? '' : en ? 'Unsupported QR. Use a GatoPago /@username profile or an EVM address.' : 'QR no compatible. Usa un perfil /@usuario de GatoPago o una dirección EVM.');
     return !!parsed;
   }
   async function decode(source: CanvasImageSource, width: number, height: number, max: number) {
@@ -83,7 +83,7 @@ export default function ScanScreen({ english: en }: { english: boolean }) {
       <button type="button" className="btn btn-primary btn-block" disabled={busy} onClick={() => camera ? (stop(), setCamera(false)) : void start()}>{camera ? en ? 'Stop camera' : 'Detener cámara' : en ? 'Open camera' : 'Abrir cámara'}</button>
       <Field label={en ? 'Read from a photo' : 'Leer desde una foto'}>{id => <input id={id} type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} className="mt-4 max-w-full text-sm" onChange={event => { void image(event.target.files?.[0]); event.target.value = ''; }} />}</Field>
     </Panel><form onSubmit={event => { event.preventDefault(); stop(); setCamera(false); parse(text); }}><Panel>
-      <Field label={en ? 'Or paste a link or address' : 'O pega un enlace o dirección'}>{id => <input id={id} value={text} maxLength={2048} onChange={event => { setText(event.target.value); setResult(null); setError(''); }} autoComplete="off" spellCheck={false} className="meli-field h-12 w-full px-3" />}</Field>
+      <Field label={en ? 'Or paste a profile link or address' : 'O pega un enlace de perfil o dirección'}>{id => <input id={id} value={text} maxLength={2048} onChange={event => { setText(event.target.value); setResult(null); setError(''); }} autoComplete="off" spellCheck={false} className="meli-field h-12 w-full px-3" />}</Field>
       <button className="btn btn-ghost btn-block" type="submit" disabled={busy || !text.trim()}>{en ? 'Review destination' : 'Revisar destino'}</button>
     </Panel></form>
     {busy ? <p role="status">{en ? 'Reading…' : 'Leyendo…'}</p> : null}

@@ -10,7 +10,7 @@ import { buildAuthConfig, type EnabledAuthConfig } from '../src/auth/config';
 import { initializationFixture } from '@gatopago/test-fixtures/v3-initialization';
 import { fixtureHash } from '@gatopago/test-fixtures/v3-inspection';
 
-const config = buildAuthConfig(parseEnvironment({ ...environments.staging, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
+const config = buildAuthConfig(parseEnvironment({ ...environments.production, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
   apiKey: `AIza${'a'.repeat(35)}`, appId: '1:123:web:abcdef', turnstileSiteKey: `0x${'a'.repeat(22)}`,
 }) as EnabledAuthConfig;
 const signal = () => new AbortController().signal;
@@ -38,7 +38,7 @@ describe('typed initialization client, no implicit ceremony or broadcast', () =>
     fetchMock.mockResolvedValue(Response.json(t.value));
     const result = await t.client.prepare(t.request, signal());
     expect(result.preparation).toEqual(t.value); expect(Object.isFrozen(result.expected.scope)).toBe(true);
-    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(`${environments.staging.api_origin}/app/v1/account-initializations`, expect.objectContaining({
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(`${environments.production.api_origin}/app/v1/account-initializations`, expect.objectContaining({
       method: 'POST', cache: 'no-store', credentials: 'omit', redirect: 'error', headers: expect.objectContaining({
         [CLIENT_RELEASE_HEADERS.generation]: '3', [CLIENT_RELEASE_HEADERS.manifest]: t.f.profile.deployment.manifest_id,
       }),
@@ -50,7 +50,7 @@ describe('typed initialization client, no implicit ceremony or broadcast', () =>
       .mockResolvedValueOnce(Response.json({ ...t.receipt, state: 'authorized' })); vi.stubGlobal('fetch', fetchMock);
     const consent = await t.client.prepare(t.request, signal());
     expect(await t.client.authorize(consent, t.proof, signal())).toEqual({ ...t.receipt, state: 'authorized' });
-    expect(fetchMock.mock.calls[1][0]).toBe(`${environments.staging.api_origin}/app/v1/account-initializations/${t.request.request_id}/authorize`);
+    expect(fetchMock.mock.calls[1][0]).toBe(`${environments.production.api_origin}/app/v1/account-initializations/${t.request.request_id}/authorize`);
     expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual(t.proof);
   });
   it.each(['id', 'key', 'reference', 'credential-id', 'digest', 'scope', 'salt', 'manifest', 'lifetime', 'receive', 'spend', 'deployed', 'extra'])('rejects altered %s in the consent', (change) => {
@@ -60,7 +60,7 @@ describe('typed initialization client, no implicit ceremony or broadcast', () =>
     if (change === 'reference') value.credential_ref = createResourceId('operation');
     if (change === 'credential-id') value.credential_id = 'abc=';
     if (change === 'digest') value.approval_digest = fixtureHash('a');
-    if (change === 'scope') expected.scope = { rpId: 'gatopago.com', origin: 'https://gatopago.com' };
+    if (change === 'scope') expected.scope = { rpId: 'other.gatopago.com', origin: 'https://other.gatopago.com' };
     if (change === 'salt') expected.userSaltCommitment = fixtureHash('a');
     if (change === 'manifest') expected.profileDigest = fixtureHash('a');
     if (change === 'lifetime') value.valid_until = t.value.valid_after + 301;

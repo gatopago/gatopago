@@ -5,7 +5,7 @@ import environments from '@gatopago/environment/environments.json';
 import { buildAuthConfig, type EnabledAuthConfig } from '../src/auth/config';
 import { normalizeUsername, parseRecipient, profileClient, resolveUsername } from '../src/wallet/profile';
 
-const config = buildAuthConfig({ ...parseEnvironment(environments.staging), status: 'provisioned', firebase_project_id: 'gatopago-staging-test' }, {
+const config = buildAuthConfig({ ...parseEnvironment(environments.production), status: 'provisioned', firebase_project_id: 'v3-runtime-test' }, {
   apiKey: `AIza${'A'.repeat(35)}`, appId: '1:123456789:web:012345abcdef', turnstileSiteKey: `0x${'A'.repeat(22)}`,
 }) as EnabledAuthConfig;
 const uid = createResourceId('user'), wallet = createResourceId('wallet'), account = createResourceId('walletAccount');

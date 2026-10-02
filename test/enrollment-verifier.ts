@@ -4,3 +4,4 @@ export { prepareInitialization, authorizeInitialization } from '@gatopago/shared
 export { parseInitializationProof } from '@gatopago/shared/v3/initialization-wire';
 export { prepareCreationOperation, authorizeCreationOperation } from '@gatopago/shared/v3/creation-operation';
 export { creationGasWire } from '@gatopago/shared/v3/creation-operation-wire';
+export { createResourceId } from '@gatopago/shared/v3/primitives';

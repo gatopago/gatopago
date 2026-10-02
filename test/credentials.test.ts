@@ -7,10 +7,10 @@ import { buildAuthConfig, type EnabledAuthConfig } from '../src/auth/config';
 import { loadCredentialInventory } from '../src/wallet/credentials';
 import { CredentialInventoryStore } from '../src/wallet/credential-inventory-store';
 
-const config = buildAuthConfig(parseEnvironment({ ...environments.staging, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
+const config = buildAuthConfig(parseEnvironment({ ...environments.production, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
   apiKey: `AIza${'a'.repeat(35)}`, appId: '1:123:web:abcdef', turnstileSiteKey: `0x${'a'.repeat(22)}`,
 }) as EnabledAuthConfig;
-const scope = { rpId: environments.staging.webauthn_rp_id, origin: config.webOrigin };
+const scope = { rpId: environments.production.webauthn_rp_id, origin: config.webOrigin };
 const key = () => ({ credential_ref: createResourceId('operation'), created_at: Math.floor(Date.now() / 1000) - 1,
   transports: ['internal'], aaguid: '00000000-0000-0000-0000-000000000000', backup_eligible: true, backed_up_at_registration: true });
 const inventory = () => ({ scope, data: [key()], device_availability: 'unknown', onchain_authority: 'not_assessed' });
@@ -22,7 +22,7 @@ describe('Read-only credential inventory contract', () => {
   it('makes a single no-store GET without mutation headers, bootstrap or credential ceremonies', async () => {
     const value = inventory(), fetchMock = vi.fn().mockResolvedValue(Response.json(value)); vi.stubGlobal('fetch', fetchMock);
     expect(await loadCredentialInventory(config, token, signal())).toEqual(value);
-    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(`${environments.staging.api_origin}/app/v1/security/credentials`, expect.objectContaining({
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(`${environments.production.api_origin}/app/v1/security/credentials`, expect.objectContaining({
       method: 'GET', cache: 'no-store', credentials: 'omit', redirect: 'error',
       headers: { Authorization: 'Bearer synthetic.token.signature', Accept: 'application/json' },
     }));
@@ -39,7 +39,7 @@ describe('Read-only credential inventory contract', () => {
     const value = inventory();
     if (change === 'authority') value.onchain_authority = 'active';
     if (change === 'availability') value.device_availability = 'available';
-    if (change === 'scope') value.scope = { ...scope, rpId: 'gatopago.com' };
+    if (change === 'scope') value.scope = { ...scope, rpId: 'other.gatopago.com' };
     if (change === 'duplicate') value.data.push(value.data[0]);
     if (change === 'limit') value.data = Array.from({ length: 17 }, key);
     if (change === 'reference') Object.assign(value.data[0], { credential_ref: '../another-user' });

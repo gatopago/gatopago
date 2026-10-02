@@ -46,6 +46,35 @@ beforeEach(() => { vi.stubGlobal('window', {}); vi.useFakeTimers(); });
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('creation confirmation controller; synthetic session, real P256 and execution digest', () => {
+  it('consults server terms without asking for a decimal cap or signing automatically', async () => {
+    const t = fixture(); await t.absent(); await t.flow.prepare();
+    expect(t.session.prepare.mock.calls[0][1]).toBeNull();
+    expect(t.flow.snapshot()).toMatchObject({ phase: 'ready', cap: t.terms.maximumGasCharge.toString(),
+      review: { maximumCharge: t.candidate.maximumEntryPointCharge } });
+    expect(t.prove).not.toHaveBeenCalled(); expect(t.session.authorize).not.toHaveBeenCalled();
+    await t.flow.confirm(); expect(t.prove.mock.calls[0][0].challenge).toBe(t.candidate.digest);
+    expect(t.session.authorize).toHaveBeenCalledOnce();
+  });
+  it('restores the same automatic preparation after losing its response, without repricing or signing', async () => {
+    const t = fixture(); await t.absent(); t.session.prepare.mockRejectedValueOnce(error('creation/unavailable'));
+    await t.flow.prepare(); expect(t.flow.snapshot()).toMatchObject({ phase: 'uncertain', cap: null });
+    await t.flow.prepare(); expect(t.session.prepare).toHaveBeenCalledOnce();
+    await t.flow.restore(); expect(t.flow.snapshot()).toMatchObject({ phase: 'ready', cap: t.terms.maximumGasCharge.toString() });
+    expect(t.session.prepare).toHaveBeenCalledOnce(); expect(t.prove).not.toHaveBeenCalled();
+  });
+  it('retries only an explicitly read-absent automatic request and locks the returned ceiling', async () => {
+    const t = fixture(); await t.absent(); t.session.prepare.mockRejectedValueOnce(error('creation/unavailable'));
+    await t.flow.prepare(); await t.absent(); expect(t.flow.snapshot().phase).toBe('prepare-retry');
+    await t.flow.prepare(); expect(t.session.prepare.mock.calls.map(call => call[1])).toEqual([null, null]);
+    const changed = { ...t.terms, maximumGasCharge: t.terms.maximumGasCharge + 1n };
+    const initialProof = t.f.assertion(prepareInitialization(t.f.input).digest);
+    const repriced = prepareCreationOperation(t.f.input, initialProof, changed, t.f.input.validAfter);
+    t.wire.gas_terms = creationGasWire(changed); t.wire.initial_assertion = encode(initialProof);
+    t.wire.receipt.operation_digest = repriced.digest; t.wire.receipt.user_op_hash = repriced.userOpHash;
+    expect(() => parseCreationPreview(t.wire, t.consent)).not.toThrow();
+    await t.flow.restore(); expect(t.flow.snapshot()).toMatchObject({ phase: 'uncertain', error: 'creation/conflict' });
+    expect(t.prove).not.toHaveBeenCalled();
+  });
   it('restores historical bootstrap without polling, signing or repeating an authorization', async () => {
     const t = fixture(); Object.assign(t.wire.receipt, t.authorized, { delivery_state: 'accepted' });
     const lifecycle = { ...t.wire.lifecycle, job_state: 'complete', reason: 'projected',

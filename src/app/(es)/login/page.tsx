@@ -5,7 +5,7 @@ import { MeliSprite } from '../../../marketing/MeliSprite';
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ lang?: string }> }): Promise<Metadata> {
   const { lang } = await searchParams;
-  return { title: lang === 'en' ? 'Sign in — GatoPago' : 'Entrar — GatoPago', robots: { index: false, follow: false }, referrer: 'no-referrer' };
+  return { title: lang === 'en' ? 'Sign in — GatoPago' : 'Iniciar sesión — GatoPago', robots: { index: false, follow: false }, referrer: 'no-referrer' };
 }
 export const dynamic = 'force-dynamic';
 

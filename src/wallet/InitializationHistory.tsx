@@ -6,7 +6,7 @@ import type { InitializationHistoryItem } from '@gatopago/shared/v3/initializati
 import type { BrowserAuth } from '../auth/browser';
 import type { CreationProfilePin } from './creation-release';
 import AccountInitialization from './AccountInitialization';
-import { InitializationHistoryStore } from './initialization-history-store';
+import { InitializationHistoryStore, initialSetupChoice } from './initialization-history-store';
 
 export default function InitializationHistory({ runtime, uid, inventory, english: en, pin, onActiveChange }: {
   runtime: BrowserAuth; uid: string; inventory: CredentialInventory; english: boolean; pin: CreationProfilePin; onActiveChange: (active: boolean) => void;
@@ -14,6 +14,7 @@ export default function InitializationHistory({ runtime, uid, inventory, english
   const [store] = useState(() => new InitializationHistoryStore(() => runtime.initialization(uid, pin)));
   const state = useSyncExternalStore(store.subscribe, store.snapshot, store.snapshot);
   const [selection, setSelection] = useState<InitializationHistoryItem | 'new' | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const [childActive, setChildActive] = useState(false);
   useEffect(() => {
     void store.refresh();
@@ -23,16 +24,18 @@ export default function InitializationHistory({ runtime, uid, inventory, english
   useEffect(() => { onActiveChange(state.phase === 'loading' || childActive); }, [state.phase, childActive, onActiveChange]);
   if (state.phase === 'closed') return <p role="alert">{en ? 'Your session or app version changed. Reload and sign in before continuing.'
     : 'Tu sesión o versión de la app cambió. Recarga y vuelve a entrar antes de continuar.'}</p>;
-  if (selection && state.phase === 'ready') return <>
-    <AccountInitialization key={selection === 'new' ? 'new' : selection.initialization_id} runtime={runtime} uid={uid}
-      inventory={inventory} english={en} pin={pin} onActiveChange={setChildActive} resume={selection === 'new' ? undefined : selection} />
-    <button type="button" className="auth-secondary btn btn-ghost btn-block" disabled={childActive} onClick={() => { setSelection(null); void store.refresh(); }}>
-      {en ? 'Back to configuration history' : 'Volver al historial de configuración'}</button>
+  const automatic = !showHistory && state.phase === 'ready'
+    ? initialSetupChoice(state.history, state.canStart, pin.digest, inventory.data.map(key => key.credential_ref)) : null;
+  const chosen = selection ?? automatic;
+  if (chosen && state.phase === 'ready') return <>
+    <AccountInitialization key={chosen === 'new' ? 'new' : chosen.initialization_id} runtime={runtime} uid={uid}
+      inventory={inventory} english={en} pin={pin} onActiveChange={setChildActive} resume={chosen === 'new' ? undefined : chosen} />
+    <button type="button" className="auth-secondary btn btn-ghost btn-block" disabled={childActive} onClick={() => { setSelection(null); setShowHistory(true); void store.refresh(); }}>
+      {en ? 'Review setup requests' : 'Revisar solicitudes de configuración'}</button>
   </>;
   return <section className="account-initialization" aria-labelledby="initialization-history-heading" aria-busy={state.phase === 'loading'}>
-    <h3 id="initialization-history-heading">{en ? 'Account configuration' : 'Configuración de tu cuenta'}</h3>
-    <p>{en ? 'First we check existing requests. Reading this history does not open your passkey manager, create an account or send a transaction.'
-      : 'Primero consultamos las solicitudes existentes. Leer este historial no abre tu gestor de llaves, crea una cuenta ni envía una transacción.'}</p>
+    <h2 id="initialization-history-heading">{en ? 'Account configuration' : 'Configuración de tu cuenta'}</h2>
+    <p>{en ? 'We check your existing requests so you can resume without creating the wallet twice.' : 'Consultamos tus solicitudes para que puedas retomar sin crear dos veces la wallet.'}</p>
     {state.phase === 'loading' ? <p role="status">{en ? 'Checking existing configuration…' : 'Consultando configuración existente…'}</p> : null}
     {state.phase === 'error' ? <><p role="alert">{en ? 'We could not check your previous requests. This does not mean you need a new account.'
       : 'No pudimos consultar tus solicitudes anteriores. Esto no significa que necesites otra cuenta.'}</p>
@@ -52,7 +55,7 @@ export default function InitializationHistory({ runtime, uid, inventory, english
         </li>;
       })}</ul> : <p>{en ? 'No requests in this page.' : 'No hay solicitudes en esta página.'}</p>}
       {state.history.next_cursor ? <button type="button" className="auth-secondary btn btn-ghost btn-block" onClick={() => void store.next()}>{en ? 'Older requests' : 'Solicitudes anteriores'}</button> : null}
-      {state.canStart ? <button type="button" className="auth-primary btn btn-primary btn-block" onClick={() => setSelection('new')}>{en ? 'Configure my V3 account' : 'Configurar mi cuenta V3'}</button>
+      {state.canStart ? <button type="button" className="auth-primary btn btn-primary btn-block" onClick={() => setSelection('new')}>{en ? 'Configure my wallet' : 'Configurar mi wallet'}</button>
         : <p role="note">{en ? 'Review the existing requests before starting another configuration. This history does not confirm onchain account availability.'
           : 'Revisa las solicitudes existentes antes de iniciar otra configuración. Este historial no confirma la disponibilidad onchain de la cuenta.'}</p>}
       <button type="button" className="auth-secondary btn btn-ghost btn-block" onClick={() => void store.refresh()}>{en ? 'Refresh configuration history' : 'Actualizar historial de configuración'}</button>

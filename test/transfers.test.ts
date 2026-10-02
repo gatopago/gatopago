@@ -55,7 +55,7 @@ describe('Transfer historical display client', () => {
   });
   it('snapshots selection and makes a single no-store GET', async () => {
     const f = fixture(), original = { ...f.locator };
-    const config = buildAuthConfig(parseEnvironment({ ...environments.staging, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
+    const config = buildAuthConfig(parseEnvironment({ ...environments.production, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
       apiKey: `AIza${'a'.repeat(35)}`, appId: '1:123:web:abcdef', turnstileSiteKey: `0x${'a'.repeat(22)}` }) as EnabledAuthConfig;
     const fetcher = vi.fn().mockResolvedValue(Response.json(f.wire)); vi.stubGlobal('fetch', fetcher);
     const client = transferClient(config, async () => { f.locator.operation_id = createResourceId('operation'); return 'synthetic-token'; });

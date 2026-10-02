@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { encodeWebAuthnAssertion, webAuthnKeyFromSpki } from '@gatopago/shared/v3/webauthn';
-import { PasskeyRequestError, requestPasskeyLogin, requestPasskeyAssertion, requestPasskeyProof, requestPasskeyRegistration } from '../src/wallet/passkeys';
+import { webAuthnKeyFromSpki } from '@gatopago/shared/v3/webauthn';
+import { PasskeyRequestError, requestPasskeyLogin, requestPasskeyProof, requestPasskeyRegistration } from '../src/wallet/passkeys';
 import { isReloadBlocked } from '../src/pwa/reload-guard';
 
 const captured = JSON.parse(readFileSync(new URL(import.meta.resolve('@gatopago/shared/fixtures/v3-webauthn-chromium.json')), 'utf8')) as {
@@ -91,7 +91,7 @@ describe('V3 explicit registration, distinct from enrollment proof or account cr
     create.mockImplementation(() => new Promise(() => undefined));
     const result = requestPasskeyRegistration({ ...registrationRequest(), validUntilMs: Date.now() + 1000 });
     const pending = expect(result).rejects.toMatchObject({ code: 'expired' });
-    await expect(requestPasskeyAssertion(request())).rejects.toMatchObject({ code: 'busy' });
+    await expect(requestPasskeyProof(request())).rejects.toMatchObject({ code: 'busy' });
     await expect(requestPasskeyRegistration(registrationRequest())).rejects.toMatchObject({ code: 'busy' });
     await vi.advanceTimersByTimeAsync(1000); await pending;
     expect((create.mock.calls[0][0] as CredentialCreationOptions).signal?.aborted).toBe(true);
@@ -129,16 +129,15 @@ afterEach(() => { expect(isReloadBlocked()).toBe(false); vi.useRealTimers(); vi.
 describe('V3 explicit passkey ceremony (browser API mocked; cryptographic verification real)', () => {
   it('does nothing on module import and requests only the selected key with required UV', async () => {
     expect(get).not.toHaveBeenCalled();
-    const value = request(); const result = requestPasskeyAssertion(value);
+    const value = request(); const result = requestPasskeyProof(value);
     expect(get).toHaveBeenCalledOnce(); // before the first await, preserving the initiating user gesture
     expect(isReloadBlocked()).toBe(true);
     const options = get.mock.calls[0][0] as CredentialRequestOptions;
     expect(options.publicKey).toEqual({ rpId: scope.rpId, challenge: bytes(captured.challenge),
       allowCredentials: [{ type: 'public-key', id: new Uint8Array([1, 2, 3]) }], userVerification: 'required', timeout: 60_000 });
     const raw = new Credential().response;
-    expect(await result).toBe(encodeWebAuthnAssertion({ ...value, response: {
-      authenticatorData: new Uint8Array(raw.authenticatorData), clientDataJSON: new Uint8Array(raw.clientDataJSON), signatureDER: new Uint8Array(raw.signature),
-    } }));
+    expect(await result).toEqual({ authenticator_data: Buffer.from(raw.authenticatorData).toString('base64url'),
+      client_data: Buffer.from(raw.clientDataJSON).toString('base64url'), signature: Buffer.from(raw.signature).toString('base64url') });
   });
   it.each(['SSR', 'insecure', 'unsupported', 'iframe', 'origin', 'no-click'])('blocks %s before opening a prompt', async (caseName) => {
     if (caseName === 'SSR') vi.stubGlobal('window', undefined);
@@ -147,38 +146,38 @@ describe('V3 explicit passkey ceremony (browser API mocked; cryptographic verifi
     if (caseName === 'iframe') Object.assign(window, { top: {} });
     if (caseName === 'origin') Object.assign(window, { location: { origin: 'https://gatopago.com' } });
     if (caseName === 'no-click') vi.stubGlobal('navigator', { credentials: { get }, userActivation: { isActive: false } });
-    await expect(requestPasskeyAssertion(request())).rejects.toBeInstanceOf(PasskeyRequestError); expect(get).not.toHaveBeenCalled();
+    await expect(requestPasskeyProof(request())).rejects.toBeInstanceOf(PasskeyRequestError); expect(get).not.toHaveBeenCalled();
   });
   it.each(['', 'AQID=', 'AB', 'A', 'a'.repeat(1367)])('rejects a noncanonical credential ID %s', async (credentialId) => {
-    await expect(requestPasskeyAssertion({ ...request(), credentialId })).rejects.toMatchObject({ code: 'context' });
+    await expect(requestPasskeyProof({ ...request(), credentialId })).rejects.toMatchObject({ code: 'context' });
     expect(get).not.toHaveBeenCalled();
   });
   it.each([0, -1, NaN, Infinity, 1.5])('rejects invalid deadline %s', async (validUntilMs) => {
-    await expect(requestPasskeyAssertion({ ...request(), validUntilMs })).rejects.toMatchObject({ code: 'expired' });
+    await expect(requestPasskeyProof({ ...request(), validUntilMs })).rejects.toMatchObject({ code: 'expired' });
     expect(get).not.toHaveBeenCalled();
   });
   it('rejects an already-aborted action and a scope/key mismatch before the prompt', async () => {
     const controller = new AbortController(); controller.abort();
-    await expect(requestPasskeyAssertion({ ...request(), signal: controller.signal })).rejects.toMatchObject({ code: 'cancelled' });
-    await expect(requestPasskeyAssertion({ ...request(), scope: { rpId: 'gatopago.com', origin: 'https://gatopago.com' } })).rejects.toThrow();
+    await expect(requestPasskeyProof({ ...request(), signal: controller.signal })).rejects.toMatchObject({ code: 'cancelled' });
+    await expect(requestPasskeyProof({ ...request(), scope: { rpId: 'gatopago.com', origin: 'https://gatopago.com' } })).rejects.toThrow();
     expect(get).not.toHaveBeenCalled();
   });
   it('prevents double prompts, times out even a browser ignoring abort, and permits an explicit retry', async () => {
     get.mockImplementation(() => new Promise(() => undefined));
-    const value = request(); const result = requestPasskeyAssertion({ ...value, validUntilMs: Date.now() + 1500 });
+    const value = request(); const result = requestPasskeyProof({ ...value, validUntilMs: Date.now() + 1500 });
     const assertion = expect(result).rejects.toMatchObject({ code: 'expired' });
-    await expect(requestPasskeyAssertion(value)).rejects.toMatchObject({ code: 'busy' });
+    await expect(requestPasskeyProof(value)).rejects.toMatchObject({ code: 'busy' });
     expect(get).toHaveBeenCalledOnce();
     await vi.advanceTimersByTimeAsync(1500); await assertion;
     expect((get.mock.calls[0][0] as CredentialRequestOptions).signal?.aborted).toBe(true);
     expect(isReloadBlocked()).toBe(false);
-    get.mockResolvedValue(new Credential()); await expect(requestPasskeyAssertion(request())).resolves.toMatch(/^0x/);
+    get.mockResolvedValue(new Credential()); await expect(requestPasskeyProof(request())).resolves.toHaveProperty('signature');
   });
   it('cancels on the original signal even if caller replaces the input signal or payload', async () => {
     let resolve!: (value: Credential) => void;
     get.mockImplementation(() => new Promise((done) => { resolve = done; }));
     const controller = new AbortController(); const value = { ...request(), signal: controller.signal };
-    const result = requestPasskeyAssertion(value); const assertion = expect(result).rejects.toMatchObject({ code: 'cancelled' });
+    const result = requestPasskeyProof(value); const assertion = expect(result).rejects.toMatchObject({ code: 'cancelled' });
     value.signal = new AbortController().signal; value.scope.origin = 'https://evil.test';
     controller.abort(); await assertion;
     resolve(new Credential()); await Promise.resolve(); // Late resolution cannot leak a usable authorization.
@@ -186,9 +185,9 @@ describe('V3 explicit passkey ceremony (browser API mocked; cryptographic verifi
   it('uses the snapshot of the reviewed challenge and key, not caller mutations while waiting', async () => {
     let resolve!: (value: Credential) => void;
     get.mockImplementation(() => new Promise((done) => { resolve = done; }));
-    const value = request(); const result = requestPasskeyAssertion(value);
+    const value = request(); const result = requestPasskeyProof(value);
     value.challenge = `0x${'ff'.repeat(32)}`; value.scope.origin = 'https://evil.test'; value.credentialId = 'BAUG';
-    resolve(new Credential()); await expect(result).resolves.toMatch(/^0x/);
+    resolve(new Credential()); await expect(result).resolves.toHaveProperty('signature');
   });
   it.each(['null', 'plain-object', 'wrong-id', 'wrong-raw-id', 'registration', 'tampered'])('rejects an invalid %s response', async (variant) => {
     const credential = new Credential();
@@ -197,16 +196,16 @@ describe('V3 explicit passkey ceremony (browser API mocked; cryptographic verifi
     if (variant === 'registration') Object.assign(credential, { response: {} });
     if (variant === 'tampered') new Uint8Array(credential.response.signature)[10] ^= 1;
     get.mockResolvedValue(variant === 'null' ? null : variant === 'plain-object' ? { ...credential } : credential);
-    await expect(requestPasskeyAssertion(request())).rejects.toThrow();
+    await expect(requestPasskeyProof(request())).rejects.toThrow();
   });
   it.each(['NotAllowedError', 'AbortError'])('reports %s as cancelled, without retrying or changing keys', async (name) => {
     get.mockRejectedValue(new DOMException('Dismissed', name));
-    await expect(requestPasskeyAssertion(request())).rejects.toMatchObject({ code: 'cancelled' });
+    await expect(requestPasskeyProof(request())).rejects.toMatchObject({ code: 'cancelled' });
     expect(get).toHaveBeenCalledOnce();
   });
   it('releases timers and reload guard on synchronous browser failure', async () => {
     get.mockImplementation(() => { throw new Error('Browser failure'); });
-    await expect(requestPasskeyAssertion(request())).rejects.toThrow('Browser failure');
+    await expect(requestPasskeyProof(request())).rejects.toThrow('Browser failure');
     expect(vi.getTimerCount()).toBe(0);
   });
 });

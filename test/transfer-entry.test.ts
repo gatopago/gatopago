@@ -22,7 +22,7 @@ function fixture() {
  const balance:BalanceView = { account:{ ...account },address:selected.address,observed_at:f.now,expires_at:f.now+30,block_number:'10',block_hash:`0x${'ab'.repeat(32)}`,
   assets:[{ asset_id:`${account.network_id}/slip44:60`,symbol:'ETH',decimals:18,amount_atomic:'1' }] };
  vi.spyOn(Date,'now').mockReturnValue(f.now*1000);
- const session = { assertCurrent:vi.fn(),environment:parseEnvironment(environments.staging),read:vi.fn(async () => structuredClone(selected)) };
+ const session = { assertCurrent:vi.fn(),environment:parseEnvironment(environments.production),read:vi.fn(async () => structuredClone(selected)) };
  const capture = vi.fn(() => session), store = new TransferEntryStore(capture,account);
  return { f,account,selected,balance,session,capture,store };
 }
@@ -31,7 +31,7 @@ describe('Consumer send entry lifecycle', () => {
   const x = fixture(); expect(x.capture).not.toHaveBeenCalled(); expect(x.store.snapshot().phase).toBe('idle');
   await x.store.open(x.balance); expect(x.session.read).toHaveBeenCalledTimes(1);
   x.balance.assets[0].decimals = 6; x.balance.account.id = createResourceId('walletAccount');
-  expect(x.store.snapshot().form?.balance.assets[0].decimals).toBe(18);
+  expect(x.store.snapshot().form?.balance?.assets[0].decimals).toBe(18);
   expect(x.store.snapshot().form?.selected.wallet_account_id).toBe(x.account.id);
   vi.spyOn(Date,'now').mockReturnValue((x.f.now+100)*1000);
   x.store.checkSession(); expect(x.store.snapshot().phase).toBe('open');
@@ -51,6 +51,28 @@ describe('Consumer send entry lifecycle', () => {
   const x = fixture(); x.session.read.mockResolvedValueOnce({ ...x.selected,wallet_account_id:createResourceId('walletAccount') });
   await x.store.open(x.balance); expect(x.store.snapshot().form).toBeNull(); expect(x.store.snapshot().phase).toBe('error');
   await x.store.open(x.balance); expect(x.store.snapshot().phase).toBe('open');
+ });
+ it('opens the existing operation without a balance and still requires a balance for a new transfer', async () => {
+  const x = fixture(), bookmark = { wallet_id:x.account.wallet_id,wallet_account_id:x.account.id,network_id:x.account.network_id,
+   consent_digest:x.f.p.digest,expires_at:x.f.p.plan.validUntil };
+  await x.store.open(null,bookmark); expect(x.session.read).toHaveBeenCalledOnce();
+  expect(x.store.snapshot().form?.balance).toBeNull(); expect(x.store.snapshot().form?.bookmark).toEqual(bookmark);
+  bookmark.consent_digest = `0x${'ab'.repeat(32)}`;
+  expect(x.store.snapshot().form?.bookmark?.consent_digest).toBe(x.f.p.digest);
+  x.store.finishRestoration(); expect(x.store.snapshot().phase).toBe('idle');
+  await x.store.open(null); expect(x.store.snapshot().phase).toBe('error'); expect(x.session.read).toHaveBeenCalledOnce();
+ });
+ it.each(['wallet','account','network','digest','context','session'] as const)('rejects crossed %s restoration without exposing another account', async fault => {
+  const x = fixture(), bookmark = { wallet_id:x.account.wallet_id,wallet_account_id:x.account.id,network_id:x.account.network_id,
+   consent_digest:x.f.p.digest,expires_at:x.f.p.plan.validUntil };
+  if (fault === 'wallet') bookmark.wallet_id = createResourceId('wallet');
+  if (fault === 'account') bookmark.wallet_account_id = createResourceId('walletAccount');
+  if (fault === 'network') bookmark.network_id = 'eip155:1';
+  if (fault === 'digest') bookmark.consent_digest = 'invalid' as never;
+  if (fault === 'context') x.session.read.mockResolvedValueOnce({ ...x.selected,wallet_account_id:createResourceId('walletAccount') });
+  if (fault === 'session') x.session.assertCurrent.mockImplementation(() => { throw Object.assign(new Error(),{ code:'auth/session-changed' }); });
+  await x.store.open(null,bookmark); expect(x.store.snapshot().form).toBeNull();
+  if (['wallet','account','network','digest'].includes(fault)) expect(x.capture).not.toHaveBeenCalled();
  });
  it('suppresses double clicks and late responses after disposal', async () => {
   const x = fixture(); let resolve!:(value:typeof x.selected) => void;
@@ -77,14 +99,14 @@ describe('Consumer send entry lifecycle', () => {
   const html = renderToStaticMarkup(createElement(TransferEntry,{ runtime:runtime as unknown as BrowserAuth,uid:'synthetic',account:x.account,balance:x.balance,english }));
   expect(html).toContain(english ? 'Send' : 'Enviar'); expect(runtime.accountContexts).not.toHaveBeenCalled();
  });
- it('pins the deployed Sepolia account revision only in staging', () => {
-  const pins = accountPinsForRelease(parseEnvironment(environments.staging));
+ it('pins only an enabled deployed Sepolia account revision', () => {
+  const pins = accountPinsForRelease(parseEnvironment(environments.production));
   expect(pins).toHaveLength(1);
   expect(JSON.parse(pins[0].document).components.factory.address).toBe('0x61c74d8f0834791db732fba9ac022224bf3bbb5f');
-  const creation = creationProfileForRelease(parseEnvironment(environments.staging))!;
+  const creation = creationProfileForRelease(parseEnvironment(environments.production))!;
   const profile = loadPinnedCreationProfile(creation.document, creation.digest);
   const document = JSON.stringify(profile.deployment);
   expect(pins[0]).toEqual({ document, digest: deploymentDocumentDigest(document) });
-  expect(accountPinsForRelease(parseEnvironment(environments.production))).toEqual([]);
+  expect(accountPinsForRelease(parseEnvironment({ ...environments.production, wallet_enabled: [] }))).toEqual([]);
  });
 });

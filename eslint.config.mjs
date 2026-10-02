@@ -4,7 +4,7 @@ import tseslint from 'typescript-eslint';
 import hooks from 'eslint-plugin-react-hooks';
 
 export default tseslint.config(
-  { ignores: ['.next/**', 'node_modules/**', 'next-env.d.ts', 'public/**', '!public/', '!public/sw.js'] },
+  { ignores: ['.next/**', 'node_modules/**', 'output/**', '.playwright-cli/**', 'next-env.d.ts', 'public/**', '!public/', '!public/sw.js'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   { files: ['public/sw.js'], languageOptions: { globals: globals.serviceworker } },

@@ -1,9 +1,9 @@
-// Content preserved from the Astro landing, not a new V3 legal policy.
+// Keep product descriptions consistent with the implemented account model.
 export type LegalCopy = { title: string; updated: string; lead: string; sections: { h: string; p?: string[]; list?: string[] }[] };
 export const terms: Record<"es" | "en", LegalCopy> = {
   es: {
     title: 'Términos de Servicio',
-    updated: 'Última actualización: 18 de agosto de 2026',
+    updated: 'Última actualización: 2 de octubre de 2026',
     lead:
       'Estos Términos de Servicio regulan el uso de GatoPago, una aplicación de pagos no custodial para enviar, recibir y cobrar USDC con links de pago, códigos QR y nombres de usuario. GatoPago es operada por Daniel Cueto (Bolivia). Al usar GatoPago, aceptas estos términos.',
     sections: [
@@ -22,7 +22,7 @@ export const terms: Record<"es" | "en", LegalCopy> = {
       {
         h: '4. Carácter no custodial y tu responsabilidad',
         list: [
-          'Tú controlas tu wallet, tus claves y tus fondos. GatoPago no custodia ni puede gastar tus fondos. Si activas la recuperación asistida, GatoPago puede iniciar un reemplazo de llaves con una espera de seguridad de 48 horas, durante la que puedes cancelar con una llave activa.',
+          'Tú controlas tu wallet, tus llaves y tus fondos. GatoPago no puede restablecer el acceso si pierdes todas las llaves autorizadas. Conserva el acceso a tu gestor de passkeys y a las llaves adicionales que hayas autorizado.',
           'Las transacciones en blockchain son, por lo general, irreversibles. Verifica los datos antes de confirmar.',
           'Eres responsable de mantener seguro el acceso a tu cuenta y a tu wallet.',
           'No nos hacemos responsables de pérdidas derivadas de errores del usuario, accesos no autorizados a tu cuenta o fallos de redes de terceros.',
@@ -42,7 +42,7 @@ export const terms: Record<"es" | "en", LegalCopy> = {
       },
       {
         h: '8. Servicios de terceros',
-        p: ['GatoPago puede integrar servicios de terceros (por ejemplo, inicio de sesión con Google, infraestructura y redes blockchain). El uso de esos servicios puede estar sujeto a sus propios términos y políticas.'],
+        p: ['GatoPago integra servicios de terceros para autenticación, verificación de seguridad, infraestructura y redes blockchain. El uso de esos servicios puede estar sujeto a sus propios términos y políticas.'],
       },
       {
         h: '9. Sin garantías',
@@ -68,7 +68,7 @@ export const terms: Record<"es" | "en", LegalCopy> = {
   },
   en: {
     title: 'Terms of Service',
-    updated: 'Last updated: August 18, 2026',
+    updated: 'Last updated: October 2, 2026',
     lead:
       'These Terms of Service govern the use of GatoPago, a non-custodial payment application to send, receive and request USDC using payment links, QR codes and usernames. GatoPago is operated by Daniel Cueto (Bolivia). By using GatoPago, you accept these terms.',
     sections: [
@@ -87,7 +87,7 @@ export const terms: Record<"es" | "en", LegalCopy> = {
       {
         h: '4. Non-custodial nature and your responsibility',
         list: [
-          'You control your wallet, keys and funds. GatoPago does not custody or spend your funds. If assisted recovery is enabled, GatoPago can initiate a key replacement with a 48-hour security delay, during which you can cancel with an active key.',
+          'You control your wallet, keys and funds. GatoPago cannot restore access if you lose all authorized keys. Keep access to your passkey manager and any additional keys you have authorized.',
           'Blockchain transactions are generally irreversible. Verify the details before confirming.',
           'You are responsible for keeping access to your account and wallet secure.',
           'We are not responsible for losses arising from user error, unauthorized access to your account, or failures of third-party networks.',
@@ -107,7 +107,7 @@ export const terms: Record<"es" | "en", LegalCopy> = {
       },
       {
         h: '8. Third-party services',
-        p: ['GatoPago may integrate third-party services (for example, Google Sign-In, infrastructure and blockchain networks). Use of those services may be subject to their own terms and policies.'],
+        p: ['GatoPago integrates third-party services for authentication, security checks, infrastructure and blockchain networks. Use of those services may be subject to their own terms and policies.'],
       },
       {
         h: '9. No warranties',
@@ -135,20 +135,20 @@ export const terms: Record<"es" | "en", LegalCopy> = {
 export const privacy: Record<"es" | "en", LegalCopy> = {
   es: {
     title: 'Política de Privacidad',
-    updated: 'Última actualización: 18 de agosto de 2026',
+    updated: 'Última actualización: 2 de octubre de 2026',
     lead:
       'GatoPago es una aplicación de pagos no custodial que permite enviar, recibir y cobrar USDC mediante links de pago, códigos QR y nombres de usuario. Esta Política de Privacidad explica qué datos tratamos, cómo los usamos y qué control tienes sobre ellos. GatoPago es operada por Daniel Cueto (Bolivia). Para cualquier consulta de privacidad, escríbenos a {{privacyEmail}}.',
     sections: [
       {
         h: 'Naturaleza no custodial',
         p: [
-          'GatoPago no custodia tu dinero ni puede gastarlo. Tú mantienes el control de tu cuenta y fondos. Como guardian de recuperación, GatoPago puede iniciar un reemplazo de llaves con una espera de 48 horas; una llave activa puede cancelarlo. Las transacciones ocurren directamente en blockchain.',
+          'Tú mantienes el control de tu cuenta mediante las llaves autorizadas. GatoPago no puede recuperar tus fondos si pierdes todas esas llaves. Las transacciones ocurren directamente en blockchain.',
         ],
       },
       {
         h: 'Información que recopilamos',
         list: [
-          'Datos de cuenta de Google (Sign-In): cuando inicias sesión con Google, recibimos tu nombre, tu dirección de correo electrónico, tu foto de perfil y el identificador de tu cuenta de Google, para crear y autenticar tu cuenta.',
+          'Datos de acceso: tu nombre, nombre de usuario, invitación y la información pública de tu passkey necesaria para crear y autenticar la cuenta. La clave privada permanece en tu dispositivo o gestor de passkeys.',
           'Datos de perfil: el nombre de usuario (username) y la información de perfil que eliges dentro de GatoPago.',
 					'Datos de investigación de producto: si expresas interés en GatoPago Card, guardamos el país, casos de uso y preferencias que respondes. Esto no constituye una solicitud de tarjeta ni datos de KYC.',
           'Datos on-chain: tu(s) dirección(es) de wallet y las transacciones asociadas, que son públicas por naturaleza en la blockchain.',
@@ -165,13 +165,6 @@ export const privacy: Record<"es" | "en", LegalCopy> = {
           'Brindar soporte y responder tus mensajes.',
           'Mejorar y entender el uso del producto.',
           'Cumplir obligaciones legales aplicables.',
-        ],
-      },
-      {
-        h: 'Datos de usuario de Google',
-        p: [
-          'El acceso, uso y transferencia de la información recibida de las APIs de Google se ajusta a la Política de Datos de Usuario de los Servicios de la API de Google, incluyendo los requisitos de Uso Limitado (Limited Use).',
-          'Solo accedemos a tu nombre, correo electrónico, foto de perfil e identificador de cuenta de Google, y únicamente con el fin de crear tu cuenta e iniciar sesión. No usamos estos datos para publicidad, no los vendemos, y no los compartimos con terceros salvo para operar el servicio o cuando la ley lo exija.',
         ],
       },
       {
@@ -195,7 +188,7 @@ export const privacy: Record<"es" | "en", LegalCopy> = {
       {
         h: 'Tus derechos',
         p: [
-          'Puedes solicitar acceder, corregir o eliminar tus datos personales, así como revocar el acceso de Google desde la configuración de tu cuenta de Google. Para ejercer estos derechos, escríbenos a {{privacyEmail}}.',
+          'Puedes solicitar acceder, corregir o eliminar tus datos personales. Para ejercer estos derechos, escríbenos a {{privacyEmail}}. Las transacciones ya publicadas en blockchain permanecen en esa red.',
         ],
       },
       {
@@ -220,20 +213,20 @@ export const privacy: Record<"es" | "en", LegalCopy> = {
   },
   en: {
     title: 'Privacy Policy',
-    updated: 'Last updated: August 18, 2026',
+    updated: 'Last updated: October 2, 2026',
     lead:
       'GatoPago is a non-custodial payment application that lets users send, receive and request USDC using payment links, QR codes and usernames. This Privacy Policy explains what data we process, how we use it and what control you have over it. GatoPago is operated by Daniel Cueto (Bolivia). For any privacy question, contact us at {{privacyEmail}}.',
     sections: [
       {
         h: 'Non-custodial nature',
         p: [
-          'GatoPago does not custody or spend your money. You keep control of your account and funds. As recovery guardian, GatoPago can initiate a key replacement with a 48-hour delay; an active key can cancel it. Transactions happen directly on the blockchain.',
+          'You control your account through its authorized keys. GatoPago cannot recover your funds if you lose all those keys. Transactions happen directly on the blockchain.',
         ],
       },
       {
         h: 'Information we collect',
         list: [
-          'Google account data (Sign-In): when you sign in with Google, we receive your name, email address, profile picture and your Google account identifier, to create and authenticate your account.',
+          'Access data: your name, username, invitation and the public passkey information needed to create and authenticate your account. The private key remains on your device or in your passkey manager.',
           'Profile data: the username and profile information you choose within GatoPago.',
 					'Product research data: if you express interest in GatoPago Card, we store the country, use cases and preferences you submit. This is not a card application or KYC data.',
           'On-chain data: your wallet address(es) and associated transactions, which are public by nature on the blockchain.',
@@ -250,13 +243,6 @@ export const privacy: Record<"es" | "en", LegalCopy> = {
           'Provide support and respond to your messages.',
           'Improve and understand product usage.',
           'Comply with applicable legal obligations.',
-        ],
-      },
-      {
-        h: 'Google user data',
-        p: [
-          'GatoPago’s use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements.',
-          'We only access your name, email, profile picture and Google account identifier, and solely for the purpose of creating your account and signing you in. We do not use this data for advertising, we do not sell it, and we do not share it with third parties except to operate the service or where required by law.',
         ],
       },
       {
@@ -280,7 +266,7 @@ export const privacy: Record<"es" | "en", LegalCopy> = {
       {
         h: 'Your rights',
         p: [
-          'You can request to access, correct or delete your personal data, and revoke Google access from your Google account settings. To exercise these rights, contact us at {{privacyEmail}}.',
+          'You can request to access, correct or delete your personal data. To exercise these rights, contact us at {{privacyEmail}}. Transactions already published on a blockchain remain on that network.',
         ],
       },
       {
@@ -304,4 +290,3 @@ export const privacy: Record<"es" | "en", LegalCopy> = {
     ],
   },
 };
-

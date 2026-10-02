@@ -1,7 +1,7 @@
 import { NavigationLink as Link } from './NavigationLink';
 import { SettingsSection } from './SettingsSection';
 
-/** Layout/controls ported from client Settings; no V2 push/auth API imports. */
+/** Account settings navigation. */
 export function AccountSettings({ english: en }: { english: boolean }) {
   const suffix = en ? '?lang=en' : '';
   return <>
@@ -18,8 +18,6 @@ export function AccountSettings({ english: en }: { english: boolean }) {
     <SettingsSection title={en ? 'Your account' : 'Tu cuenta'} tone="neutral" icon={<span aria-hidden="true">@</span>}>
       <div className="flex flex-col gap-3 p-5">
         <Link href={`/profile${suffix}`} className="btn btn-ghost btn-block">{en ? 'My profile' : 'Mi perfil'}</Link>
-        <Link href={`/contacts${suffix}`} className="btn btn-ghost btn-block">{en ? 'Contacts' : 'Contactos'}</Link>
-        <Link href={`/test-funds${suffix}`} className="btn btn-ghost btn-block">{en ? 'Test funds' : 'Fondos de prueba'}</Link>
       </div>
     </SettingsSection>
     <SettingsSection title={en ? 'Language' : 'Idioma'} tone="neutral" icon={<span aria-hidden="true">◎</span>}>

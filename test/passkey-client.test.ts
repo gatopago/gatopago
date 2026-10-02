@@ -6,8 +6,8 @@ import { clientMutationHeaders } from '@gatopago/shared/v3/client-release';
 import { buildAuthConfig, type EnabledAuthConfig } from '../src/auth/config';
 import { passkeyClient } from '../src/auth/passkey-client';
 
-const environment = parseEnvironment(environments.staging);
-const config = buildAuthConfig({ ...environment, status: 'provisioned', firebase_project_id: 'gatopago-staging-test' }, {
+const environment = parseEnvironment(environments.production);
+const config = buildAuthConfig({ ...environment, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }, {
   apiKey: `AIza${'A'.repeat(35)}`, appId: '1:123456789:web:012345abcdef', turnstileSiteKey: `0x${'A'.repeat(22)}`,
 }) as EnabledAuthConfig;
 const scope = { rpId: environment.webauthn_rp_id, origin: config.webOrigin };
@@ -31,7 +31,7 @@ describe('Passkey admission HTTP boundary', () => {
     expect(result).toMatchObject({ id: wire.request_id, challenge: `0x${'01'.repeat(32)}`, scope });
     expect(fetch).toHaveBeenCalledExactlyOnceWith(`${environment.api_origin}/app/v1/auth/login/options`, expect.objectContaining({
       credentials: 'omit', redirect: 'error', cache: 'no-store', body: '{}',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...clientMutationHeaders('staging') },
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...clientMutationHeaders('production') },
     }));
   });
   it('pins the exact profile and ES256 discoverable registration without granting a session', async () => {

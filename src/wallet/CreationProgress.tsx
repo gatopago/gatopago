@@ -37,20 +37,25 @@ export default function CreationProgress({ lifecycle, delivery, checkedAt, engli
   const reason = lifecycle?.reason, index = en ? 1 : 0;
   const time = (value: number) => <time dateTime={new Date(value * 1000).toISOString()}>{new Date(value * 1000).toLocaleString(en ? 'en-US' : 'es-BO')}</time>;
   return <div role="status" className="creation-progress">
-    <h4>{messages[key][index]}</h4>
-    {b ? <p>{en ? 'The account creation and initial configuration were recorded. This historical result does not prove its current security or enable receiving and spending.'
-      : 'Se registraron la creación y la configuración inicial de la cuenta. Este resultado histórico no demuestra su seguridad actual ni habilita recibir y gastar.'}</p>
+    <h3>{messages[key][index]}</h3>
+    {b ? <p>{en ? 'Creation was confirmed. Open your wallet to check its current status before receiving or sending funds.'
+      : 'La creación se confirmó. Abre tu wallet para comprobar su estado actual antes de recibir o enviar fondos.'}</p>
       : <p>{en ? 'The server follows this same operation even if you leave this screen. Checking the status does not sign, send or create another account.'
         : 'El servidor sigue esta misma operación aunque salgas de esta pantalla. Consultar el estado no firma, envía ni crea otra cuenta.'}</p>}
     {reason && reason in reasons ? <p>{reasons[reason as keyof typeof reasons][index]}</p> : null}
+    {b ? <><a className="auth-primary btn btn-primary btn-block" href={en ? '/app?lang=en' : '/app'}>{en ? 'Go to my wallet' : 'Ir a mi wallet'}</a>
+      <a className="auth-secondary btn btn-ghost btn-block" href={en ? '/profile?lang=en' : '/profile'}>{en ? 'Verify receiving and publish my username' : 'Verificar recepción y publicar mi usuario'}</a></> : null}
+    <details><summary>{en ? 'Creation record' : 'Comprobante de creación'}</summary>
+    {b ? <p>{en ? 'This historical result does not prove current account security or enable receiving and spending.'
+      : 'Este resultado histórico no demuestra su seguridad actual ni habilita recibir y gastar.'}</p> : null}
     {o ? <p>{en ? 'Last network observation' : 'Última observación de la red'}: {time(o.observed_at)}.
       {' '}{o.status === 'observed' ? (en ? 'Recorded finality' : 'Finalidad registrada') + ': ' + finalityLabels[o.finality][index]
         : en ? 'The latest check did not establish a confirmed result.' : 'La última comprobación no estableció un resultado confirmado.'}</p> : null}
     {o?.valid_until ? <p>{en ? 'That evidence was valid until' : 'Esa evidencia tenía validez hasta'}: {time(o.valid_until)}.
       {' '}{en ? 'It is not a current spending authorization.' : 'No es una autorización actual para gastar.'}</p> : null}
-    {b ? <a className="auth-secondary btn btn-ghost btn-block" href={en ? '/profile?lang=en' : '/profile'}>{en ? 'Verify receiving and publish my username' : 'Verificar recepción y publicar mi username'}</a> : null}
     {b ? <p>{en ? 'Initial configuration recorded' : 'Configuración inicial registrada'}: {time(b.recorded_at)}.</p> : null}
     {checkedAt !== null ? <p>{en ? 'Status read at' : 'Estado consultado a las'}: {time(checkedAt)}.</p> : null}
     {o?.transaction_hash ? <details><summary>{en ? 'Observed transaction' : 'Transacción observada'}</summary><code>{o.transaction_hash}</code></details> : null}
+    </details>
   </div>;
 }

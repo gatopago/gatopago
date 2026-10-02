@@ -15,10 +15,13 @@ import { creationFeeUnit } from './creation-fee';
 import { formatTransferAsset, validateTransferAssets, type TransferAsset } from './transfer-form';
 import { TransferReceipt } from './TransferReceipt';
 import { parseRecipient, type Recipient } from './profile';
+import type { parseTransferStatus } from './transfers';
+import { saveTransferBookmark, clearTransferBookmark } from './transfer-bookmark';
 
 type Props = {
   runtime: Pick<BrowserAuth, 'transferCommands' | 'transfers' | 'subscribe'>; uid: string; selected: TransferSelection; request: TransferRequest; review: Review;
-  recipient?: Recipient | null; environment: EnabledAuthConfig['deployment']; credentials: readonly CredentialDetail[]; metadata: readonly TransferAsset[]; english: boolean; onEdit?: () => void
+  recipient?: Recipient | null; environment: EnabledAuthConfig['deployment']; credentials: readonly CredentialDetail[]; metadata: readonly TransferAsset[]; english: boolean; onEdit?: () => void;
+  onReconciled?: (status: ReturnType<typeof parseTransferStatus>) => void
 };
 
 /** Automatically reset all reviewed state if identity, account or consent changes. */
@@ -26,7 +29,7 @@ export function TransferReview(props: Props) {
   return <ReviewedTransfer key={JSON.stringify([props.uid, props.environment, props.selected, props.request, props.review.wire, props.credentials, props.metadata, props.recipient])} {...props} />;
 }
 
-function ReviewedTransfer({ runtime, uid, selected, request, review, environment, credentials, metadata, english: en, onEdit, recipient }: Props) {
+function ReviewedTransfer({ runtime, uid, selected, request, review, environment, credentials, metadata, english: en, onEdit, recipient, onReconciled }: Props) {
   const [bound] = useState(() => {
     const preparation = parseTransferPreparation(review.wire, selected, request, environment);
     const destination = recipient ? parseRecipient(recipient, recipient.username, request.network_id, recipient.verified_at) : null;
@@ -34,8 +37,11 @@ function ReviewedTransfer({ runtime, uid, selected, request, review, environment
     const expiresAt = Math.min(preparation.expires_at, destination?.expires_at ?? preparation.expires_at);
     const commands = runtime.transferCommands(uid), transfers = runtime.transfers(uid);
     const assertCurrent = () => { commands.assertCurrent(); transfers.assertCurrent(); };
+    const bookmark = { wallet_id: selected.wallet_id, wallet_account_id: selected.wallet_account_id, network_id: selected.network_id,
+      consent_digest: preparation.candidate.digest, expires_at: preparation.expires_at };
     return {
-      preparation, recipient: destination, expiresAt, assertCurrent, flow: new TransferExecutionFlow(() => ({ commands, transfers }), selected, request, review, environment),
+      preparation, recipient: destination, expiresAt, assertCurrent, bookmark,
+      flow: new TransferExecutionFlow(() => ({ commands, transfers }), selected, request, review, environment, () => saveTransferBookmark(bookmark)),
       signing: new TransferSigning(preparation, credentials, () => {
         assertCurrent(); if (Date.now() >= expiresAt * 1000) throw new Error('Recipient or transfer review expired');
       }, requestPasskeyProof)
@@ -60,6 +66,18 @@ function ReviewedTransfer({ runtime, uid, selected, request, review, environment
       queueMicrotask(() => { if (!mounted.current) close(); });
     };
   }, [bound, runtime, uid]);
+  useEffect(() => {
+    if (!bound.flow.canTrack()) return;
+    // Only read an already identified operation. Never sign, confirm, deliver,
+    // or recover an uncertain confirmation from a background effect.
+    const read = () => { if (document.visibilityState === 'visible') void bound.flow.readStatus(); };
+    const timer = window.setTimeout(read, 5_000);
+    document.addEventListener('visibilitychange', read);
+    return () => { window.clearTimeout(timer); document.removeEventListener('visibilitychange', read); };
+  }, [bound, state]);
+  useEffect(() => {
+    if (state.status?.status === 'reconciled') onReconciled?.(state.status);
+  }, [state.status, onReconciled]);
   function run(action: () => Promise<unknown>) {
     if (inFlight.current) return;
     inFlight.current = true; setBusy(true); setError(false);
@@ -76,7 +94,7 @@ function ReviewedTransfer({ runtime, uid, selected, request, review, environment
   if (state.phase === 'closed') return <p role="alert">{en ? 'Your session changed. Reopen this transfer.' : 'Tu sesión cambió. Vuelve a abrir este envío.'}</p>;
   return <section aria-labelledby={heading} aria-busy={busy}>
     <h3 id={heading}>{en ? 'Review transfer' : 'Revisar envío'}</h3>
-    <dl>{bound.recipient ? <><dt>Username</dt><dd>@{bound.recipient.username} · {bound.recipient.display_name}</dd></> : null}<dt>{en ? 'Recipient' : 'Destino'}</dt><dd style={{ overflowWrap: 'anywhere' }}>{request.destination.address}</dd>
+    <dl>{bound.recipient ? <><dt>{en ? 'Username' : 'Nombre de usuario'}</dt><dd>@{bound.recipient.username} · {bound.recipient.display_name}</dd></> : null}<dt>{en ? 'Recipient' : 'Destino'}</dt><dd style={{ overflowWrap: 'anywhere' }}>{request.destination.address}</dd>
       <dt>{en ? 'Amount' : 'Importe'}</dt><dd>{amount}{request.amount.kind === 'max' ? ' (MAX)' : ''}</dd>
       <dt>{en ? 'Network' : 'Red'}</dt><dd>{native?.network ?? request.network_id}</dd>
       <dt>{en ? 'Maximum network cost' : 'Coste máximo de red'}</dt><dd>{p.review.context.sponsorship ? (en ? 'Covered by GatoPago' : 'Cubierto por GatoPago') : gas}</dd>
@@ -119,6 +137,11 @@ function ReviewedTransfer({ runtime, uid, selected, request, review, environment
         {state.confirmation ? (en ? 'Check transfer' : 'Consultar envío') : (en ? 'Check transfer status' : 'Consultar estado del envío')}
       </button></> : null}
     {state.delivery && !state.status ? <p role="status">{en ? 'Delivery recorded; final confirmation is pending.' : 'Entrega registrada; falta la confirmación final.'}</p> : null}
-    {state.status ? <TransferReceipt english={en} request={request} selected={selected} status={state.status} metadata={metadata} onClose={onEdit} /> : null}
+    {bound.flow.canTrack() ? <p role="status">{en ? 'We are checking this same transfer while this screen is visible.' : 'Estamos consultando este mismo envío mientras esta pantalla está visible.'}</p> : null}
+    {state.status ? <TransferReceipt english={en} request={request} selected={selected} status={state.status}
+      amountAtomic={c.funding.amount_atomic} metadata={metadata} onClose={onEdit ? () => {
+        if (!state.status || state.status.funds_reserved || !['reconciled','expired'].includes(state.status.status)) return;
+        bound.assertCurrent(); clearTransferBookmark(bound.bookmark); onEdit();
+      } : undefined} /> : null}
   </section>;
 }

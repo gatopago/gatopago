@@ -53,10 +53,6 @@ type AssertionInput = {
 };
 const base64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
 
-export async function requestPasskeyAssertion(input: AssertionInput): Promise<Hex> {
-  return (await requestAssertion(input)).encoded;
-}
-
 /** Public assertion bytes for the exact caller-reconstructed challenge. Enrollment,
  * InitializationApproval and UserOperation are distinct consents, never interchangeable. */
 export async function requestPasskeyProof(input: AssertionInput) {
@@ -101,8 +97,8 @@ async function requestAssertion(input: AssertionInput) {
       clientDataJSON: new Uint8Array(credential.response.clientDataJSON),
       signatureDER: new Uint8Array(credential.response.signature),
     };
-    const encoded = encodeWebAuthnAssertion({ ...expected, response });
-    return { encoded, proof: { authenticator_data: base64url(response.authenticatorData),
+    encodeWebAuthnAssertion({ ...expected, response });
+    return { proof: { authenticator_data: base64url(response.authenticatorData),
       client_data: base64url(response.clientDataJSON), signature: base64url(response.signatureDER) } };
   } catch (error) {
     if (error instanceof PasskeyRequestError) throw error;

@@ -1,0 +1,34 @@
+# Production input only. Keep tests and pinned vendor packages, not local evidence.
+.git/
+.next/
+.vercel/
+node_modules/
+output/
+.playwright-cli/
+.firebase/
+.wrangler/
+coverage/
+logs/
+*.log
+*.tsbuildinfo
+
+# This file was checked to contain public Web configuration only.
+# Never add private credentials to it. Other machine-local env files stay out.
+.env*
+!.env.production
+.dev.vars*
+*.pem
+*.key
+*.p12
+*.pfx
+*.dpapi
+secrets*
+credentials*
+service-account*
+service_account*
+*-firebase-adminsdk-*
+*.db
+*.sqlite*
+*.dump
+*.bak
+*.backup

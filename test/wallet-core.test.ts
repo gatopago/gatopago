@@ -6,7 +6,7 @@ import { CLIENT_STATUS_HEADER } from '@gatopago/shared/v3/client-release';
 import { loadWalletPage, WalletCoreError } from '../src/wallet/core';
 import { buildAuthConfig, type EnabledAuthConfig } from '../src/auth/config';
 
-const config = buildAuthConfig(parseEnvironment({ ...environments.staging, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
+const config = buildAuthConfig(parseEnvironment({ ...environments.production, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }), {
   apiKey: `AIza${'a'.repeat(35)}`, appId: '1:123:web:abcdef', turnstileSiteKey: `0x${'a'.repeat(22)}`,
 }) as EnabledAuthConfig;
 const token = async () => 'synthetic.id.token';
@@ -21,7 +21,7 @@ describe('Wallet Core browser transport (synthetic HTTP, no real identity/funds)
     const fetchMock = vi.fn().mockResolvedValue(Response.json(data)); vi.stubGlobal('fetch', fetchMock);
     expect(await loadWalletPage(config, token, signal())).toEqual(data);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith(`${environments.staging.api_origin}/app/v1/wallets?limit=20`, expect.objectContaining({
+    expect(fetchMock).toHaveBeenCalledWith(`${environments.production.api_origin}/app/v1/wallets?limit=20`, expect.objectContaining({
       method: 'GET', cache: 'no-store', credentials: 'omit', redirect: 'error',
       headers: { Authorization: 'Bearer synthetic.id.token', Accept: 'application/json' },
     }));
@@ -66,7 +66,7 @@ describe('Wallet Core browser transport (synthetic HTTP, no real identity/funds)
       .mockResolvedValueOnce(Response.json({ error_code: 'SESSION_REQUIRED' }, { status: 409 }));
     vi.stubGlobal('fetch', fetchMock);
     expect((await loadWalletPage(config, token, signal(), ids[0].id)).data).toEqual([ids[1]]);
-    expect(fetchMock.mock.calls[0][0]).toBe(`${environments.staging.api_origin}/app/v1/wallets?limit=20&after=${ids[0].id}`);
+    expect(fetchMock.mock.calls[0][0]).toBe(`${environments.production.api_origin}/app/v1/wallets?limit=20&after=${ids[0].id}`);
     await expect(loadWalletPage(config, token, signal(), ids[0].id)).rejects.toMatchObject({ code: 'wallet/unavailable' });
     await expect(loadWalletPage(config, token, signal(), 'bad-cursor')).rejects.toMatchObject({ code: 'wallet/unavailable' });
     expect(fetchMock).toHaveBeenCalledTimes(2);

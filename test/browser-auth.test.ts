@@ -1,10 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import environments from '@gatopago/environment/environments.json';
-import { parseEnvironment } from '@gatopago/environment';
-import { buildAuthConfig, type EnabledAuthConfig } from '../src/auth/config';
+import { environmentFromVariables, parseEnvironment } from '@gatopago/environment';
+import { buildAuthConfig, LOCAL_AUTH_PROJECT, LOCAL_WEB_ORIGIN, type EnabledAuthConfig } from '../src/auth/config';
 import { CLIENT_STATUS_HEADER } from '@gatopago/shared/v3/client-release';
 import { initializationFixture } from '@gatopago/test-fixtures/v3-initialization';
-import { backupWireFixture } from './backup.fixture';
 import { transferFixture } from '@gatopago/test-fixtures/v3-transfer';
 import { createResourceId } from '@gatopago/shared/v3/primitives';
 
@@ -17,9 +16,12 @@ vi.mock('firebase/auth', () => ({
   ...sdk, browserLocalPersistence: 'local',
 }));
 
-const env = parseEnvironment(environments.staging);
-const local = buildAuthConfig(env, { nodeEnv: 'development', localAuth: '1' }) as EnabledAuthConfig;
-const remote = buildAuthConfig({ ...env, status: 'provisioned', firebase_project_id: 'gatopago-staging-test' }, {
+const env = parseEnvironment(environments.production);
+const localEnvironment = environmentFromVariables({ GATOPAGO_ENVIRONMENT: 'production',
+  GATOPAGO_WEB_ORIGIN: LOCAL_WEB_ORIGIN, GATOPAGO_API_ORIGIN: 'http://localhost:8787',
+  GATOPAGO_BUSINESS_ORIGIN: LOCAL_WEB_ORIGIN, GATOPAGO_WALLET_NETWORKS: 'eip155:421614', FIREBASE_PROJECT_ID: LOCAL_AUTH_PROJECT });
+const local = buildAuthConfig(localEnvironment, { nodeEnv: 'development', localAuth: '1' }) as EnabledAuthConfig;
+const remote = buildAuthConfig({ ...env, status: 'provisioned', firebase_project_id: 'v3-runtime-test' }, {
   apiKey: `AIza${'A'.repeat(35)}`, appId: '1:123456789:web:012345abcdef', turnstileSiteKey: `0x${'A'.repeat(22)}`,
 }) as EnabledAuthConfig;
 let auth: { currentUser: null | { uid: string; email: string; displayName: null; emailVerified: boolean }; authStateReady: typeof sdk.authStateReady };
@@ -45,6 +47,8 @@ describe('Firebase browser boundary (SDK mocked, no external I/O)', () => {
     const runtime = (await import('../src/auth/browser')).getBrowserAuth(remote); await runtime.ready;
     expect(() => runtime.transferPreparations('two')).toThrow('auth/session-changed');
     const session = runtime.transferPreparations('one'), commands = runtime.transferCommands('one'), contexts = runtime.accountContexts('one');
+    const restoration = runtime.transferRestoration('one');
+    expect(() => runtime.transferRestoration('two')).toThrow('auth/session-changed');
     expect(() => runtime.accountContexts('two')).toThrow('auth/session-changed');
     expect(() => runtime.transferCommands('two')).toThrow('auth/session-changed');
     expect(user.getIdToken).not.toHaveBeenCalled(); expect(fetch).not.toHaveBeenCalled();
@@ -58,6 +62,10 @@ describe('Firebase browser boundary (SDK mocked, no external I/O)', () => {
     await expect(session.read(selected,f.request,createResourceId('operation'),new AbortController().signal)).rejects.toMatchObject({ code: 'auth/session-changed' });
     await expect(commands.confirm(selected,f.request,{ wire:null },[],new AbortController().signal)).rejects.toMatchObject({ code:'auth/session-changed' });
     await expect(commands.deliver(selected,f.request,{ wire:null },null,new AbortController().signal)).rejects.toMatchObject({ code:'auth/session-changed' });
+    const bookmark = { wallet_id:selected.wallet_id,wallet_account_id:selected.wallet_account_id,network_id:selected.network_id,
+      consent_digest:f.p.digest,expires_at:f.p.plan.validUntil };
+    await expect(restoration.restore(selected,bookmark,new AbortController().signal)).rejects.toMatchObject({ code:'auth/session-changed' });
+    await expect(restoration.deliver(selected,bookmark,null,new AbortController().signal)).rejects.toMatchObject({ code:'auth/session-changed' });
     expect(user.getIdToken).not.toHaveBeenCalled(); expect(fetch).not.toHaveBeenCalled();
   });
   it('does not admit account context from HTTP or emulator configuration', async () => {
@@ -67,65 +75,6 @@ describe('Firebase browser boundary (SDK mocked, no external I/O)', () => {
     await expect(runtime.accountContexts('one').read({ id:createResourceId('walletAccount'),wallet_id:createResourceId('wallet'),network_id:'eip155:84532' },
       new AbortController().signal)).rejects.toMatchObject({ code:'wallet/unavailable' });
     expect(user.getIdToken).not.toHaveBeenCalled(); expect(fetch).not.toHaveBeenCalled();
-  });
-  it('binds backup and local external proof methods to the captured session, without construction I/O', async () => {
-    vi.stubGlobal('window', { location: { origin: remote.webOrigin } });
-    const user = { uid: 'one', email: 'one@example.test', displayName: null, emailVerified: true, getIdToken: vi.fn() };
-    auth.currentUser = user;
-    const runtime = (await import('../src/auth/browser')).getBrowserAuth(remote); await runtime.ready;
-    const t = backupWireFixture(), c = t.commit();
-    await expect(runtime.backup('two', t.f.pin)).rejects.toMatchObject({ code: 'auth/session-changed' });
-    const session = await runtime.backup('one', t.f.pin), signal = new AbortController().signal;
-    expect(user.getIdToken).not.toHaveBeenCalled(); expect(fetch).not.toHaveBeenCalled();
-    auth.currentUser = { ...user };
-    expect(() => session.externalProofRequest(t.choice, { wire: t.wire }, 0)).toThrow();
-    const proof = t.f.assertion(t.compiled.digest);
-    for (const action of [() => session.prepare(t.choice, signal), () => session.restore(t.choice, signal),
-      () => session.authorize(t.choice, { wire: t.wire }, proof, [], signal),
-      () => session.prepareCommit(t.choice, t.parent, c.commitId, signal),
-      () => session.restoreCommit(t.choice, t.parent, c.commitId, signal),
-      () => session.authorizeCommit(t.choice, t.parent, { wire: c.wire }, c.commitId, proof, signal),
-      () => session.importExternalProof(t.choice, { wire: t.wire }, 0, '{}', signal)]) {
-      await expect(action()).rejects.toMatchObject({ code: 'auth/session-changed' });
-    }
-    expect(fetch).not.toHaveBeenCalled();
-  });
-  it('discards a locally verified external proof after same-UID session replacement, without fetching a token', async () => {
-    vi.stubGlobal('window', { location: { origin: remote.webOrigin } });
-    const user = { uid: 'one', email: 'one@example.test', displayName: null, emailVerified: true, getIdToken: vi.fn() };
-    auth.currentUser = user;
-    const runtime = (await import('../src/auth/browser')).getBrowserAuth(remote); await runtime.ready;
-    const t = backupWireFixture(), session = await runtime.backup('one', t.f.pin);
-    const index = t.compiled.enrollments.find((p) => t.compiled.nextPolicy.signers[p.signerIndex].kind === 0)!.signerIndex;
-    const request = session.externalProofRequest(t.choice, { wire: t.wire }, index);
-    const key = t.f.keys.find((key) => key.address.toLowerCase() === request.summary.signer_address)!;
-    const signature = await key.signTypedData(request.typedData);
-    const text = JSON.stringify({ schema_version: 1, purpose: 'gatopago-v3-enrollment-proof', backup_id: t.choice.backupId,
-      signer_index: index, digest: request.summary.digest, signature });
-    const pending = session.importExternalProof(t.choice, { wire: t.wire }, index, text, new AbortController().signal);
-    auth.currentUser = { ...user };
-    await expect(pending).rejects.toMatchObject({ code: 'auth/session-changed' });
-    expect(user.getIdToken).not.toHaveBeenCalled(); expect(fetch).not.toHaveBeenCalled();
-  });
-  it('never sends an backup token if the user signs out while it refreshes', async () => {
-    vi.stubGlobal('window', { location: { origin: remote.webOrigin } });
-    let resolve!: (token: string) => void;
-    auth.currentUser = { uid: 'one', email: 'one@example.test', displayName: null, emailVerified: true };
-    Object.assign(auth.currentUser, { getIdToken: () => new Promise<string>((done) => { resolve = done; }) });
-    const runtime = (await import('../src/auth/browser')).getBrowserAuth(remote); await runtime.ready;
-    const t = backupWireFixture(), session = await runtime.backup('one', t.f.pin);
-    const task = session.restore(t.choice, new AbortController().signal);
-    auth.currentUser = null; resolve('obsolete.token.signature');
-    await expect(task).rejects.toMatchObject({ code: 'auth/session-changed' }); expect(fetch).not.toHaveBeenCalled();
-  });
-  it('discards an backup response if the same UID logs in with a new session', async () => {
-    vi.stubGlobal('window', { location: { origin: remote.webOrigin } });
-    const user = { uid: 'one', email: 'one@example.test', displayName: null, emailVerified: true, getIdToken: vi.fn(async () => 'test.token.signature') };
-    auth.currentUser = user;
-    const runtime = (await import('../src/auth/browser')).getBrowserAuth(remote); await runtime.ready;
-    const t = backupWireFixture(), session = await runtime.backup('one', t.f.pin);
-    vi.stubGlobal('fetch', vi.fn(async () => { auth.currentUser = { ...user }; return Response.json(t.wire); }));
-    await expect(session.restore(t.choice, new AbortController().signal)).rejects.toMatchObject({ code: 'auth/session-changed' });
   });
   it('captures creation without I/O and rejects a replaced Firebase session before loading an operation', async () => {
     vi.stubGlobal('window', { location: { origin: remote.webOrigin } });
@@ -318,10 +267,10 @@ describe('Firebase browser boundary (SDK mocked, no external I/O)', () => {
     const user = { uid: 'one', email: 'one@example.test', displayName: null, emailVerified: true, getIdToken: vi.fn(async () => 'synthetic.token.signature') };
     auth.currentUser = user;
     const runtime = (await import('../src/auth/browser')).getBrowserAuth(remote); await runtime.ready;
-    const t = backupWireFixture(), p = t.choice.consent.preparation;
+    const f = initializationFixture(), p = { credential_ref: createResourceId('operation'), credential_id: 'c3ludGhldGlj', public_key: f.input.publicKey };
     vi.stubGlobal('fetch', vi.fn(async () => {
       auth.currentUser = { ...user };
-      return Response.json({ scope: t.choice.consent.expected.scope, credential_ref: p.credential_ref,
+      return Response.json({ scope: f.input.scope, credential_ref: p.credential_ref,
         credential_id: p.credential_id, public_key: p.public_key, device_availability: 'unknown', onchain_authority: 'not_assessed' });
     }));
     await expect(runtime.credentialInventory('one').detail(p.credential_ref, new AbortController().signal))

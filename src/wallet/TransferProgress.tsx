@@ -4,10 +4,12 @@ import { useEffect, useId, useState, useSyncExternalStore } from 'react';
 import type { BrowserAuth } from '../auth/browser';
 import type { AccountChoice } from './balances';
 import { TransferStore } from './transfer-store';
+import type { parseTransferStatus } from './transfers';
 
 /** Parent must key by identity and selected account; no automatic query or signing. */
-export function TransferProgress({ runtime, uid, account, english: en }: {
+export function TransferProgress({ runtime, uid, account, english: en, onReconciled }: {
   runtime: Pick<BrowserAuth, 'transfers' | 'subscribe'>; uid: string; account: AccountChoice; english: boolean;
+  onReconciled?: (status: ReturnType<typeof parseTransferStatus>) => void;
 }) {
   const [store] = useState(() => new TransferStore(() => runtime.transfers(uid)));
   const [reference, setReference] = useState('');
@@ -17,6 +19,9 @@ export function TransferProgress({ runtime, uid, account, english: en }: {
     const unsubscribe = runtime.subscribe(identity => { if (identity?.uid !== uid) store.invalidate(); });
     return () => { unsubscribe(); store.dispose(); };
   }, [runtime, uid, store]);
+  useEffect(() => {
+    if (state.result?.status === 'reconciled') onReconciled?.(state.result);
+  }, [state.result, onReconciled]);
   const result = state.result, busy = state.phase === 'loading', closed = state.phase === 'closed';
   const title = result?.status === 'review_required' ? (en ? 'This transfer needs review' : 'Este envío requiere revisión')
     : result?.status === 'reconciled' ? (en ? 'Balance reconciled; reservation released' : 'Saldo reconciliado; reserva liberada')
@@ -46,12 +51,9 @@ export function TransferProgress({ runtime, uid, account, english: en }: {
           <code style={{ overflowWrap: 'anywhere' }}>{result.historical_confirmation.transaction_hash}</code></details>
       </> : null}
       {result.funds_reserved ? <p>{en ? 'Funds remain reserved while reconciliation is pending.' : 'Los fondos siguen reservados mientras se completa la reconciliación.'}</p> : null}
-      {result.status === 'reconciled' ? <p>{en ? 'This transfer no longer reserves funds. Refresh your balance before preparing another transfer.'
-        : 'Este envío ya no reserva fondos. Actualiza tu saldo antes de preparar otro envío.'}</p> : null}
       {result.status === 'review_required' ? <p>{en ? 'Conflicting evidence was recorded. Do not create a replacement transfer.'
         : 'Se registró evidencia contradictoria. No crees otro envío para reemplazar éste.'}</p> : null}
     </div> : null}
-    <p>{en ? 'Checking does not sign or resend anything. Recorded confirmation is not a reconciled available balance.'
-      : 'Consultar no firma ni reenvía nada. Una confirmación registrada no equivale a saldo disponible reconciliado.'}</p>
+    <p>{en ? 'Checking does not sign or resend anything.' : 'Consultar no firma ni reenvía nada.'}</p>
   </section>;
 }

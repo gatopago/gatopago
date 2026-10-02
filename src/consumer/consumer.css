@@ -368,6 +368,7 @@
 .consumer-ui .meli-balance-card-app .text-text-muted { color: rgb(255 248 240 / .68); }
 .consumer-ui .meli-balance-card-app .text-text-faint { color: rgb(255 248 240 / .48); }
 .consumer-ui .meli-balance-card-app .text-text { color: #fff8f0; }
+.consumer-ui .meli-balance-card-app select.text-text { color: var(--color-text); }
 .consumer-ui .meli-balance-card-app .text-cat-300 { color: var(--color-cat-500); }
 
 .consumer-ui .meli-paper-card {
@@ -460,8 +461,7 @@
 
 .consumer-ui .primary-nav__item.is-active::before { background: var(--color-text); }
 
-/* Elimina la geometría blanda legacy dentro del producto. Los únicos círculos
-   que sobreviven se marcan explícitamente como token-icon o keep-round. */
+/* La geometría del producto es cuadrada, salvo token-icon y keep-round. */
 .consumer-ui :where(.app-frame, .dialog-panel) [class*="rounded-"]:not(.token-icon):not(.keep-round) {
   border-radius: 0 !important;
 }

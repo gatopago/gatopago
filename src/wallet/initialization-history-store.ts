@@ -1,10 +1,20 @@
 import { parseInitializationCursor, parseInitializationHistory } from '@gatopago/shared/v3/initialization-wire';
 import type { BrowserAuth } from '../auth/browser';
+import type { InitializationHistoryItem } from '@gatopago/shared/v3/initialization-wire';
 
 type Session = Awaited<ReturnType<BrowserAuth['initialization']>>;
 type History = ReturnType<typeof parseInitializationHistory>;
 type View = { phase: 'loading' } | { phase: 'ready'; history: History; canStart: boolean } |
   { phase: 'error' | 'closed'; code: string };
+
+/** Selects a screen to review; never prepares or authorizes an operation. */
+export function initialSetupChoice(history: History, canStart: boolean, digest: string, credentials: readonly string[]): InitializationHistoryItem | 'new' | null {
+  if (canStart) return 'new';
+  if (history.next_cursor) return null;
+  const candidates = history.data.filter(item => item.state !== 'expired' || item.creation_operation_recorded);
+  const request = candidates.length === 1 ? candidates[0] : null;
+  return request?.profile_sha256 === digest && credentials.includes(request.credential_ref) ? request : null;
+}
 
 /** Bounded, component-owned discovery. No signatures, storage or automatic polling.
  * New setup is offered only after all pages checked in this traversal are expired

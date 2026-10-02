@@ -15,7 +15,7 @@ type Phase = 'ready' | 'confirming' | 'confirmation-uncertain' | 'reserved' | 'd
 type View = Readonly<{ phase: Phase; confirmation: Confirmation | null; delivery: Delivery | null; status: Status | null; error: boolean }>;
 
 /** One explicit reviewed operation per component instance. Signing is owned by
- * gesture handlers; no automatic proof collection, confirmation, send or polling.
+ * gesture handlers; no automatic proof collection, confirmation or send.
  * An ambiguous delivery NEVER returns to the sendable state. Read status instead. */
 export class TransferExecutionFlow {
   private view: View = Object.freeze({ phase:'ready',confirmation:null,delivery:null,status:null,error:false });
@@ -26,10 +26,11 @@ export class TransferExecutionFlow {
   private session: Session | null = null;
   private active: AbortController | null = null;
   private confirmationAttempted = false;
+  private trackingReadFailed = false;
   private lastSubmittedProofs: TransferProofs | null = null;
   private readonly listeners = new Set<() => void>();
   constructor(private readonly capture: () => Session, selected: TransferSelection, request: TransferRequest, review: TransferReview,
-    private readonly environment: EnabledAuthConfig['deployment']) {
+    private readonly environment: EnabledAuthConfig['deployment'], private readonly beforeConfirm?: () => void) {
     this.selected = structuredClone(selected); this.request = structuredClone(request); this.review = structuredClone(review);
     this.initial = this.currentReview();
   }
@@ -46,6 +47,13 @@ export class TransferExecutionFlow {
   }
   dispose() { this.invalidate(); }
   canEdit() { return !this.active && !this.confirmationAttempted && this.view.phase !== 'closed'; }
+  /** Background reads require an existing operation receipt. In particular,
+   * uncertain confirmation recovery can replay a command and stays explicit. */
+  canTrack() {
+    return !!this.view.confirmation && !this.trackingReadFailed
+      && ['accepted','delivery-uncertain','observed'].includes(this.view.phase)
+      && !['reconciled','expired','review_required'].includes(this.view.status?.status ?? '');
+  }
   /** Only abandon a review which never reached the confirmation command.
    * An uncertain response may already have reserved funds; never replace it. */
   discardUnsubmitted(): boolean {
@@ -66,6 +74,7 @@ export class TransferExecutionFlow {
     try {
       const session = this.currentSession();
       try { this.currentReview(); } catch { this.set({ phase:'expired',error:true }); return; }
+      this.beforeConfirm?.();
       this.set({ phase:'confirming',error:false });
       this.confirmationAttempted = true;
       this.lastSubmittedProofs = snapshot;
@@ -73,7 +82,7 @@ export class TransferExecutionFlow {
       if (!this.alive(controller)) return; this.currentSession();
       const confirmation = parseTransferConfirmationReceipt(result,this.initial);
       this.set({ phase:confirmation.state === 'held' ? 'reserved' : 'observed',confirmation,error:false });
-    } catch { this.failed(controller,'confirmation-uncertain'); }
+    } catch { this.failed(controller,this.confirmationAttempted ? 'confirmation-uncertain' : 'ready'); }
     finally { if (this.active === controller) this.active = null; release(); }
   }
   async deliver() {
@@ -94,6 +103,7 @@ export class TransferExecutionFlow {
   async readStatus() {
     if (this.active || this.view.phase === 'closed') return;
     if (!this.view.confirmation && !this.lastSubmittedProofs) return;
+    this.trackingReadFailed = false;
     const controller = new AbortController(), previous = this.view.phase; this.active = controller;
     this.set({ phase:'observing',status:null,error:false });
     try {
@@ -115,7 +125,7 @@ export class TransferExecutionFlow {
       if (status.userop_hash !== this.initial.candidate.userOpHash) throw new Error('Mismatched operation');
       // Reading even a held state never re-enables delivery after an ambiguous send.
       this.set({ phase:previous === 'reserved' && status.status === 'held' ? 'reserved' : 'observed',status,confirmation,error:false });
-    } catch { this.failed(controller,previous); }
+    } catch { this.trackingReadFailed = true; this.failed(controller,previous); }
     finally { if (this.active === controller) this.active = null; }
   }
 }

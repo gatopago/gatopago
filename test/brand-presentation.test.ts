@@ -56,11 +56,12 @@ describe('Unified GatoPago presentation', () => {
   it('uses shared buttons for passkey options, without performing authentication', () => {
     const html = renderToStaticMarkup(createElement(PasskeyAccess, {
       runtime: {} as BrowserAuth, config: { mode: 'firebase' } as EnabledAuthConfig,
-      english: false, onSignedIn: () => { throw new Error('Presentation must not sign in'); },
+      english: false, onSignedIn: () => { throw new Error('Presentation must not sign in'); }, onRegistered: () => { throw new Error('Presentation must not register'); },
     }));
     expect(html).toContain('auth-primary btn btn-primary btn-block');
     expect(html).toContain('auth-secondary btn btn-ghost btn-block');
-    expect(html).toContain('Entrar con passkey');
+    expect(html).toContain('Iniciar sesión');
+    expect(html).toContain('Crear cuenta');
   });
 
   it('does not offer a blank account screen when identity is unavailable', () => {
@@ -74,15 +75,14 @@ describe('Unified GatoPago presentation', () => {
     }
   });
 
-  it('restores the phone-first login structure and desktop notice without fake auth methods', () => {
+  it('keeps phone-first access without a blocking desktop notice', () => {
     const html = renderToStaticMarkup(createElement(AuthScreen, {
       config: { mode: 'disabled' }, view: 'login', english: false,
       art: createElement(MeliSprite, { variant: 'body-sitting' }),
     }));
     expect(html).toContain('auth-login-hero');
-    expect(html).toContain('Entrar o crear cuenta');
-    expect(html).toContain('Mejor en tu teléfono');
-    expect(html).toContain('Continuar en computadora');
+    expect(html).toContain('Iniciar sesión o crear cuenta');
+    expect(html).not.toContain('<dialog');
     expect(html).not.toContain('Continuar con Google');
     expect(html).not.toContain('Continuar con correo');
     expect(readFileSync('src/auth/auth.css', 'utf8')).not.toContain('58rem');

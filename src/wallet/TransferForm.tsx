@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { reviewedRecipient } from '../consumer/qr';
 import type { CredentialDetail } from '@gatopago/shared/v3/credential-detail';
@@ -11,17 +11,22 @@ import type { TransferSelection } from './transfer-preparation';
 import { transferAssets, transferFormRequest } from './transfer-form';
 import { TransferReview } from './TransferReview';
 import { normalizeUsername, parseRecipient, type Recipient } from './profile';
+import type { parseTransferStatus } from './transfers';
+import { parseTransferBookmark, subscribeTransferBookmark, transferBookmarkSnapshot, transferBookmarkServerSnapshot, type TransferBookmark } from './transfer-bookmark';
+import { TransferRestoration } from './TransferRestoration';
 
 type Props = { runtime:BrowserAuth; uid:string; selected:TransferSelection; balance:BalanceView;
-  environment:EnabledAuthConfig['deployment']; english:boolean };
+  environment:EnabledAuthConfig['deployment']; english:boolean; onReconciled?: (status:ReturnType<typeof parseTransferStatus>) => void };
 export function TransferForm(props:Props) {
   const params = useSearchParams();
+  const hash = useSyncExternalStore(subscribeTransferBookmark, transferBookmarkSnapshot, transferBookmarkServerSnapshot);
+  const bookmark = useMemo(() => { try { return parseTransferBookmark(hash); } catch { return 'invalid' as const; } }, [hash]);
   const username = params?.get('username'), chain = params?.get('chain');
   const handle = username && /^[a-z][a-z0-9_]{4,29}$/.test(username) && (!chain || `eip155:${chain}` === props.selected.network_id) ? `@${username}` : '';
   const recipient = reviewedRecipient(params, props.selected.network_id) || handle;
-  return <OwnedTransferForm key={JSON.stringify([props.uid,props.environment,props.selected,props.balance,recipient])} {...props} recipient={recipient}/>;
+  return <OwnedTransferForm key={JSON.stringify([props.uid,props.environment,props.selected,props.balance,recipient])} {...props} recipient={recipient} bookmark={bookmark}/>;
 }
-function OwnedTransferForm({ runtime,uid,selected,balance,environment,english:en,recipient }:Props & { recipient: string }) {
+function OwnedTransferForm({ runtime,uid,selected,balance,environment,english:en,recipient,onReconciled,bookmark }:Props & { recipient: string; bookmark:TransferBookmark|'invalid'|null }) {
   const [metadata] = useState(() => transferAssets(balance,selected));
   const [asset,setAsset] = useState(metadata[0].asset_id), [destination,setDestination] = useState(recipient);
   const [amount,setAmount] = useState(''), [max,setMax] = useState(false), [busy,setBusy] = useState(false), [error,setError] = useState(false);
@@ -72,7 +77,16 @@ function OwnedTransferForm({ runtime,uid,selected,balance,environment,english:en
   }
   if (closed) return <p role="alert">{en ? 'Your session changed. Reopen this account.' : 'Tu sesión cambió. Vuelve a abrir esta cuenta.'}</p>;
   if (prepared) return <TransferReview runtime={runtime} uid={uid} selected={selected} request={prepared.request}
-    review={prepared.review} metadata={metadata} environment={environment} credentials={prepared.credentials} recipient={prepared.recipient} english={en} onEdit={change}/>;
+    review={prepared.review} metadata={metadata} environment={environment} credentials={prepared.credentials} recipient={prepared.recipient}
+    english={en} onEdit={change} onReconciled={onReconciled}/>;
+  if (bookmark === 'invalid') return <p role="alert">{en ? 'The saved transfer reference is invalid. Do not repeat an unresolved transfer.' : 'La referencia guardada del envío no es válida. No repitas un envío pendiente.'}</p>;
+  if (bookmark) {
+    if (bookmark.wallet_id !== selected.wallet_id || bookmark.wallet_account_id !== selected.wallet_account_id || bookmark.network_id !== selected.network_id) {
+      return <p role="alert">{en ? 'Reopen the account and network of the unresolved transfer before starting another one.' : 'Abre la cuenta y red del envío pendiente antes de iniciar otro.'}</p>;
+    }
+    return <TransferRestoration key={JSON.stringify([uid,selected,environment,bookmark])} runtime={runtime} uid={uid}
+      selected={selected} bookmark={bookmark} environment={environment} english={en} onReconciled={onReconciled}/>;
+  }
   return <section aria-labelledby={`${form}-heading`} aria-busy={busy}>
     <h3 id={`${form}-heading`}>{en ? 'Send' : 'Enviar'}</h3>
     <form onSubmit={event => { event.preventDefault(); void prepare(); }}>

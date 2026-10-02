@@ -30,6 +30,7 @@ export class CreationFlow {
   private session: Session | null = null;
   private operation: { wire: unknown; preview: ReturnType<typeof parseCreationPreview> } | null = null;
   private proof: Proof | null = null;
+  private preparationAttempted = false;
   private active: AbortController | null = null;
   private expiry: ReturnType<typeof setTimeout> | undefined;
   private listeners = new Set<() => void>();
@@ -141,15 +142,15 @@ export class CreationFlow {
       catch (e) {
         current();
         if (codeOf(e) !== 'creation/not-found' || this.knownRecorded || this.operation || this.proof) throw e;
-        this.live(); this.set(this.view.cap ? 'prepare-retry' : 'absent'); return;
+        this.live(); this.set(this.preparationAttempted ? 'prepare-retry' : 'absent'); return;
       }
       this.accept(response);
     }, 'uncertain');
   }
-  prepare(decimalCap: string) {
+  prepare(decimalCap?: string) {
     if (!['absent', 'prepare-retry'].includes(this.view.phase)) return Promise.resolve();
-    let cap: string;
-    try { cap = this.view.cap ?? parseCreationFee(decimalCap, this.view.network); }
+    let cap: string | null;
+    try { cap = this.view.cap ?? (decimalCap === undefined ? null : parseCreationFee(decimalCap, this.view.network)); }
     catch { this.set(this.view.phase, 'creation/invalid-cap'); return Promise.resolve(); }
     return this.run('preparing', async (signal, current) => {
       this.live();
@@ -157,13 +158,14 @@ export class CreationFlow {
       this.set('preparing', null, { cap });
       const session = await this.sessionFor(current); current();
       let response;
+      this.preparationAttempted = true;
       try { response = await session.prepare(this.consent, cap, signal); current(); }
       catch (e) {
         current();
-        if (codeOf(e) === 'creation/cap-too-low') { this.set('absent', 'creation/cap-too-low', { cap: null }); return; }
+        if (codeOf(e) === 'creation/cap-too-low') { this.preparationAttempted = false; this.set('absent', 'creation/cap-too-low', { cap: null }); return; }
         throw e;
       }
-      this.accept(response, cap);
+      this.accept(response, cap ?? undefined);
     }, 'uncertain');
   }
   confirm() {

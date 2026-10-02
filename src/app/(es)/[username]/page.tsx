@@ -6,9 +6,6 @@ export const metadata: Metadata = { title: 'Perfil público — GatoPago', robot
 export const dynamic = 'force-dynamic';
 export default async function Page({ params, searchParams }: { params: Promise<{ username: string }>; searchParams: Promise<{ lang?: string }> }) {
   const [{ username }, { lang }] = await Promise.all([params, searchParams]);
-  let handle: string;
-  try { handle = decodeURIComponent(username); } catch { notFound(); }
-  // Retain /username links as well as /@username, without asserting existence.
-  if (!/^@?[a-zA-Z][a-zA-Z0-9_]{4,29}$/.test(handle)) notFound();
-  return <PublicUsername key={handle} username={handle.replace(/^@/, '').toLowerCase()} environment={environment} english={lang === 'en'} />;
+  if (!/^@[a-zA-Z][a-zA-Z0-9_]{4,29}$/.test(username)) notFound();
+  return <PublicUsername key={username} username={username.slice(1).toLowerCase()} environment={environment} english={lang === 'en'} />;
 }

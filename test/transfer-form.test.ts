@@ -68,7 +68,7 @@ describe('Transfer form and asset metadata', () => {
   it.each([false,true])('renders an inert form in English=%s', english => {
     const x = fixture(), runtime = { credentialInventory:vi.fn(),transferPreparations:vi.fn(),subscribe:vi.fn() };
     const html = renderToStaticMarkup(createElement(TransferForm,{ runtime:runtime as unknown as BrowserAuth,uid:'synthetic',
-      selected:x.selected,balance:x.balance,environment:parseEnvironment(environments.staging),english }));
+      selected:x.selected,balance:x.balance,environment:parseEnvironment(environments.production),english }));
     expect(html).toContain(english ? 'Address or @username' : 'Dirección o @username'); expect(html).toContain('USDC');
     expect(html).toContain('MAX'); expect(html).toContain('inputMode="decimal"');
     expect(runtime.credentialInventory).not.toHaveBeenCalled(); expect(runtime.transferPreparations).not.toHaveBeenCalled();
