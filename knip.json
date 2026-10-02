@@ -1,0 +1,5 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": ["src/wallet/BackupCommitPanel.tsx", "test/enrollment-verifier.ts"],
+  "ignoreExportsUsedInFile": { "interface": true, "type": true }
+}
