@@ -4,7 +4,7 @@ import { build } from 'esbuild';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readFile } from 'node:fs/promises';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, createPublicKey, randomBytes, randomUUID, verify } from 'node:crypto';
 import { createServer } from 'node:http';
 import postcss from 'postcss';
 import tailwind from '@tailwindcss/postcss';
@@ -25,7 +25,15 @@ const result = await build({ plugins: [{ name: 'fixture-turnstile', setup(build)
   build.onLoad({ filter: /^fixture-link$/, namespace: 'fixture' }, () => ({ loader: 'tsx', resolveDir: webRoot, contents: `
     export default function Link({ href, children, prefetch, replace, onNavigate, ...props }) { return <a href={href} {...props} onClick={event => onNavigate?.({ preventDefault: () => event.preventDefault() })}>{children}</a>; }` }));
   build.onLoad({ filter: /^fixture-turnstile$/, namespace: 'fixture' }, () => ({ loader: 'tsx', resolveDir: webRoot, contents: `
-    export function Turnstile({ onState }) { return <button type="button" onClick={() => onState({ status: 'verified', token: 'synthetic' })}>Verificar seguridad (prueba)</button>; }` }));
+    import { useImperativeHandle, useRef } from 'react';
+    export function Turnstile({ ref }) {
+      const available = useRef(false);
+      useImperativeHandle(ref, () => ({ async token() {
+        if (!available.current) throw { code: 'auth/security-check-unavailable' };
+        available.current = false; return 'synthetic';
+      } }), []);
+      return <button type="button" onClick={() => { available.current = true; }}>Verificar seguridad (prueba)</button>;
+    }` }));
 } }], bundle: true, write: false, platform: 'browser', format: 'iife', jsx: 'automatic',
   define: { 'process.env.NODE_ENV': '"development"' },
   stdin: { sourcefile: 'enrollment-harness.tsx', resolveDir: webRoot, loader: 'tsx', contents: `
@@ -40,6 +48,14 @@ import { parseCreationPreview } from '@gatopago/shared/v3/creation-operation-wir
 let current = 'a', calls = 0, uncertain = false, inventoryFailure = false;
 const listeners = new Set();
 const runtime = {
+  async prepareLogin(signal) {
+    const response = await fetch('/fixture/login/prepare', { method: 'POST', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: current }) });
+    const value = await response.json(); if (!response.ok) throw { code: value.code }; return value;
+  },
+  async completeLogin(id, submission, signal) {
+    const response = await fetch('/fixture/login/complete', { method: 'POST', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: current, id, submission }) });
+    const value = await response.json(); if (!response.ok) throw { code: value.code }; return value;
+  },
   async prepareRegistration(input, signal) {
     const value = await this.enrollment(current).prepare('op_' + crypto.randomUUID(), signal);
     return { ...value, userName: input.username, displayName: input.name };
@@ -151,9 +167,31 @@ createRoot(document.getElementById('root')).render(<StrictMode><Harness /></Stri
 const scope = { rpId: 'localhost', origin: 'http://localhost:4178' };
 const attempts = new Map(), credentials = new Map(), initializations = new Map(), operations = new Map();
 const profiles = new Map();
+const loginAttempts = new Map();
 const stats = { prepared: 0, verified: 0, replayed: 0, rejected: 0, listed: 0, initializationPrepared: 0, initializationAuthorized: 0, initializationReplayed: 0,
   initializationListed: 0, initializationRestored: 0, creationPrepared: 0, creationAuthorized: 0, creationReplayed: 0, creationRead: 0,
-  profileRenamed: 0, usernamePublished: 0 };
+  profileRenamed: 0, usernamePublished: 0, loginPrepared: 0, loginVerified: 0 };
+async function loginFixture(request, response) {
+  let raw = ''; for await (const chunk of request) { raw += chunk; if (Buffer.byteLength(raw) > 8192) throw new Error('too-large'); }
+  const { uid, id, submission } = JSON.parse(raw);
+  if (!['a', 'b'].includes(uid)) throw new Error('wrong-owner');
+  if (request.url === '/fixture/login/prepare') {
+    const attempt = { uid, id: 'op_' + randomUUID(), scope, challenge: '0x' + randomBytes(32).toString('hex'), validUntilMs: Date.now() + 60000 };
+    loginAttempts.set(attempt.id, attempt); stats.loginPrepared++;
+    response.end(JSON.stringify(attempt)); return;
+  }
+  const attempt = loginAttempts.get(id), key = [...credentials.values()].find(value => value.credentialId === submission?.credential_id && value.uid === uid);
+  if (!attempt || attempt.uid !== uid || attempt.validUntilMs <= Date.now() || !key) throw new Error('invalid-login');
+  const auth = Buffer.from(submission.authenticator_data, 'base64url'), client = Buffer.from(submission.client_data, 'base64url');
+  const data = JSON.parse(client.toString('utf8'));
+  if (data.type !== 'webauthn.get' || data.origin !== scope.origin || data.crossOrigin !== false || data.topOrigin !== undefined
+    || data.challenge !== Buffer.from(attempt.challenge.slice(2), 'hex').toString('base64url') || (auth[32] & 5) !== 5
+    || submission.user_handle !== createHash('sha256').update(uid).digest('base64url')) throw new Error('invalid-login');
+  const rawKey = Buffer.from(key.publicKey.slice(2), 'hex');
+  const publicKey = createPublicKey({ format: 'jwk', key: { kty: 'EC', crv: 'P-256', x: rawKey.subarray(64, 96).toString('base64url'), y: rawKey.subarray(96, 128).toString('base64url') } });
+  if (!verify('sha256', Buffer.concat([auth, createHash('sha256').update(client).digest()]), publicKey, Buffer.from(submission.signature, 'base64url'))) throw new Error('invalid-login');
+  loginAttempts.delete(id); stats.loginVerified++; response.end('{}');
+}
 async function receivingFixture(request, response) {
   const uid = new URL(request.url, scope.origin).searchParams.get('uid');
   if (!['a', 'b'].includes(uid)) throw new Error('wrong-owner');
@@ -278,6 +316,10 @@ async function fixture(request, response) {
   response.end(JSON.stringify({ kind: 'enrolled', id }));
 }
 const server = createServer((request, response) => {
+  if (request.url?.startsWith('/fixture/login/') && request.method === 'POST') {
+    response.setHeader('Content-Type', 'application/json');
+    void loginFixture(request, response).catch(() => { response.writeHead(400); response.end(JSON.stringify({ code: 'auth/unauthenticated' })); }); return;
+  }
   response.setHeader('Cache-Control', 'no-store');
   if (request.url?.startsWith('/fixture/receiving?')) {
     void receivingFixture(request, response).catch(() => { response.writeHead(400); response.end('{}'); }); return;

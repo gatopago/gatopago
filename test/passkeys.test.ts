@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { webAuthnKeyFromSpki } from '@gatopago/shared/v3/webauthn';
-import { PasskeyRequestError, requestPasskeyLogin, requestPasskeyProof, requestPasskeyRegistration } from '../src/wallet/passkeys';
+import { PasskeyRequestError, requestAccountRegistration, requestPasskeyLogin, requestPasskeyProof, requestPasskeyRegistration } from '../src/wallet/passkeys';
 import { isReloadBlocked } from '../src/pwa/reload-guard';
 
 const captured = JSON.parse(readFileSync(new URL(import.meta.resolve('@gatopago/shared/fixtures/v3-webauthn-chromium.json')), 'utf8')) as {
@@ -212,6 +212,21 @@ describe('V3 explicit passkey ceremony (browser API mocked; cryptographic verifi
 
 
 describe('Discoverable session login, distinct from transaction approval', () => {
+  it('continues the initiating login click after the server challenge arrives', async () => {
+    const credential = new Credential(); Object.assign(credential.response, { userHandle: new Uint8Array(32).fill(3).buffer });
+    get.mockResolvedValue(credential);
+    const result = await requestPasskeyLogin(async () => {
+      vi.stubGlobal('navigator', { credentials: { get, create }, userActivation: { isActive: false } });
+      return request();
+    });
+    expect(result.credential_id).toBe('AQID'); expect(get).toHaveBeenCalledOnce();
+  });
+  it('does not prepare a login without an initiating user gesture', async () => {
+    vi.stubGlobal('navigator', { credentials: { get, create }, userActivation: { isActive: false } });
+    const prepare = vi.fn(async () => request());
+    await expect(requestPasskeyLogin(prepare)).rejects.toMatchObject({ code: 'context' });
+    expect(prepare).not.toHaveBeenCalled(); expect(get).not.toHaveBeenCalled();
+  });
   it('opens get synchronously without an allowlist and returns the user handle', async () => {
     const credential = new Credential(); Object.assign(credential.response, { userHandle: new Uint8Array(32).fill(3).buffer });
     get.mockResolvedValue(credential);
@@ -238,8 +253,40 @@ describe('Discoverable session login, distinct from transaction approval', () =>
     await expect(requestPasskeyRegistration(registrationRequest())).rejects.toMatchObject({ code: 'busy' });
     controller.abort(); await expect(pending).rejects.toMatchObject({ code: 'cancelled' }); expect(isReloadBlocked()).toBe(false);
   });
-  it('uses the chosen username and display name for a new account', async () => {
-    await requestPasskeyRegistration({ ...registrationRequest(), userName: 'daniel', displayName: 'Daniel' });
-    expect(create.mock.calls[0][0].publicKey.user).toMatchObject({ name: 'daniel', displayName: 'Daniel' });
+  it.each(['ana', 'leo', 'dani', 'daniel', 'a'.repeat(30)])('uses the chosen username %s and display name for a new account', async userName => {
+    await requestPasskeyRegistration({ ...registrationRequest(), userName, displayName: 'Daniel' });
+    expect(create.mock.calls[0][0].publicKey.user).toMatchObject({ name: userName, displayName: 'Daniel' });
+  });
+  it.each(['a', 'ab', 'a'.repeat(31)])('rejects unsupported username %s before asking the authenticator', async userName => {
+    await expect(requestPasskeyRegistration({ ...registrationRequest(), userName })).rejects.toMatchObject({ code: 'context' });
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe('One-click account registration', () => {
+  it('creates and checks the same credential without another application gesture', async () => {
+    const preparation = { ...registrationRequest(), id: 'op_11111111-1111-4111-8111-111111111111',
+      userName: 'daniel', displayName: 'Daniel', challenge: `0x${'02'.repeat(32)}` as `0x${string}`, proofChallenge: captured.challenge };
+    const credential = registered();
+    credential.response.clientDataJSON = new TextEncoder().encode(JSON.stringify({ type: 'webauthn.create',
+      challenge: Buffer.from(bytes(preparation.challenge)).toString('base64url'), origin: scope.origin, crossOrigin: false })).buffer;
+    create.mockResolvedValue(credential);
+    const created = vi.fn();
+    const result = await requestAccountRegistration(async () => {
+      vi.stubGlobal('navigator', { credentials: { get, create }, userActivation: { isActive: false } });
+      return preparation;
+    }, created, new AbortController().signal);
+    expect(created).toHaveBeenCalledOnce(); expect(create).toHaveBeenCalledOnce(); expect(get).toHaveBeenCalledOnce();
+    expect(result.id).toBe(preparation.id); expect(result.submission.credential_id).toBe('AQID');
+    expect(result.submission.proof).toHaveProperty('signature');
+    await expect(requestPasskeyProof(request())).rejects.toMatchObject({ code: 'context' });
+  });
+  it('retains the saved credential when its verification is cancelled', async () => {
+    get.mockRejectedValue(new DOMException('Cancelled', 'NotAllowedError'));
+    const created = vi.fn();
+    await expect(requestAccountRegistration(async () => ({ ...registrationRequest(), id: 'op_11111111-1111-4111-8111-111111111111',
+      userName: 'daniel', displayName: 'Daniel', proofChallenge: `0x${'02'.repeat(32)}` as `0x${string}` }),
+    created, new AbortController().signal)).rejects.toMatchObject({ code: 'cancelled' });
+    expect(created).toHaveBeenCalledOnce(); expect(create).toHaveBeenCalledOnce(); expect(get).toHaveBeenCalledOnce();
   });
 });

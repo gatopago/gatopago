@@ -147,6 +147,12 @@ export class CreationFlow {
       this.accept(response);
     }, 'uncertain');
   }
+  /** Entry to the already-consented account. Restore first, then obtain fees
+   * only when the same request is confirmed absent. Never signs or delivers. */
+  async open() {
+    await this.restore();
+    if (this.view.phase === 'absent' && !this.knownRecorded) await this.prepare();
+  }
   prepare(decimalCap?: string) {
     if (!['absent', 'prepare-retry'].includes(this.view.phase)) return Promise.resolve();
     let cap: string | null;

@@ -18,7 +18,7 @@ export function parseConsumerQr(raw: string, origin: string): QrDestination | nu
   try {
     const url = new URL(text, origin);
     if (url.origin !== origin || url.username || url.password) return null;
-    if (/^\/@[a-zA-Z][a-zA-Z0-9_]{4,29}$/.test(url.pathname)) {
+    if (/^\/@[a-zA-Z][a-zA-Z0-9_]{2,29}$/.test(url.pathname)) {
       return { kind: 'link', path: url.pathname };
     }
   } catch { /* Invalid URL stays on the scanner. */ }

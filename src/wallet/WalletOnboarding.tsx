@@ -7,9 +7,10 @@ import { NavigationLink } from '../consumer/NavigationLink';
 import { localizedPath } from '../consumer/routes';
 import { CredentialInventoryStore } from './credential-inventory-store';
 import InitializationHistory from './InitializationHistory';
+import { MeliSprite } from '../marketing/MeliSprite';
 
 export default function WalletOnboarding({ runtime, uid, english: en }: { runtime?: BrowserAuth; uid?: string; english: boolean }) {
-  if (!runtime || !uid) return <><h1>{en ? 'Create your wallet' : 'Crea tu wallet'}</h1><p role="status">{en ? 'Sign in to continue setting up your wallet.' : 'Inicia sesión para continuar configurando tu wallet.'}</p>
+  if (!runtime || !uid) return <><h1>{en ? 'Your GatoPago account' : 'Tu cuenta GatoPago'}</h1><p role="status">{en ? 'Sign in to continue creating your account.' : 'Inicia sesión para continuar creando tu cuenta.'}</p>
     <NavigationLink href={localizedPath('/login', en)} className="auth-primary btn btn-primary btn-block">{en ? 'Sign in' : 'Iniciar sesión'}</NavigationLink></>;
   return <WalletSetup key={uid} runtime={runtime} uid={uid} english={en} />;
 }
@@ -26,21 +27,21 @@ function WalletSetup({ runtime, uid, english: en }: { runtime: BrowserAuth; uid:
   }, [runtime, uid, store]);
   const sessionError = (state.phase === 'error' || state.phase === 'closed') && ['auth/session-changed', 'auth/unauthenticated', 'client/update-required'].includes(state.code);
   return <section aria-labelledby="wallet-setup-heading">
-    <h1 id="wallet-setup-heading">{en ? 'Create your wallet' : 'Crea tu wallet'}</h1>
-    <ol className="auth-steps" aria-label={en ? 'Account creation progress' : 'Progreso de creación de cuenta'}>
-      <li>{en ? '1. Details saved' : '1. Datos guardados'}</li><li>{en ? '2. Passkey verified' : '2. Passkey comprobada'}</li><li aria-current="step">3. Wallet</li>
-    </ol>
-    <p>{en ? 'Your access is ready. Now authorize your wallet configuration and its creation on the network. You will use your registered passkey; a backup is optional.' : 'Tu acceso está listo. Ahora autoriza la configuración y creación de tu wallet en la red. Usarás tu passkey registrada; el respaldo es opcional.'}</p>
-    {!pin ? <div className="auth-local" role="status"><p>{en ? 'Wallet creation is not enabled in this environment. Your account and passkey are already registered. Return here when creation is available.' : 'La creación de wallets no está habilitada en este entorno. Tu cuenta y passkey ya están registradas. Puedes volver aquí cuando la creación esté disponible.'}</p></div>
-      : state.phase === 'loading' ? <p role="status">{en ? 'Checking your registered passkey…' : 'Consultando tu passkey registrada…'}</p>
+    <header className="mb-6 flex items-end gap-3"><div className="min-w-0 flex-1">
+      <p className="meli-kicker mb-3">{en ? 'Welcome to GatoPago' : 'Bienvenido a GatoPago'}</p>
+      <h1 id="wallet-setup-heading" className="font-display text-[32px]">{en ? 'Your account, under your control.' : 'Tu cuenta, bajo tu control.'}</h1>
+      <p className="mt-3 text-sm text-text-muted">{en ? 'Your passkey is saved. We are preparing your account so you can receive and send.' : 'Tu passkey ya está guardada. Estamos preparando tu cuenta para recibir y enviar.'}</p>
+    </div><MeliSprite variant="body-sitting" className="w-20 shrink-0" /></header>
+    <p className="mb-4 text-[12px] text-text-muted">{en ? 'This is the same account you just registered, not a second account. Confirm its creation with your passkey.' : 'Es la misma cuenta que acabas de registrar, no otra cuenta. Confirma su creación con tu passkey.'}</p>
+    {!pin ? <div className="auth-local" role="status"><p>{en ? 'Account activation is unavailable in this environment. Your access is saved. Return here when activation is available.' : 'La activación no está disponible en este entorno. Tu acceso está guardado. Puedes volver cuando la activación esté disponible.'}</p></div>
+      : state.phase === 'loading' ? <p role="status">{en ? 'Checking your account…' : 'Comprobando tu cuenta…'}</p>
         : state.phase === 'ready' ? state.inventory.data.length > 0
           ? <InitializationHistory runtime={runtime} uid={uid} inventory={state.inventory} english={en} pin={pin} onActiveChange={setActive} />
-          : <div role="status"><p>{en ? 'No registered passkey was found for this account. Review your keys before creating the wallet.' : 'No encontramos una passkey registrada para esta cuenta. Revisa tus llaves antes de crear la wallet.'}</p>
+          : <div role="status"><p>{en ? 'We could not find your access key. Review your access before continuing.' : 'No encontramos tu llave de acceso. Revisa tu acceso antes de continuar.'}</p>
             <NavigationLink href={localizedPath('/settings/security', en)} className="auth-secondary btn btn-ghost btn-block">{en ? 'Review my keys' : 'Revisar mis llaves'}</NavigationLink></div>
           : <div className="auth-error" role="alert"><p>{sessionError ? (en ? 'Your session or app version changed. Reload and sign in to resume.' : 'Tu sesión o versión de la app cambió. Recarga e inicia sesión para retomar.')
-            : en ? 'We could not check your passkey. Your progress has not been replaced; retry this check.' : 'No pudimos consultar tu passkey. Tu progreso no se ha reemplazado; reintenta la consulta.'}</p>
+            : en ? 'We could not check your account. Your progress is saved; try again.' : 'No pudimos comprobar tu cuenta. Tu progreso está guardado; reintenta.'}</p>
             <button type="button" className="auth-secondary btn btn-ghost btn-block" onClick={() => sessionError ? reloadPage() : void store.load()}>{sessionError ? (en ? 'Reload' : 'Recargar') : en ? 'Retry' : 'Reintentar'}</button></div>}
-    {!active ? <NavigationLink href={localizedPath('/app', en)} className="auth-secondary btn btn-ghost btn-block">{en ? 'Go to my account' : 'Ir a mi cuenta'}</NavigationLink> : null}
-    <p className="auth-access-note">{en ? 'You can return to this setup from your account. Existing requests are checked before starting a new one.' : 'Puedes retomar la configuración desde tu cuenta. Antes de iniciar otra solicitud, comprobamos las existentes.'}</p>
+    {!active ? <p className="mt-4 text-[12px] text-text-muted">{en ? 'You can close the app and resume this same process later.' : 'Puedes cerrar la app y retomar este mismo proceso después.'}</p> : null}
   </section>;
 }

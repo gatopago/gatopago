@@ -16,9 +16,6 @@ const config: NextConfig = {
     serverFunctions: false,
   },
   poweredByHeader: false,
-  reactStrictMode: true,
-  // Wallet/Flow own the state. This web does not expose financial Route Handlers.
-  transpilePackages: ['@gatopago/environment', '@gatopago/shared'],
   async headers() {
     return [{ source: '/:path*', headers: [
       { key: 'X-Content-Type-Options', value: 'nosniff' },

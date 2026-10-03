@@ -31,6 +31,7 @@ export function subscribeTransferBookmark(listener: () => void) {
   return () => { window.removeEventListener('hashchange', listener); window.removeEventListener('transfer-bookmark-change', listener); };
 }
 export function saveTransferBookmark(input: TransferBookmark) {
+  if (window.location.hash.startsWith('#money-v1=')) throw new Error('An unresolved monetary operation already exists');
   const hash = transferBookmarkHash(input), existing = parseTransferBookmark(window.location.hash);
   if (existing && JSON.stringify(existing) !== JSON.stringify(parseTransferBookmark(hash))) throw new Error('An unresolved transfer already exists');
   window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search + hash);

@@ -1,5 +1,7 @@
 import type { parseCreationPreview } from '@gatopago/shared/v3/creation-operation-wire';
 
+import { NavigationLink } from '../consumer/NavigationLink';
+
 type Lifecycle = ReturnType<typeof parseCreationPreview>['lifecycle'];
 const messages = {
   projected: ['Cuenta creada', 'Account created'],
@@ -43,8 +45,8 @@ export default function CreationProgress({ lifecycle, delivery, checkedAt, engli
       : <p>{en ? 'The server follows this same operation even if you leave this screen. Checking the status does not sign, send or create another account.'
         : 'El servidor sigue esta misma operación aunque salgas de esta pantalla. Consultar el estado no firma, envía ni crea otra cuenta.'}</p>}
     {reason && reason in reasons ? <p>{reasons[reason as keyof typeof reasons][index]}</p> : null}
-    {b ? <><a className="auth-primary btn btn-primary btn-block" href={en ? '/app?lang=en' : '/app'}>{en ? 'Go to my wallet' : 'Ir a mi wallet'}</a>
-      <a className="auth-secondary btn btn-ghost btn-block" href={en ? '/profile?lang=en' : '/profile'}>{en ? 'Verify receiving and publish my username' : 'Verificar recepción y publicar mi usuario'}</a></> : null}
+    {b ? <><NavigationLink className="auth-primary btn btn-primary btn-block" href={en ? '/app?lang=en' : '/app'}>{en ? 'Go to my wallet' : 'Ir a mi wallet'}</NavigationLink>
+      <NavigationLink className="auth-secondary btn btn-ghost btn-block" href={en ? '/profile?lang=en' : '/profile'}>{en ? 'Verify receiving and publish my username' : 'Verificar recepción y publicar mi usuario'}</NavigationLink></> : null}
     <details><summary>{en ? 'Creation record' : 'Comprobante de creación'}</summary>
     {b ? <p>{en ? 'This historical result does not prove current account security or enable receiving and spending.'
       : 'Este resultado histórico no demuestra su seguridad actual ni habilita recibir y gastar.'}</p> : null}

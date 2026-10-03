@@ -10,7 +10,9 @@ real funds or mainnet tokens.
 ## Account flow
 
 1. Enter an invitation, display name and username.
-2. Create a passkey and prove possession of that same credential.
+2. Submit **Create account** to create and verify the same passkey through the
+   device prompts, without preparation or verification buttons in the app.
+   **Sign in** opens the device prompt from its first click.
 3. Review and authorize the account configuration, then its onchain creation.
 4. After creation evidence is recorded, verify and explicitly publish the
    receiving username. A single complete wallet/network page is preselected.
@@ -74,8 +76,10 @@ account history or cross-device discovery.
   connected consumer flows. Their empty pages were removed, not presented as
   working features. The scanner accepts addresses and `/@username` profiles,
   not checkout links. This does not remove the independent Flow backend.
-- Marketing explains receiving, balances, transfer review and verified results.
-  It contains no mock account balance, payment-link demo, card, Earn or API demo.
+- Marketing includes the account illustration, payment-link example,
+  Grow/Aave, commercial API presentation and confirmation preview. Illustrations
+  stay identified as examples; the card stays identified as a future concept.
+  `/docs` documents current Flow routes; `/pay/demo-cafe-norte` is a sample receipt.
 - Public receiving uses `/@username`. Legacy V2 aliases and payment formats
   are not supported.
 
@@ -98,6 +102,12 @@ Run Wallet Core separately. Never put private keys, Firebase service accounts
 or provider secrets in Web. Deployment platform variables are configured
 separately from ignored local environment files.
 
+The application uses the standard Next.js commands: `pnpm dev` runs `next dev`,
+`pnpm build` runs `next build`, and `pnpm start` runs `next start`. ESLint uses
+the official Next.js Core Web Vitals plugin alongside TypeScript and React Hooks.
+The shared GatoPago
+packages already ship compiled JavaScript and require no custom transpilation.
+
 ## Verification
 
 ```powershell
@@ -105,8 +115,10 @@ pnpm verify
 node scripts/check-release.mjs --describe
 ```
 
-Verification includes lint, route/type checks, tests, both Knip modes, vendor
-snapshot integrity and the Next.js build. Review build inputs before updating
+Verification includes lint, route/type checks, tests, both Knip modes, release
+and vendor snapshot integrity (`pnpm check:release`), and the Next.js build.
+These release checks are separate from the framework's build command.
+Review build inputs before updating
 `release.json`; its hash proves source provenance, not deployed wallet authority
 or financial readiness. The packages in `vendor/` are pinned snapshots, not
 imports from another checkout.
@@ -118,6 +130,19 @@ virtual-authenticator results do not prove a physical-device or funded
 end-to-end run.
 
 ## PWA and security
+
+The Arbitrum money screens expose an Aave USDC position at `/grow` and an
+Aave funding choice for payments. Deposit, withdrawal and withdrawal-and-pay
+are selected from closed recipes and independently reviewed against
+`config/money-release.json`, generated from the admitted server configuration.
+All server feature flags remain disabled until public acceptance is complete.
+
+Unresolved operations retain resource IDs in a URL fragment and bounded local
+storage. Recovery reads the owned server reference; it does not replay signing
+or sending. The local `dev:money-harness` uses synthetic services and ephemeral
+P256 assertions. Its screenshots do not prove a public funded operation.
+
+Implementation evidence: [Arbitrum status](../protocol/docs/arbitrum-delivery/STATUS.md).
 
 Installation is optional and prompted only by a user gesture. Release builds
 register the service worker, cache only public assets and a neutral offline

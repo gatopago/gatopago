@@ -57,7 +57,3 @@
 .auth-login-copy .auth-panel--access-options .auth-secondary { margin: 0; }
 .auth-login-copy .auth-access-note { margin: 1rem auto 0; max-width: 24rem; padding-inline: .5rem; font-size: .75rem; line-height: 1.65; text-align: center; color: var(--color-text-muted); }
 .auth-login-copy footer { margin-top: 1rem; font-size: .8rem; }
-
-.auth-steps { display: flex; flex-wrap: wrap; gap: .6rem; padding: 0; margin: 1rem 0; list-style: none; font-size: .8rem; color: var(--color-text-muted); }
-.auth-steps li { padding: .45rem .65rem; border: 1px solid var(--color-border-strong); }
-.auth-steps [aria-current="step"] { background: var(--color-cat-50); color: var(--color-cat-700); font-weight: 750; }

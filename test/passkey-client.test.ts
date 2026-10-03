@@ -11,7 +11,7 @@ const config = buildAuthConfig({ ...environment, status: 'provisioned', firebase
   apiKey: `AIza${'A'.repeat(35)}`, appId: '1:123456789:web:012345abcdef', turnstileSiteKey: `0x${'A'.repeat(22)}`,
 }) as EnabledAuthConfig;
 const scope = { rpId: environment.webauthn_rp_id, origin: config.webOrigin };
-const input = { invite: 'I'.repeat(43), name: 'Daniel', username: 'daniel', turnstile_token: 'synthetic' };
+const input = { invite: 'daniel', name: 'Daniel', username: 'daniel', turnstile_token: 'synthetic' };
 function login() { return { request_id: createResourceId('operation'), expires_at: Math.floor(Date.now() / 1000) + 300,
   scope: { ...scope }, options: { challenge: Buffer.alloc(32, 1).toString('base64url'), rpId: scope.rpId, userVerification: 'required', timeout: 60000 } }; }
 function registration() { return { ...login(), proof_challenge: `0x${'02'.repeat(32)}`, options: {
@@ -40,6 +40,48 @@ describe('Passkey admission HTTP boundary', () => {
       proofChallenge: `0x${'02'.repeat(32)}`, excludeCredentials: [] });
     expect(fetch).toHaveBeenCalledTimes(1);
   });
+  it.each(['login', 'register'] as const)('accepts the observed small server clock lead for %s with a five-minute client deadline', async kind => {
+    // Public metadata observed on 2026-10-02: TTL was 301667 ms at receipt.
+    // Credentials/challenges below remain synthetic; no real assertion is used.
+    const now = 1790968774333;
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      const value = kind === 'login' ? login() : registration();
+      value.expires_at = 1790969076;
+      vi.mocked(fetch).mockResolvedValue(Response.json(value));
+      const client = passkeyClient(config);
+      const prepared = kind === 'login' ? await client.prepareLogin(signal()) : await client.prepareRegistration(input, signal());
+      expect(prepared.validUntilMs).toBe(now + 300_000);
+      expect(fetch).toHaveBeenCalledOnce();
+    } finally { clock.mockRestore(); }
+  });
+  it.each([{ lead: 5000, accepted: true }, { lead: 6000, accepted: false }])('bounds server clock lead to five seconds ($lead ms)', async ({ lead, accepted }) => {
+    const now = 1790968774000;
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      const value = login(); value.expires_at = (now + 300_000 + lead) / 1000;
+      vi.mocked(fetch).mockResolvedValue(Response.json(value));
+      const request = passkeyClient(config).prepareLogin(signal());
+      if (accepted) expect((await request).validUntilMs).toBe(now + 300_000);
+      else await expect(request).rejects.toMatchObject({ code: 'auth/invalid-response' });
+    } finally { clock.mockRestore(); }
+  });
+  it('preserves a shorter server expiry instead of extending it to five minutes', async () => {
+    const value = login(); value.expires_at -= 20;
+    vi.mocked(fetch).mockResolvedValue(Response.json(value));
+    expect((await passkeyClient(config).prepareLogin(signal())).validUntilMs).toBe(value.expires_at * 1000);
+  });
+  it('rejects an expiry that cannot be represented as safe integer milliseconds', async () => {
+    const value = login(); value.expires_at = Number.MAX_SAFE_INTEGER;
+    vi.mocked(fetch).mockResolvedValue(Response.json(value));
+    await expect(passkeyClient(config).prepareLogin(signal())).rejects.toMatchObject({ code: 'auth/invalid-response' });
+  });
+  it.each(['123', 'daniel', 'team1', ' padded ', 'café 🐈', "O'Brien", 'x'.repeat(120)])('sends the operator invitation %s unchanged', async invite => {
+      vi.mocked(fetch).mockResolvedValue(Response.json(registration()));
+      await passkeyClient(config).prepareRegistration({ ...input, invite }, signal());
+      const call = vi.mocked(fetch).mock.calls[0];
+      expect(JSON.parse(String(call[1]?.body))).toMatchObject({ invite });
+    });
   it.each(['rp', 'origin', 'expiry', 'future', 'uv', 'allowlist', 'challenge'])('rejects changed login %s', async variant => {
     const value = login();
     if (variant === 'rp') value.scope.rpId = 'evil.test';
@@ -69,6 +111,17 @@ describe('Passkey admission HTTP boundary', () => {
   it('surfaces username conflicts without silently retrying registration', async () => {
     vi.mocked(fetch).mockResolvedValue(Response.json({ error_code: 'USERNAME_UNAVAILABLE' }, { status: 409 }));
     await expect(passkeyClient(config).prepareRegistration(input, signal())).rejects.toMatchObject({ code: 'auth/username-unavailable' });
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+  it.each([
+    ['HUMAN_VERIFY_FAILED', 'auth/human-verification-failed'],
+    ['ORIGIN_NOT_ALLOWED', 'auth/service-unavailable'],
+    ['CORS_NOT_ALLOWED', 'auth/service-unavailable'],
+    ['CLIENT_IP_UNAVAILABLE', 'auth/service-unavailable'],
+    ['UNKNOWN', 'auth/access-denied'],
+  ])('surfaces a 403 %s without retrying or reusing the verification token', async (error_code, code) => {
+    vi.mocked(fetch).mockResolvedValue(Response.json({ error_code }, { status: 403 }));
+    await expect(passkeyClient(config).prepareRegistration(input, signal())).rejects.toMatchObject({ code });
     expect(fetch).toHaveBeenCalledOnce();
   });
   it('rejects oversized responses and observes cancellation before requesting', async () => {

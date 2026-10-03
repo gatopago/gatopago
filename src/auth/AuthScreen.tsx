@@ -1,5 +1,7 @@
 'use client';
 
+import { NavigationLink } from '../consumer/NavigationLink';
+
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import type { WebAuthConfig, EnabledAuthConfig } from './config';
@@ -17,10 +19,9 @@ export function AuthScreen({ config, view, art, english = false }: {
 }) {
   if (config.mode === 'disabled' && view !== 'login') return <LoginRedirect english={english} />;
   if (config.mode === 'disabled') return <ConsumerFrame english={english} presentation="access"><AuthContent art={art} english={english} login>
-    <h2>{english ? 'V3 sign-in is not enabled yet' : 'El acceso V3 todavía no está habilitado'}</h2>
+    <h2>{english ? 'Sign-in is not available yet' : 'El acceso todavía no está disponible'}</h2>
     <p>{english ? 'This environment has no provisioned identity service. No account or key has been created.' : 'Este ambiente aún no tiene su servicio de identidad configurado. No se creó ninguna cuenta ni llave.'}</p>
     <p>{english ? 'Do not send funds to test this version.' : 'No envíes fondos para probar esta versión.'}</p>
-    <a className="auth-secondary btn btn-ghost btn-block" href={english ? '/en' : '/'}>{english ? 'Back to GatoPago' : 'Volver a GatoPago'}</a>
   </AuthContent></ConsumerFrame>;
   return <EnabledAuthScreen config={config} view={view} art={art} english={english} />;
 }
@@ -47,7 +48,7 @@ function AuthContent({ children, art, english: en, login }: { children: ReactNod
       {art ? <figure className="auth-art" aria-hidden="true"><span className="auth-art__pixels" />{art}</figure> : null}
       <h1>{en ? 'Sign in or create an account' : 'Iniciar sesión o crear cuenta'}</h1>
       <p className="auth-tagline">{en ? <>Your dollars already know <span>how to move.</span></> : <>Tus dólares ya saben <span>moverse.</span></>}</p>
-      <p className="auth-description">{en ? 'Access your account with a passkey. When you sign up, we guide you through creating your wallet.' : 'Accede con una passkey. Al registrarte, te guiamos para crear también tu wallet.'}</p>
+      <p className="auth-description">{en ? 'Sign in to your account or create a new one in a few steps.' : 'Entra a tu cuenta o crea una nueva en unos pasos.'}</p>
     </div>
     <div className="auth-login-copy">{children}</div>
   </div></div>;
@@ -77,7 +78,7 @@ function EnabledAuthScreen({ config, view, art, english: en }: {
     {error ? <div className="auth-error" role="alert"><p>{en ? 'The session could not be confirmed. Reload to check it.' : 'No se pudo confirmar la sesión. Recarga para comprobarla.'}</p>
       <button className="auth-secondary btn btn-ghost btn-block" onClick={() => reloadPage()}>{en ? 'Reload' : 'Recargar'}</button></div> : !runtime ? <p role="status">{en ? 'Loading…' : 'Cargando…'}</p> : null}
     {runtime && user ? <section>
-      {view === 'login' ? <a className="auth-primary btn btn-primary btn-block" href={`/app${suffix}`}>{en ? 'Continue to my account' : 'Continuar a mi cuenta'}</a>
+      {view === 'login' ? <NavigationLink className="auth-primary btn btn-primary btn-block" href={`/app${suffix}`}>{en ? 'Continue to my account' : 'Continuar a mi cuenta'}</NavigationLink>
         : <ConsumerContent key={`${user.uid}:${view}`} view={view} english={en} identity={user} runtime={config.mode === 'firebase' ? runtime : undefined} />}
       {view === 'settings' || view === 'login' ? <button className="auth-secondary btn btn-ghost btn-block" disabled={busy} onClick={() => {
         setBusy(true); void runtime.logout().then(() => router.replace(`/login${suffix}`)).catch(() => setError(true)).finally(() => setBusy(false));
@@ -86,7 +87,5 @@ function EnabledAuthScreen({ config, view, art, english: en }: {
     {/* Firebase can publish the user before registration resolves. Keep the callback mounted until it redirects. */}
     {runtime && view === 'login' ? <div hidden={!!user}><PasskeyAccess runtime={runtime} config={config} english={en}
       onSignedIn={() => router.replace(`/app${suffix}`)} onRegistered={() => router.replace(`/onboarding${suffix}`)} /></div> : null}
-    {view === 'login' ? <p className="auth-access-note">{en ? 'Your passkey verifies your access. Each payment requires its own confirmation.' : 'Tu passkey verifica tu acceso. Cada pago requiere su propia confirmación.'}</p> : null}
-    <footer><a href={en ? '/en' : '/'}>{en ? 'Back to GatoPago' : 'Volver a GatoPago'}</a></footer>
   </AuthContent></ConsumerFrame>;
 }

@@ -1,17 +1,19 @@
+import { defineConfig, globalIgnores } from 'eslint/config';
 import js from '@eslint/js';
-import globals from 'globals';
+import next from '@next/eslint-plugin-next';
 import tseslint from 'typescript-eslint';
 import hooks from 'eslint-plugin-react-hooks';
+import globals from 'globals';
 
-export default tseslint.config(
-  { ignores: ['.next/**', 'node_modules/**', 'output/**', '.playwright-cli/**', 'next-env.d.ts', 'public/**', '!public/', '!public/sw.js'] },
+export default defineConfig([
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  globalIgnores(['.next/**', 'node_modules/**', 'output/**', '.playwright-cli/**', 'next-env.d.ts', 'public/**', '!public/', '!public/sw.js']),
   { files: ['public/sw.js'], languageOptions: { globals: globals.serviceworker } },
   {
     files: ['**/*.{ts,tsx,mjs}'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
-    plugins: { 'react-hooks': hooks },
-    rules: hooks.configs.recommended.rules,
+    plugins: { 'react-hooks': hooks, '@next/next': next },
+    rules: { ...hooks.configs.recommended.rules, ...next.configs['core-web-vitals'].rules },
   },
-);
+]);

@@ -57,18 +57,17 @@ export default function CreationOperationPanel({ runtime, uid, pin, consent, kno
     return () => { window.clearTimeout(timer); document.removeEventListener('visibilitychange', read); };
   }, [flow, state]);
   return <section className="account-initialization" aria-labelledby="creation-operation-heading" aria-busy={busy}>
-    <h2 id="creation-operation-heading">{en ? '2. Create your wallet on the network' : '2. Crea tu wallet en la red'}</h2>
-    <p>{en ? 'Review the network cost before authorizing creation with your passkey. This confirmation does not send a payment.'
-      : 'Revisa el coste de red antes de autorizar la creación con tu passkey. Esta confirmación no envía un pago.'}</p>
+    <h2 id="creation-operation-heading">{en ? '2. Activate your account' : '2. Activa tu cuenta'}</h2>
+    <p>{en ? 'Review the cost before activating your account. Confirm on your device when you are ready.'
+      : 'Revisa el coste antes de activar tu cuenta. Confirma en tu dispositivo cuando estés listo.'}</p>
     <p>{en ? 'Network' : 'Red'}: {unit?.network ?? state.network}.</p>
     {state.error ? <p className="auth-error" role="alert">{message(state.error, en)}</p> : null}
     {!unit ? <p role="alert">{en ? 'This release cannot display and approve fees for this network. Reading remains available.'
       : 'Esta versión no puede mostrar ni aprobar cargos para esta red. Puedes seguir consultando el estado.'}</p> : null}
     {state.phase === 'absent' && unit ? <form onSubmit={(event) => { event.preventDefault(); void flow.prepare(); }}>
-      <p>{en ? 'No creation operation is recorded for this request. Review the network terms before signing.'
-        : 'No hay una operación de creación registrada para esta solicitud. Revisa las condiciones de red antes de firmar.'}</p>
-      <p>{en ? 'GatoPago calculates a maximum from its reviewed network limits. You will see that amount and who pays before signing. Consulting does not authorize a charge.'
-        : 'GatoPago calcula el máximo con sus límites revisados de red. Verás ese importe y quién paga antes de firmar. Consultar no autoriza un cobro.'}</p>
+      <p>{en ? 'Check the activation cost before continuing.' : 'Consulta el coste de activación antes de continuar.'}</p>
+      <p>{en ? 'You will see the maximum amount and who pays before confirming. Checking the cost does not authorize a charge.'
+        : 'Verás el importe máximo y quién paga antes de confirmar. Consultar el coste no autoriza un cobro.'}</p>
       <button type="submit" className="auth-primary btn btn-primary btn-block">{en ? 'Check network fee' : 'Consultar comisión de red'}</button>
     </form> : null}
     {state.phase === 'prepare-retry' && unit ? <>
@@ -78,12 +77,12 @@ export default function CreationOperationPanel({ runtime, uid, pin, consent, kno
     </> : null}
     {state.review ? <details className="initialization-review" open={state.receipt?.state === 'authorized' ? undefined : true}>
       <summary>{state.receipt?.state === 'authorized' ? (en ? 'Recorded operation details' : 'Detalles de la operación registrada')
-        : (en ? 'Operation to authorize' : 'Operación a autorizar')}</summary>
-      <p>{en ? 'Only deploy and complete the initial account configuration. No transfer, token approval or spending backup.'
-        : 'Sólo desplegar y completar la configuración inicial de la cuenta. Sin transferencia, aprobación de tokens ni activación de gastos.'}</p>
+        : (en ? 'Review activation' : 'Revisa la activación')}</summary>
+      <p>{en ? 'This authorizes account activation. It does not send a payment.'
+        : 'Esto autoriza la activación de tu cuenta. No envía un pago.'}</p>
       {unit ? <><p>{en ? 'Maximum network fee' : 'Comisión máxima de red'}: <strong>{formatCreationFee(state.review.maximumCharge, state.network)}</strong>.</p>
-        <p>{en ? 'This is a ceiling, not a measured fee. The exact signed operation must pass simulation before delivery.'
-          : 'Es un límite máximo, no una comisión medida. La operación firmada debe superar la simulación antes del envío.'}</p>
+        <p>{en ? 'The amount shown is a maximum. The final network charge depends on execution.'
+          : 'El importe mostrado es un máximo. El cargo final de red depende de la ejecución.'}</p>
         <p>{state.review.sponsored ? (en ? 'Network fee covered by GatoPago. Your account pays no gas for this operation.' : 'GatoPago cubre la comisión de red. Tu cuenta no paga gas por esta operación.') : (en ? 'The network fee is paid from your account.' : 'La comisión de red se paga desde tu cuenta.')}</p></> : null}
       <p>{en ? 'Signing deadline' : 'Plazo para firmar'}: <time dateTime={new Date(state.review.expiresAt * 1000).toISOString()}>
         {new Date(state.review.expiresAt * 1000).toLocaleString(en ? 'en-US' : 'es-BO')}</time>.</p>
@@ -96,7 +95,7 @@ export default function CreationOperationPanel({ runtime, uid, pin, consent, kno
     {state.phase === 'ready' && unit ? <button type="button" className="auth-primary btn btn-primary btn-block"
       onClick={() => void (state.signed ? flow.retryAuthorization() : flow.confirm())}>{state.signed
         ? (en ? 'Resend the same authorization, without signing again' : 'Reenviar la misma autorización, sin volver a firmar')
-        : (en ? 'Authorize this creation with my key' : 'Autorizar esta creación con mi llave')}</button> : null}
+        : (en ? 'Activate my account' : 'Activar mi cuenta')}</button> : null}
     {state.receipt?.state === 'authorized' ? <CreationProgress lifecycle={state.lifecycle} delivery={state.receipt.delivery_state}
       checkedAt={state.checkedAt} english={en} /> : null}
     {state.receipt?.state === 'authorized' && state.lifecycle?.bootstrap ? <section aria-labelledby="creation-receiving-heading">

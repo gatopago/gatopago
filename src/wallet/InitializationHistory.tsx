@@ -30,13 +30,13 @@ export default function InitializationHistory({ runtime, uid, inventory, english
   if (chosen && state.phase === 'ready') return <>
     <AccountInitialization key={chosen === 'new' ? 'new' : chosen.initialization_id} runtime={runtime} uid={uid}
       inventory={inventory} english={en} pin={pin} onActiveChange={setChildActive} resume={chosen === 'new' ? undefined : chosen} />
-    <button type="button" className="auth-secondary btn btn-ghost btn-block" disabled={childActive} onClick={() => { setSelection(null); setShowHistory(true); void store.refresh(); }}>
-      {en ? 'Review setup requests' : 'Revisar solicitudes de configuración'}</button>
+    <details className="mt-5 text-[12px] text-text-muted"><summary>{en ? 'Previous requests' : 'Solicitudes anteriores'}</summary>
+      <button type="button" className="auth-secondary btn btn-ghost btn-block" disabled={childActive} onClick={() => { setSelection(null); setShowHistory(true); void store.refresh(); }}>
+        {en ? 'Review previous requests' : 'Revisar solicitudes anteriores'}</button></details>
   </>;
   return <section className="account-initialization" aria-labelledby="initialization-history-heading" aria-busy={state.phase === 'loading'}>
-    <h2 id="initialization-history-heading">{en ? 'Account configuration' : 'Configuración de tu cuenta'}</h2>
-    <p>{en ? 'We check your existing requests so you can resume without creating the wallet twice.' : 'Consultamos tus solicitudes para que puedas retomar sin crear dos veces la wallet.'}</p>
-    {state.phase === 'loading' ? <p role="status">{en ? 'Checking existing configuration…' : 'Consultando configuración existente…'}</p> : null}
+    <h2 id="initialization-history-heading" className="sr-only">{en ? 'Account creation' : 'Creación de tu cuenta'}</h2>
+    {state.phase === 'loading' ? <p role="status">{en ? 'Restoring your progress…' : 'Comprobando tu progreso…'}</p> : null}
     {state.phase === 'error' ? <><p role="alert">{en ? 'We could not check your previous requests. This does not mean you need a new account.'
       : 'No pudimos consultar tus solicitudes anteriores. Esto no significa que necesites otra cuenta.'}</p>
       <button type="button" className="auth-secondary btn btn-ghost btn-block" onClick={() => void store.retry()}>{en ? 'Retry history' : 'Reintentar historial'}</button></> : null}
@@ -55,7 +55,7 @@ export default function InitializationHistory({ runtime, uid, inventory, english
         </li>;
       })}</ul> : <p>{en ? 'No requests in this page.' : 'No hay solicitudes en esta página.'}</p>}
       {state.history.next_cursor ? <button type="button" className="auth-secondary btn btn-ghost btn-block" onClick={() => void store.next()}>{en ? 'Older requests' : 'Solicitudes anteriores'}</button> : null}
-      {state.canStart ? <button type="button" className="auth-primary btn btn-primary btn-block" onClick={() => setSelection('new')}>{en ? 'Configure my wallet' : 'Configurar mi wallet'}</button>
+      {state.canStart ? <button type="button" className="auth-primary btn btn-primary btn-block" onClick={() => setSelection('new')}>{en ? 'Continue creating my account' : 'Continuar creando mi cuenta'}</button>
         : <p role="note">{en ? 'Review the existing requests before starting another configuration. This history does not confirm onchain account availability.'
           : 'Revisa las solicitudes existentes antes de iniciar otra configuración. Este historial no confirma la disponibilidad onchain de la cuenta.'}</p>}
       <button type="button" className="auth-secondary btn btn-ghost btn-block" onClick={() => void store.refresh()}>{en ? 'Refresh configuration history' : 'Actualizar historial de configuración'}</button>

@@ -183,6 +183,22 @@ function createBrowserAuth(config: EnabledAuthConfig) {
         },
       };
     },
+    money: async (expectedUid: string) => {
+      const session = captureSession(expectedUid);
+      const [{ moneyClient }, { moneySelectionForRelease }] = await Promise.all([import('../wallet/money'), import('../wallet/money-release')]);
+      session.assertCurrent(); const client = moneyClient(config, session.token);
+      return { assertCurrent: session.assertCurrent, environment: config.deployment,
+        selection: (input: import('../wallet/transfer-preparation').TransferSelection) => { session.assertCurrent(); return moneySelectionForRelease(input, config.deployment); },
+        prepare: async (...args: Parameters<typeof client.prepare>) => { session.assertCurrent(); const result = await client.prepare(...args); session.assertCurrent(); return result; },
+        preparation: async (...args: Parameters<typeof client.preparation>) => { session.assertCurrent(); const result = await client.preparation(...args); session.assertCurrent(); return result; },
+        restorePreparation: async (...args: Parameters<typeof client.restorePreparation>) => { session.assertCurrent(); const result = await client.restorePreparation(...args); session.assertCurrent(); return result; },
+        confirm: async (...args: Parameters<typeof client.confirm>) => { session.assertCurrent(); const result = await client.confirm(...args); session.assertCurrent(); return result; },
+        deliver: async (...args: Parameters<typeof client.deliver>) => { session.assertCurrent(); const result = await client.deliver(...args); session.assertCurrent(); return result; },
+        status: async (...args: Parameters<typeof client.status>) => { session.assertCurrent(); const result = await client.status(...args); session.assertCurrent(); return result; },
+        capabilities: async (...args: Parameters<typeof client.capabilities>) => { session.assertCurrent(); const result = await client.capabilities(...args); session.assertCurrent(); return result; },
+        position: async (...args: Parameters<typeof client.position>) => { session.assertCurrent(); const result = await client.position(...args); session.assertCurrent(); return result; },
+      };
+    },
     balances: (expectedUid: string) => {
       const session = captureSession(expectedUid);
       return {

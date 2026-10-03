@@ -17,7 +17,7 @@ const validName = (value: unknown): value is string => typeof value === 'string'
   && value === value.normalize('NFC').trim() && !/[\p{Cc}\p{Cf}]/u.test(value);
 export function normalizeUsername(value: string): string {
   const username = value.trim().replace(/^@/, '').toLowerCase();
-  if (!/^[a-z][a-z0-9_]{4,29}$/.test(username)) return invalid();
+  if (!/^[a-z][a-z0-9_]{2,29}$/.test(username)) return invalid();
   return username;
 }
 function parseProfile(value: unknown, uid: string): Profile {

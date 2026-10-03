@@ -31,10 +31,15 @@ describe('Next migration inventory', () => {
     expect(localizedPath('/move?flow=receive&lang=es', true)).toBe('/move?flow=receive&lang=en');
     expect(localizedPath('/move?flow=receive&lang=en', false)).toBe('/move?flow=receive');
   });
-  it.each(['/charge', '/swap', '/crosschain', '/earn', '/contacts', '/test-funds', '/pay/[linkId]', '/pay/demo-cafe-norte'])('removes the disconnected page %s rather than presenting an empty product', path => {
+  it.each(['/charge', '/swap', '/crosschain', '/earn', '/contacts', '/test-funds', '/pay/[linkId]'])('removes the disconnected page %s rather than presenting an empty product', path => {
     expect(existsSync(resolve(`src/app/(es)${path}/page.tsx`))).toBe(false);
     expect(consumerRoutes).not.toHaveProperty(path);
     expect(readFileSync('src/app/[...missing]/route.ts', 'utf8')).toContain('status: 404');
+  });
+  it('keeps the marketing receipt separate from consumer payment routes', () => {
+    expect(existsSync(resolve('src/app/(es)/pay/demo-cafe-norte/page.tsx'))).toBe(true);
+    expect(consumerRoutes).not.toHaveProperty('/pay/demo-cafe-norte');
+    expect(parseConsumerQr('/pay/demo-cafe-norte', 'https://gatopago.com')).toBeNull();
   });
   it('does not advertise unavailable payment actions as links in Move', () => {
     const html = renderToStaticMarkup(createElement(MoveMenu, { english: false }));
@@ -70,7 +75,10 @@ describe('Untrusted QR review', () => {
   });
   it('accepts canonical username links without trusting a supplied destination', () => {
     expect(parseConsumerQr('/@Daniel_1?to=evil', origin)).toEqual({ kind: 'link', path: '/@Daniel_1' });
-    for (const path of ['/@a', '/@0daniel', '/@dan-iel']) expect(parseConsumerQr(path, origin)).toBeNull();
+    for (const path of ['/@ana', '/@leo', '/@dani', `/@${'a'.repeat(30)}`]) {
+      expect(parseConsumerQr(`${path}?to=evil`, origin)).toEqual({ kind: 'link', path });
+    }
+    for (const path of ['/@a', '/@ab', `/@${'a'.repeat(31)}`, '/@0daniel', '/@dan-iel']) expect(parseConsumerQr(path, origin)).toBeNull();
   });
   it('rejects duplicated ERC-681 recipients and unsupported functions', () => {
     expect(parseConsumerQr(`ethereum:${address}/transfer?address=${address}&address=${address}`, origin)).toBeNull();

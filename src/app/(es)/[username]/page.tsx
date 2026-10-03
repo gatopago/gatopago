@@ -6,6 +6,6 @@ export const metadata: Metadata = { title: 'Perfil público — GatoPago', robot
 export const dynamic = 'force-dynamic';
 export default async function Page({ params, searchParams }: { params: Promise<{ username: string }>; searchParams: Promise<{ lang?: string }> }) {
   const [{ username }, { lang }] = await Promise.all([params, searchParams]);
-  if (!/^@[a-zA-Z][a-zA-Z0-9_]{4,29}$/.test(username)) notFound();
+  if (!/^@[a-zA-Z][a-zA-Z0-9_]{2,29}$/.test(username)) notFound();
   return <PublicUsername key={username} username={username.slice(1).toLowerCase()} environment={environment} english={lang === 'en'} />;
 }

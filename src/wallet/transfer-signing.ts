@@ -2,14 +2,16 @@ import { parseCredentialDetail, type CredentialDetail } from '@gatopago/shared/v
 import { parseInitializationProof } from '@gatopago/shared/v3/initialization-wire';
 import { Role, SignerKind } from '@gatopago/shared/v3/security-policy';
 import { verifyTransferProof, verifyTransferQuorum } from '@gatopago/shared/v3/transfer-authorization';
-import type { parseTransferPreparation } from './transfer-preparation';
+import type { SecurityPolicy } from '@gatopago/shared/v3/security-policy';
+import type { WebAuthnScope } from '@gatopago/shared/v3/webauthn';
 import type { TransferProofs } from './transfer-command';
 import type { requestPasskeyProof } from './passkeys';
 
-type Preparation = ReturnType<typeof parseTransferPreparation>;
+type Preparation = { readonly candidate: { readonly digest: `0x${string}` }; readonly expires_at: number;
+  readonly review: { readonly policy: SecurityPolicy; readonly scope: WebAuthnScope; readonly prepared_at: number } };
 /** Instance-local proof collection. A saved credential is only a candidate for
  * a ceremony, never evidence that the device can use it. No storage or network. */
-export class TransferSigning {
+export class SpendSigning {
   private readonly preparation: Preparation;
   private readonly credentials: CredentialDetail[];
   private readonly proofs = new Map<number,TransferProofs[number]>();
@@ -71,3 +73,4 @@ export class TransferSigning {
     this.live(); return proofs;
   }
 }
+export { SpendSigning as TransferSigning };

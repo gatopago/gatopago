@@ -22,7 +22,7 @@ export function TransferForm(props:Props) {
   const hash = useSyncExternalStore(subscribeTransferBookmark, transferBookmarkSnapshot, transferBookmarkServerSnapshot);
   const bookmark = useMemo(() => { try { return parseTransferBookmark(hash); } catch { return 'invalid' as const; } }, [hash]);
   const username = params?.get('username'), chain = params?.get('chain');
-  const handle = username && /^[a-z][a-z0-9_]{4,29}$/.test(username) && (!chain || `eip155:${chain}` === props.selected.network_id) ? `@${username}` : '';
+  const handle = username && /^[a-z][a-z0-9_]{2,29}$/.test(username) && (!chain || `eip155:${chain}` === props.selected.network_id) ? `@${username}` : '';
   const recipient = reviewedRecipient(params, props.selected.network_id) || handle;
   return <OwnedTransferForm key={JSON.stringify([props.uid,props.environment,props.selected,props.balance,recipient])} {...props} recipient={recipient} bookmark={bookmark}/>;
 }

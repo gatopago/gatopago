@@ -1,5 +1,7 @@
 'use client';
 
+import { NavigationLink } from './NavigationLink';
+
 import { useEffect, useRef, useState } from 'react';
 import type { Environment } from '@gatopago/environment';
 import type { BrowserAuth } from '../auth/browser';
@@ -46,9 +48,9 @@ function RecipientLookup({ username, networks, lookup, english: en }: { username
         if (!navigator.clipboard?.writeText) { setError(en ? 'Select the address to copy it.' : 'Selecciona la dirección para copiarla.'); return; }
         void navigator.clipboard.writeText(recipient.address).then(() => setCopied(true)).catch(() => setError(en ? 'Copy failed. Select the address manually.' : 'No se pudo copiar. Selecciona la dirección manualmente.'));
       }}>{copied ? en ? 'Copied' : 'Copiado' : en ? 'Copy address' : 'Copiar dirección'}</button>
-      <a className="auth-primary btn btn-primary btn-block" href={localizedPath(`/send?username=${recipient.username}&chain=${recipient.network_id.split(':')[1]}`, en)} onClick={event => {
+      <NavigationLink className="auth-primary btn btn-primary btn-block" href={localizedPath(`/send?username=${recipient.username}&chain=${recipient.network_id.split(':')[1]}`, en)} onClick={event => {
         if (Date.now() >= recipient.expires_at * 1000) { event.preventDefault(); setExpired(true); }
-      }}>{en ? 'Review a transfer in GatoPago' : 'Revisar un envío en GatoPago'}</a>
+      }}>{en ? 'Review a transfer in GatoPago' : 'Revisar un envío en GatoPago'}</NavigationLink>
       <p>{en ? 'Check the network and address before sending. Opening this page does not make a payment.' : 'Comprueba la red y dirección antes de enviar. Abrir esta página no realiza un pago.'}</p>
     </> : null}
     {recipient && expired ? <p role="status">{en ? 'Verification expired. Verify again before using the receiving address.' : 'La verificación venció. Verifica de nuevo antes de usar la dirección receptora.'}</p> : null}
@@ -60,7 +62,7 @@ export function PublicUsername({ username, environment, english: en }: { usernam
     <BackHeader title={en ? 'Public receiving profile' : 'Perfil público para recibir'} english={en} to={en ? '/en' : '/'} />
     <RecipientLookup key={username} username={username} networks={environment.status === 'provisioned' ? environment.wallet_enabled : []}
       lookup={(name, network, signal) => resolveUsername(environment, name, network, signal)} english={en} />
-    <a className="auth-secondary btn btn-ghost btn-block" href={localizedPath('/login', en)}>{en ? 'Sign in to my account' : 'Entrar a mi cuenta'}</a>
+    <NavigationLink className="auth-secondary btn btn-ghost btn-block" href={localizedPath('/login', en)}>{en ? 'Sign in to my account' : 'Entrar a mi cuenta'}</NavigationLink>
   </div></ConsumerFrame>;
 }
 
@@ -82,10 +84,10 @@ export function ReceiveProfile({ runtime, uid, english: en }: { runtime: Browser
   if (!profile) return <p role="status">{en ? 'Loading profile…' : 'Cargando perfil…'}</p>;
   if (!profile.username_published_at || !profile.username) return <Panel>
     <p>{en ? 'Activate your wallet and publish your username to receive.' : 'Activa tu wallet y publica tu username para recibir.'}</p>
-    <a className="auth-primary btn btn-primary btn-block" href={localizedPath('/profile', en)}>{en ? 'Set up receiving' : 'Configurar recepción'}</a>
+    <NavigationLink className="auth-primary btn btn-primary btn-block" href={localizedPath('/profile', en)}>{en ? 'Set up receiving' : 'Configurar recepción'}</NavigationLink>
   </Panel>;
   return <>
-    <a className="auth-secondary btn btn-ghost btn-block" href={localizedPath(`/@${profile.username}`, en)}>{en ? 'My public receiving page' : 'Mi página pública para recibir'}</a>
+    <NavigationLink className="auth-secondary btn btn-ghost btn-block" href={localizedPath(`/@${profile.username}`, en)}>{en ? 'My public receiving page' : 'Mi página pública para recibir'}</NavigationLink>
     <RecipientLookup key={profile.username} username={profile.username} networks={runtime.recipientNetworks()}
       lookup={(name, network, signal) => runtime.recipient(uid, name, network, signal)} english={en} />
   </>;

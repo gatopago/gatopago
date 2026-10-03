@@ -46,7 +46,7 @@ async function body(response: Response, signal: AbortSignal, limit: number): Pro
  * getToken is supplied by a captured Firebase session, never from local storage.
  */
 export function walletTransport(config: EnabledAuthConfig, getToken: () => Promise<string>, inputSignal: AbortSignal,
-  profile: 'default' | 'chain-read' | 'transfer-preparation' | 'transfer-command' = 'default') {
+  profile: 'default' | 'chain-read' | 'transfer-preparation' | 'transfer-command' | 'money' = 'default') {
   if (config.mode !== 'firebase') throw new WalletCoreError('wallet/unavailable');
   const api = new URL(config.apiOrigin ?? 'https://invalid.test');
   if (api.origin !== config.deployment.api_origin || api.pathname !== '/'
@@ -54,9 +54,10 @@ export function walletTransport(config: EnabledAuthConfig, getToken: () => Promi
   // Fixed local profiles, never limits chosen by a remote response or user input.
   const transfer = profile === 'transfer-preparation';
   const signal = AbortSignal.any([inputSignal, AbortSignal.timeout(profile !== 'default' ? 50_000 : 15_000)]);
-  async function request(path: string, method: 'GET' | 'POST', payload: object = {}, account?: AccountReleaseContext | 'identity') {
+  async function request(path: string, method: 'GET' | 'POST', payload: object = {}, account?: AccountReleaseContext | 'identity', idempotencyKey?: string) {
     // Only resource paths authored by our resource clients; never a server-provided URL.
     if (!path.startsWith('/') || path.startsWith('//') || /[\\#\r\n]/.test(path)) throw new WalletCoreError('wallet/unavailable');
+    if (idempotencyKey !== undefined && (method !== 'POST' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$(?![\s\S])/.test(idempotencyKey))) throw new WalletCoreError('wallet/unavailable');
     const url = new URL(`${api.origin}/app/v1${path}`);
     if (url.origin !== api.origin || !url.pathname.startsWith('/app/v1/')) throw new WalletCoreError('wallet/unavailable');
     const serialized = method === 'POST' ? JSON.stringify(payload) : undefined;
@@ -66,6 +67,7 @@ export function walletTransport(config: EnabledAuthConfig, getToken: () => Promi
     const response = await waitFor(fetch(url.href, {
       method, credentials: 'omit', cache: 'no-store', redirect: 'error', signal,
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json',
+        ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
         ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
         ...(method === 'POST' || account ? clientMutationHeaders(config.environment, account === 'identity' ? undefined : account) : {}) },
       ...(method === 'POST' ? { body: serialized } : {}),
@@ -74,7 +76,7 @@ export function walletTransport(config: EnabledAuthConfig, getToken: () => Promi
     if (response.status === 409 && response.headers.get(CLIENT_STATUS_HEADER) === 'update-required') {
       void response.body?.cancel().catch(() => undefined); throw new WalletCoreError('client/update-required');
     }
-    return { status: response.status, value: await body(response, signal, transfer ? 1_000_000 : 32_768) };
+    return { status: response.status, value: await body(response, signal, transfer ? 1_000_000 : profile === 'money' ? 350_000 : 32_768) };
   }
   return { request };
 }

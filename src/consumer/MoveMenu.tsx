@@ -2,6 +2,7 @@
 
 import { MeliSprite } from '../marketing/MeliSprite';
 import { ActionCard } from './Primitives';
+import { ReceiveIcon, SendIcon, GrowIcon } from './Icons';
 
 /** Daily actions that have a connected account flow. */
 export function MoveMenu({ english: en }: { english: boolean }) {
@@ -15,8 +16,9 @@ export function MoveMenu({ english: en }: { english: boolean }) {
       <MeliSprite variant="body-courier" className="w-24 shrink-0" />
     </header>
     <div className="mt-5 flex flex-col gap-2.5">
-      <ActionCard href="/receive" english={en} title={en ? 'Receive money' : 'Recibir dinero'} description={en ? 'View your verified receiving options.' : 'Consulta tus opciones verificadas para recibir.'} />
-      <ActionCard href="/send" english={en} title={en ? 'Send or withdraw' : 'Enviar o retirar'} description={en ? 'Review before authorizing with your key.' : 'Revisa antes de autorizar con tu llave.'} />
+      <ActionCard href="/receive" english={en} icon={<ReceiveIcon />} title={en ? 'Receive money' : 'Recibir dinero'} description={en ? 'Your address and QR, ready to share.' : 'Tu dirección y QR para compartir.'} />
+      <ActionCard href="/send" english={en} icon={<SendIcon />} title={en ? 'Send or withdraw' : 'Enviar o retirar'} description={en ? 'Review the amount and destination before confirming.' : 'Revisa el monto y destino antes de confirmar.'} />
+      <ActionCard href="/grow" english={en} icon={<GrowIcon />} title={en ? 'Grow' : 'Crecer'} description={en ? 'Manage your USDC position in Aave.' : 'Gestiona tu posición USDC en Aave.'} />
     </div>
   </>;
 }

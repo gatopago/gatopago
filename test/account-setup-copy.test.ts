@@ -9,10 +9,10 @@ describe('account setup explanations match the Consumer creation policy', () => 
     expect(policy.mode).toBe('active'); expect(policy.signers).toHaveLength(1);
     expect(policy.spendThreshold).toBe(1);
     const source = readFileSync(new URL('../src/wallet/AccountInitialization.tsx', import.meta.url), 'utf8');
-    expect(source).toContain('You do not need a second passkey');
-    expect(source).toContain('No necesitas una segunda passkey');
-    expect(source).toContain('Adding a backup is optional');
-    expect(source).toContain('Añadir un respaldo es opcional');
+    expect(source).toContain('One access key is enough');
+    expect(source).toContain('Una sola llave de acceso basta');
+    expect(source).toContain('An additional access key is optional');
+    expect(source).toContain('Una llave de acceso adicional es opcional');
     expect(source).toContain('GatoPago cannot restore access');
     expect(source).toContain('GatoPago no puede restablecer el acceso');
     expect(source).not.toMatch(/independent-factor backup|activación separada con factor independiente|Account V3 in initial mode/);

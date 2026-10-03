@@ -17,6 +17,10 @@ export class AccessError extends Error {
   constructor(readonly code: string) { super(code); this.name = 'AccessError'; }
 }
 const invalid = (): never => { throw new AccessError('auth/invalid-response'); };
+// Admission challenges are issued for 300 seconds by WalletCore. Tolerate a
+// small server clock lead, then cap the local deadline to the same lifetime.
+const CHALLENGE_LIFETIME_MS = 300_000;
+const CHALLENGE_CLOCK_SKEW_MS = 5_000;
 function bytes32(input: unknown): Hex {
   if (typeof input !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(input)) return invalid();
   const raw = atob(input.replaceAll('-', '+').replaceAll('_', '/'));
@@ -28,10 +32,12 @@ function challenge(value: unknown, config: EnabledAuthConfig): LoginChallenge {
   const expected = config.deployment;
   if (value.scope.origin !== config.webOrigin || value.scope.origin !== expected.web_origin || value.scope.rpId !== expected.webauthn_rp_id
       || typeof value.expires_at !== 'number' || !Number.isSafeInteger(value.expires_at)
-      || value.expires_at * 1000 > Date.now() + 301_000) return invalid();
-  if (value.expires_at * 1000 <= Date.now()) throw new AccessError('auth/expired');
+      || !Number.isSafeInteger(value.expires_at * 1000)) return invalid();
+  const now = Date.now(), expiresAt = value.expires_at * 1000;
+  if (expiresAt > now + CHALLENGE_LIFETIME_MS + CHALLENGE_CLOCK_SKEW_MS) return invalid();
+  if (expiresAt <= now) throw new AccessError('auth/expired');
   return Object.freeze({ id: parseResourceId('operation', value.request_id), scope: Object.freeze({ origin: value.scope.origin, rpId: value.scope.rpId }),
-    challenge: bytes32(value.options.challenge), validUntilMs: value.expires_at * 1000 });
+    challenge: bytes32(value.options.challenge), validUntilMs: Math.min(expiresAt, now + CHALLENGE_LIFETIME_MS) });
 }
 
 /** Public admission endpoints: no existing bearer, cookies, redirects or automatic retries. */
@@ -59,6 +65,13 @@ export function passkeyClient(config: EnabledAuthConfig) {
         throw new AccessError(`auth/${String(code).toLowerCase().replaceAll('_', '-')}`);
       }
       if (response.status === 401) throw new AccessError('auth/unauthenticated');
+      if (response.status === 403) {
+        if (code === 'HUMAN_VERIFY_FAILED') throw new AccessError('auth/human-verification-failed');
+        if (['ORIGIN_NOT_ALLOWED', 'CORS_NOT_ALLOWED', 'CLIENT_IP_UNAVAILABLE'].includes(String(code))) {
+          throw new AccessError('auth/service-unavailable');
+        }
+        throw new AccessError('auth/access-denied');
+      }
       throw new AccessError('auth/unavailable');
     }
     return value;

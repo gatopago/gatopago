@@ -17,6 +17,7 @@ import { TransferReceipt } from './TransferReceipt';
 import { parseRecipient, type Recipient } from './profile';
 import type { parseTransferStatus } from './transfers';
 import { saveTransferBookmark, clearTransferBookmark } from './transfer-bookmark';
+import { NavigationLink } from '../consumer/NavigationLink';
 
 type Props = {
   runtime: Pick<BrowserAuth, 'transferCommands' | 'transfers' | 'subscribe'>; uid: string; selected: TransferSelection; request: TransferRequest; review: Review;
@@ -108,7 +109,7 @@ function ReviewedTransfer({ runtime, uid, selected, request, review, environment
       {choice.kind === SignerKind.WEBAUTHN ? choice.credential_refs.length ? choice.credential_refs.map(ref =>
         <button key={ref} type="button" className="auth-secondary btn btn-ghost btn-block" disabled={!editable || signed.includes(choice.index)} onClick={() => run(() => bound.signing.passkey(choice.index, ref))}>
           {en ? 'Sign with passkey' : 'Firmar con passkey'} · {ref.slice(-8)}</button>)
-        : <p>{en ? 'No registered credential matches this key.' : 'No hay una credencial registrada que corresponda a esta llave.'} <a href="/settings/security">{en ? 'Open security' : 'Ir a Seguridad'}</a></p>
+        : <p>{en ? 'No registered credential matches this key.' : 'No hay una credencial registrada que corresponda a esta llave.'} <NavigationLink href="/settings/security">{en ? 'Open security' : 'Ir a Seguridad'}</NavigationLink></p>
         : choice.kind === SignerKind.ECDSA ? <details><summary>{en ? 'External signature' : 'Firma externa'}</summary>
           <p style={{ overflowWrap: 'anywhere' }}>{choice.key}</p>
           <label>{en ? 'Signature of this exact digest (not personal_sign)' : 'Firma de este digest exacto (no personal_sign)'}

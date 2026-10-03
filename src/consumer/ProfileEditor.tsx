@@ -1,5 +1,7 @@
 'use client';
 
+import { NavigationLink } from './NavigationLink';
+
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserAuth } from '../auth/browser';
 import type { WalletPage } from '../wallet/core';
@@ -73,7 +75,7 @@ export function ProfileEditor({ runtime, uid, english: en }: { runtime: BrowserA
     </form></Panel>
     <Panel><h2 className="font-display text-lg">{en ? 'Receive by username' : 'Recibir por username'}</h2>
       {published ? <><p className="my-4">@{profile.username}</p>
-        <a className="auth-primary btn btn-primary btn-block" href={localizedPath(`/@${profile.username}`, en)}>{en ? 'Open my public receiving page' : 'Abrir mi página pública para recibir'}</a>
+        <NavigationLink className="auth-primary btn btn-primary btn-block" href={localizedPath(`/@${profile.username}`, en)}>{en ? 'Open my public receiving page' : 'Abrir mi página pública para recibir'}</NavigationLink>
         <p>{en ? 'Your username and receiving wallet remain fixed. Your display name can change.' : 'Tu username y wallet receptora quedan fijos. Puedes cambiar el nombre visible.'}</p>
       </> : <form onSubmit={event => { event.preventDefault(); run(async (client, signal) => {
         const value = await client.publish(username, wallet, account, signal); if (!signal.aborted) { apply(value); setSaved(true); }
@@ -81,7 +83,7 @@ export function ProfileEditor({ runtime, uid, english: en }: { runtime: BrowserA
         <p className="my-4">{en ? 'Choose your receiving wallet. We will verify that it is active before publishing your username.' : 'Elige tu wallet receptora. Verificaremos que esté activa antes de publicar tu username.'}</p>
         {profile.username_reserved_until ? <p>{en ? 'Your private reservation expires at ' : 'Tu reserva privada vence el '}{new Date(profile.username_reserved_until * 1000).toLocaleString(en ? 'en' : 'es')}.</p> : null}
         <Field label="Username">{id => <input id={id} value={username} autoComplete="username" autoCapitalize="none" spellCheck={false} required
-          pattern="[a-z][a-z0-9_]{4,29}" maxLength={30} disabled={busy} onChange={event => setUsername(event.target.value.toLowerCase())} />}</Field>
+          pattern="[a-z][a-z0-9_]{2,29}" minLength={3} maxLength={30} disabled={busy} onChange={event => setUsername(event.target.value.toLowerCase())} />}</Field>
         <Field label={en ? 'Receiving wallet' : 'Wallet receptora'}>{id => <select id={id} value={wallet} required disabled={busy} onChange={event => {
           if (pending.current) return;
           const selected = event.target.value; setWallet(selected); setAccount(''); setAccounts({ data: [], next_cursor: null });
@@ -102,7 +104,7 @@ export function ProfileEditor({ runtime, uid, english: en }: { runtime: BrowserA
         })}>{en ? 'More networks' : 'Más redes'}</button> : null}
         <p>{en ? 'Once published, the username and receiving wallet cannot be changed in this version.' : 'Una vez publicados, el username y la wallet receptora no se pueden cambiar en esta versión.'}</p>
         <button className="auth-primary btn btn-primary btn-block" type="submit" disabled={busy || !wallet || !account}>{en ? 'Verify and publish username' : 'Verificar y publicar username'}</button>
-        <a className="auth-secondary btn btn-ghost btn-block" href={localizedPath('/onboarding', en)}>{en ? 'Continue wallet setup' : 'Continuar creación de wallet'}</a>
+        <NavigationLink className="auth-secondary btn btn-ghost btn-block" href={localizedPath('/onboarding', en)}>{en ? 'Continue wallet setup' : 'Continuar creación de wallet'}</NavigationLink>
       </form>}
       <button type="button" className="auth-secondary btn btn-ghost btn-block" disabled={busy} onClick={() => run(async (client, signal) => {
         const value = await client.read(signal); if (!signal.aborted) apply(value);

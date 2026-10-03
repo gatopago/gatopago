@@ -1,5 +1,25 @@
 /* Migrated from client/src/index.css; selectors are isolated from marketing. */
 @reference "../app/base.css";
+.consumer-ui .money-panel { display: grid; gap: 16px; min-width: 0; }
+.consumer-ui .money-panel h3 { font-size: 24px; line-height: 1.2; }
+.consumer-ui .money-panel p { font-size: 14px; line-height: 1.55; }
+.consumer-ui .money-panel dl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 16px; margin: 0; }
+.consumer-ui .money-panel dt { color: var(--color-text-muted); font-size: 13px; }
+.consumer-ui .money-panel dd { margin: 0; text-align: right; overflow-wrap: anywhere; font-weight: 650; }
+.consumer-ui .money-panel ol { display: grid; gap: 8px; padding-left: 22px; margin: 0; list-style: decimal; font-size: 14px; }
+.consumer-ui .money-panel label { display: grid; gap: 8px; font-size: 14px; font-weight: 650; }
+.consumer-ui .money-panel input, .consumer-ui .money-panel select { width: 100%; min-width: 0; min-height: 48px; padding: 10px 12px; border: 2px solid var(--color-text); border-radius: 8px; background: var(--color-surface); color: var(--color-text); }
+.consumer-ui .money-panel .btn { margin: 0; white-space: normal; height: auto; line-height: 1.35; }
+.consumer-ui .money-panel details { min-width: 0; padding: 12px; border: 1px solid var(--color-text-muted); border-radius: 8px; font-size: 13px; }
+.consumer-ui .money-panel summary { min-height: 24px; cursor: pointer; }
+.consumer-ui .money-panel details[open] p { margin-top: 12px; }
+.consumer-ui .money-panel [role="alert"] { padding: 12px; border-left: 3px solid var(--color-cat-500); }
+.consumer-ui .money-receipt { padding-top: 16px; border-top: 1px solid var(--color-text-muted); }
+.consumer-ui .money-source { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-bottom: 24px; padding: 12px 0; border: 0; }
+.consumer-ui .money-source legend { font-size: 14px; font-weight: 650; }
+.consumer-ui .money-source label { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.consumer-ui .money-source input { width: 20px; height: 20px; accent-color: var(--color-cat-500); }
+
 .consumer-ui {
   color-scheme: light;
   --recursive-linear: "MONO" 0, "CASL" 0, "slnt" 0, "CRSV" .5;
@@ -371,6 +391,38 @@
 .consumer-ui .meli-balance-card-app select.text-text { color: var(--color-text); }
 .consumer-ui .meli-balance-card-app .text-cat-300 { color: var(--color-cat-500); }
 
+.consumer-ui .meli-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.consumer-ui .meli-quick-action {
+  display: flex;
+  min-width: 0;
+  min-height: 78px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 10px;
+  font-weight: 740;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.consumer-ui .meli-quick-action > span:first-child {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  background: var(--color-cat-500);
+  color: var(--color-on-cat);
+}
+
 .consumer-ui .meli-paper-card {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
@@ -468,7 +520,8 @@
 
 @media (hover: hover) and (pointer: fine) {
 
-  .consumer-ui .meli-square-action:hover {
+  .consumer-ui .meli-square-action:hover,
+  .consumer-ui .meli-quick-action:hover {
     border-color: var(--color-text);
     background: var(--color-cat-50);
     box-shadow: 4px 4px 0 var(--color-cat-700);

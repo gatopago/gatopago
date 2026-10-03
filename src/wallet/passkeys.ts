@@ -2,6 +2,7 @@ import {
   assertWebAuthnChallenge, assertWebAuthnKey, assertWebAuthnScope, encodeWebAuthnAssertion, webAuthnKeyFromSpki, type WebAuthnScope,
 } from '@gatopago/shared/v3/webauthn';
 import { holdPageReload } from '../pwa/reload-guard';
+import type { RegistrationChallenge } from '../auth/passkey-client';
 type Hex = `0x${string}`;
 
 export class PasskeyRequestError extends Error {
@@ -59,11 +60,11 @@ export async function requestPasskeyProof(input: AssertionInput) {
   return (await requestAssertion(input)).proof;
 }
 
-async function requestAssertion(input: AssertionInput) {
+async function requestAssertion(input: AssertionInput, registrationContinuation = false) {
   if (typeof window === 'undefined' || !window.isSecureContext || !navigator.credentials?.get) return fail('unsupported');
   assertWebAuthnKey(input.scope, input.key); assertWebAuthnChallenge(input.challenge);
   if (window.location.origin !== input.scope.origin || window.top !== window ||
-      navigator.userActivation?.isActive !== true) return fail('context');
+      (!registrationContinuation && navigator.userActivation?.isActive !== true)) return fail('context');
   const id = credentialIdBytes(input.credentialId);
   if (!Number.isSafeInteger(input.validUntilMs) || input.validUntilMs <= Date.now()) return fail('expired');
   const signal = input.signal;
@@ -110,20 +111,24 @@ async function requestAssertion(input: AssertionInput) {
   }
 }
 
-/** Explicit create gesture, separate from the subsequent proof gesture. The
+/** Explicit create gesture. The
  * Worker re-derives the key from attestation; this local SPKI is only used to
  * check the following signature before sending it. Nothing is persisted here.
  */
-export async function requestPasskeyRegistration(input: {
+type RegistrationInput = {
   scope: WebAuthnScope; challenge: Hex; userHandle: string; userName: string; displayName?: string;
   excludeCredentials: readonly string[]; validUntilMs: number; signal?: AbortSignal;
   preference?: 'default' | 'security-key';
-}) {
+};
+export async function requestPasskeyRegistration(input: RegistrationInput | (() => Promise<RegistrationInput>)) {
   if (typeof window === 'undefined' || !window.isSecureContext || !navigator.credentials?.create) return fail('unsupported');
+  // Capture the initiating click before obtaining the server challenge.
+  if (window.top !== window || navigator.userActivation?.isActive !== true) return fail('context');
+  if (typeof input === 'function') input = await input();
   assertWebAuthnScope(input.scope); assertWebAuthnChallenge(input.challenge);
-  if (window.location.origin !== input.scope.origin || window.top !== window || navigator.userActivation?.isActive !== true) return fail('context');
+  if (window.location.origin !== input.scope.origin || window.top !== window) return fail('context');
   const userId = credentialIdBytes(input.userHandle);
-  if (userId.length !== 32 || !(/^(?:GatoPago [0-9a-f]{8}|[a-z][a-z0-9_]{4,29})$/).test(input.userName)
+  if (userId.length !== 32 || !(/^(?:GatoPago [0-9a-f]{8}|[a-z][a-z0-9_]{2,29})$/).test(input.userName)
       || (input.displayName !== undefined && (!input.displayName.trim() || input.displayName.length > 80 || /[\p{Cc}\p{Cf}]/u.test(input.displayName))) ||
       !Array.isArray(input.excludeCredentials) || input.excludeCredentials.length > 16 ||
       new Set(input.excludeCredentials).size !== input.excludeCredentials.length ||
@@ -183,10 +188,13 @@ export async function requestPasskeyRegistration(input: {
 
 /** Discoverable login only. Wallet Core verifies the returned key and signature;
  * this assertion never substitutes for an onchain operation's authorization. */
-export async function requestPasskeyLogin(input: { scope: WebAuthnScope; challenge: Hex; validUntilMs: number; signal?: AbortSignal }) {
+type LoginInput = { scope: WebAuthnScope; challenge: Hex; validUntilMs: number; signal?: AbortSignal };
+export async function requestPasskeyLogin(input: LoginInput | (() => Promise<LoginInput>)) {
   if (typeof window === 'undefined' || !window.isSecureContext || !navigator.credentials?.get) return fail('unsupported');
+  if (window.top !== window || navigator.userActivation?.isActive !== true) return fail('context');
+  if (typeof input === 'function') input = await input();
   assertWebAuthnScope(input.scope); assertWebAuthnChallenge(input.challenge);
-  if (window.location.origin !== input.scope.origin || window.top !== window || navigator.userActivation?.isActive !== true) return fail('context');
+  if (window.location.origin !== input.scope.origin || window.top !== window) return fail('context');
   if (!Number.isSafeInteger(input.validUntilMs) || input.validUntilMs <= Date.now()) return fail('expired');
   if (input.signal?.aborted) return fail('cancelled');
   if (busy) return fail('busy');
@@ -224,4 +232,19 @@ export async function requestPasskeyLogin(input: { scope: WebAuthnScope; challen
   } finally {
     dispose(); busy = false; release();
   }
+}
+
+/** One Create account click starts both registration ceremonies. The second
+ * assertion proves the newly created credential, never a wallet/payment consent. */
+export async function requestAccountRegistration(prepare: () => Promise<RegistrationChallenge>,
+  onCreated: (prepared: RegistrationChallenge, credential: Awaited<ReturnType<typeof requestPasskeyRegistration>>) => void,
+  signal: AbortSignal) {
+  let prepared!: RegistrationChallenge;
+  const credential = await requestPasskeyRegistration(async () => {
+    prepared = await prepare(); return { ...prepared, signal };
+  });
+  onCreated(prepared, credential);
+  const { proof } = await requestAssertion({ ...prepared, challenge: prepared.proofChallenge,
+    key: credential.key, credentialId: credential.registration.credential_id, signal }, true);
+  return { id: prepared.id, submission: { ...credential.registration, proof } };
 }

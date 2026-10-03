@@ -19,6 +19,13 @@ beforeEach(() => { vi.spyOn(Date, 'now').mockReturnValue(now * 1000); vi.stubGlo
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('Private profile and public username clients', () => {
+  it.each(['ana', 'leo', 'dani', 'a'.repeat(30)])('accepts and resolves the supported username %s', async username => {
+    expect(normalizeUsername(`@${username.toUpperCase()}`)).toBe(username);
+    const value = { ...recipient(), username };
+    vi.mocked(fetch).mockResolvedValue(Response.json(value));
+    expect(await resolveUsername(config.deployment, username, 'eip155:421614', signal())).toEqual(value);
+    expect(parseRecipient(value, username, 'eip155:421614', now)).toEqual(value);
+  });
   it('reads only the expected user and saves a display name without Firebase profile fields', async () => {
     vi.mocked(fetch).mockImplementation(async () => Response.json(profile()));
     const client = profileClient(config, token, uid);
@@ -65,7 +72,7 @@ describe('Private profile and public username clients', () => {
     if (variant === 'extra') Object.assign(value, { destination_url: 'https://evil.test' });
     expect(() => parseRecipient(value, 'daniel', 'eip155:421614', now)).toThrow();
   });
-  it.each(['a', 'admin/name', 'a-bcd', '@@daniel', '<script>', 'daniel?network_id=1'])('rejects invalid username %s before requests', async value => {
+  it.each(['a', 'ab', 'a'.repeat(31), 'admin/name', 'a-bcd', '@@daniel', '<script>', 'daniel?network_id=1'])('rejects invalid username %s before requests', async value => {
     expect(() => normalizeUsername(value)).toThrow(); await expect(resolveUsername(config.deployment, value, 'eip155:421614', signal())).rejects.toThrow();
     expect(fetch).not.toHaveBeenCalled();
   });
