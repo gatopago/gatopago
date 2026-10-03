@@ -2,7 +2,6 @@
 // real authenticator, deployed account, RPC, relayer or financial transaction.
 import { build } from 'esbuild';
 import { buildBrowser, styles, webRoot as web } from './harness.mjs';
-import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createServer } from 'node:http';

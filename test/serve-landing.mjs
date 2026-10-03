@@ -10,11 +10,7 @@ const fontFiles = [...new Set([...fonts.matchAll(/url\(\s*['"]?(\.\/files\/[^'"\
 let fontCss = fonts;
 for (const path of fontFiles) fontCss = fontCss.replaceAll(path, `data:font/woff2;base64,${(await readFile(resolve(fontDirectory, path))).toString('base64')}`);
 const css = await styles(['src/app/base.css', 'src/marketing/landing.css']);
-const bundle = await buildBrowser({ loader: { '.webp': 'dataurl' }, plugins: [{ name: 'standalone-image', setup(builder) {
-    builder.onResolve({ filter: /^next\/image$/ }, () => ({ path: 'image', namespace: 'standalone' }));
-    builder.onLoad({ filter: /^image$/, namespace: 'standalone' }, () => ({ loader: 'tsx', resolveDir: web,
-      contents: 'export default function Image({src, unoptimized, ...props}) { return <img src={typeof src === "string" ? src : src.src} {...props} />; }' }));
-  } }], stdin: { contents: `
+const bundle = await buildBrowser({ stdin: { contents: `
     import { StrictMode } from 'react';
     import { createRoot } from 'react-dom/client';
     import { Landing } from './src/marketing/Landing';

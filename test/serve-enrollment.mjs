@@ -4,7 +4,6 @@ import { build } from 'esbuild';
 import { buildBrowser, styles, webRoot } from './harness.mjs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { createHash, createPublicKey, randomBytes, randomUUID, verify } from 'node:crypto';
 import { createServer } from 'node:http';
 

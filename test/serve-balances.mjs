@@ -1,8 +1,8 @@
 // Reproducible local UI harness; no Firebase, real RPC, signatures or funds.
-import { buildBrowser, styles, webRoot as web } from './harness.mjs';
+import { buildBrowser, styles } from './harness.mjs';
 import { createServer } from 'node:http';
 const css = await styles();
-const bundle = await buildBrowser({ plugins: [{ name: 'fixture-link', setup(build) {} }], stdin: { contents: `
+const bundle = await buildBrowser({ stdin: { contents: `
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { WalletBalances } from './src/wallet/WalletBalances';

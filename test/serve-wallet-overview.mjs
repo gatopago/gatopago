@@ -1,16 +1,10 @@
 // Local-only browser harness. It serves the actual React component with a synthetic runtime.
 // Not part of the Next route tree, deploy inputs, real Firebase or Wallet Core configuration.
-import { build } from 'esbuild';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
+import { buildBrowser, styles } from './harness.mjs';
 import { createServer } from 'node:http';
 
-const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const css = await readFile(resolve(webRoot, 'src/app/base.css'), 'utf8') + await readFile(resolve(webRoot, 'src/auth/auth.css'), 'utf8');
-const result = await build({ bundle: true, write: false, platform: 'browser', format: 'iife', jsx: 'automatic',
-  define: { 'process.env.NODE_ENV': '"development"' },
-  stdin: { sourcefile: 'wallet-harness.tsx', resolveDir: webRoot, loader: 'tsx', contents: `
+const css = await styles();
+const result = await buildBrowser({ stdin: { contents: `
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { WalletOverview } from './src/wallet/WalletOverview';

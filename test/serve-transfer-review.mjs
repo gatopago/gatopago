@@ -2,7 +2,6 @@
 // ceremony adapter. No Firebase, real authenticator, RPC or remote funds.
 import { build } from 'esbuild';
 import { buildBrowser, styles, webRoot as web } from './harness.mjs';
-import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createServer } from 'node:http';
@@ -39,8 +38,7 @@ function restorationWire() {
       funds_reserved:state !== 'expired' && state !== 'reconciled',settlement:'not_assessed',send_enabled:false } };
 }
 const restorationJSON = JSON.stringify({ selected:restoration.selected,bookmark:restoration.bookmark,metadata:restoration.metadata });
-const result = await buildBrowser({ bundle:true,write:false,platform:'browser',format:'iife',jsx:'automatic',
-  plugins:[{ name:'synthetic-cancelled-signature',setup(builder) {
+const result = await buildBrowser({   plugins:[{ name:'synthetic-cancelled-signature',setup(builder) {
     // This is a component harness, not a Next server: only adapt its read-only
     // navigation hook. Production routing is checked by the real Next build.
     builder.onResolve({ filter:/^next\/navigation$/ },() => ({ path:'navigation',namespace:'synthetic-navigation' }));
