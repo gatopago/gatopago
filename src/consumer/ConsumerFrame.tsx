@@ -17,9 +17,9 @@ export function ConsumerFrame({ children, english: en, navigation = false, prese
   return <div className={`consumer-ui${access ? ' consumer-ui--access' : ''}`} lang={en ? 'en' : 'es'}>
     <Screen withPrimaryNav={navigation} className={access ? 'auth-frame' : ''}>
       {access ? <header className="auth-brand">
-        <div className="brand-lockup">
+        <Link href={en ? '/en' : '/'} className="brand-lockup">
           <CatGlyph className="auth-brand__symbol" decorative /><strong>GatoPago</strong>
-        </div>
+        </Link>
       </header> : <header className="meli-app-header mb-6">
         <Link href={`/app${suffix}`} className="meli-identity" aria-label={en ? 'My account' : 'Mi cuenta'}
           onNavigate={event => { if (isReloadBlocked()) event.preventDefault(); }} aria-disabled={blocked || undefined}>

@@ -1,17 +1,8 @@
 // Local synthetic UI only. No Firebase, RPC, signatures or remote funds.
-import { build } from 'esbuild';
-import { readFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { buildBrowser, styles, webRoot as web } from './harness.mjs';
 import { createServer } from 'node:http';
-import postcss from 'postcss';
-import tailwind from '@tailwindcss/postcss';
-const web = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const from = resolve(web, 'src/app/base.css');
-const css = (await postcss([tailwind()]).process(await readFile(from, 'utf8'), { from })).css
-  + await readFile(resolve(web, 'src/auth/auth.css'), 'utf8') + await readFile(resolve(web, 'src/consumer/consumer.css'), 'utf8');
-const bundle = await build({ bundle: true, write: false, platform: 'browser', format: 'iife', jsx: 'automatic',
-  define: { 'process.env.NODE_ENV': '"development"' }, stdin: { resolveDir: web, loader: 'tsx', contents: `
+const css = await styles();
+const bundle = await buildBrowser({ stdin: { contents: `
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { WalletBalances } from './src/wallet/WalletBalances';

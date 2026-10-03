@@ -1,29 +1,22 @@
 // Local browser acceptance harness: actual React UI, WebAuthn adapters and server cryptographic verifier.
 // Synthetic identity + in-memory persistence; NOT Firebase, D1, an admitted deployment or onchain activation.
 import { build } from 'esbuild';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { buildBrowser, styles, webRoot } from './harness.mjs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { createHash, createPublicKey, randomBytes, randomUUID, verify } from 'node:crypto';
 import { createServer } from 'node:http';
-import postcss from 'postcss';
-import tailwind from '@tailwindcss/postcss';
 
-const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const verifierFile = resolve(webRoot, 'output/playwright/v3-enrollment-verifier.mjs');
 await build({ outfile: verifierFile, bundle: true, platform: 'node', format: 'esm', entryPoints: [resolve(webRoot, 'test/enrollment-verifier.ts')] });
 const { verifyEnrollment, initializationFixture, prepareInitialization, authorizeInitialization, parseInitializationProof,
   prepareCreationOperation, authorizeCreationOperation, creationGasWire, createResourceId } = await import(pathToFileURL(verifierFile).href);
 const creationPin = initializationFixture().pin;
 const creationNetwork = JSON.parse(creationPin.document).deployment.network_id;
-const from = resolve(webRoot, 'src/app/base.css');
-const css = (await postcss([tailwind()]).process(await readFile(from, 'utf8'), { from })).css
-  + await readFile(resolve(webRoot, 'src/auth/auth.css'), 'utf8') + await readFile(resolve(webRoot, 'src/consumer/consumer.css'), 'utf8');
-const result = await build({ plugins: [{ name: 'fixture-turnstile', setup(build) {
-  build.onResolve({ filter: /^next\/link$/ }, () => ({ path: 'fixture-link', namespace: 'fixture' }));
+const css = await styles();
+const result = await buildBrowser({ plugins: [{ name: 'fixture-turnstile', setup(build) {
   build.onResolve({ filter: /^\.\/Turnstile$/ }, () => ({ path: 'fixture-turnstile', namespace: 'fixture' }));
-  build.onLoad({ filter: /^fixture-link$/, namespace: 'fixture' }, () => ({ loader: 'tsx', resolveDir: webRoot, contents: `
-    export default function Link({ href, children, prefetch, replace, onNavigate, ...props }) { return <a href={href} {...props} onClick={event => onNavigate?.({ preventDefault: () => event.preventDefault() })}>{children}</a>; }` }));
   build.onLoad({ filter: /^fixture-turnstile$/, namespace: 'fixture' }, () => ({ loader: 'tsx', resolveDir: webRoot, contents: `
     import { useImperativeHandle, useRef } from 'react';
     export function Turnstile({ ref }) {
@@ -34,9 +27,7 @@ const result = await build({ plugins: [{ name: 'fixture-turnstile', setup(build)
       } }), []);
       return <button type="button" onClick={() => { available.current = true; }}>Verificar seguridad (prueba)</button>;
     }` }));
-} }], bundle: true, write: false, platform: 'browser', format: 'iife', jsx: 'automatic',
-  define: { 'process.env.NODE_ENV': '"development"' },
-  stdin: { sourcefile: 'enrollment-harness.tsx', resolveDir: webRoot, loader: 'tsx', contents: `
+} }], stdin: { sourcefile: 'enrollment-harness.tsx', resolveDir: webRoot, loader: 'tsx', contents: `
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import SecurityEnrollment from './src/wallet/SecurityEnrollment';

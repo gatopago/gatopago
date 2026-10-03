@@ -1,14 +1,13 @@
 // Local React harness with ephemeral synthetic P256 assertions. No Firebase,
 // real authenticator, deployed account, RPC, relayer or financial transaction.
 import { build } from 'esbuild';
+import { buildBrowser, styles, webRoot as web } from './harness.mjs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createServer } from 'node:http';
-import postcss from 'postcss';
-import tailwind from '@tailwindcss/postcss';
 
-const web = resolve(import.meta.dirname,'..'), fixtureFile = resolve(web,'output/playwright/money-fixture.mjs');
+const fixtureFile = resolve(web,'output/playwright/money-fixture.mjs');
 await build({ outfile: fixtureFile,bundle: true,platform: 'node',format: 'esm',stdin: { resolveDir: web,
   contents: `export { moneyFixture } from './test/money.fixture';
   export { writeMoneyDraft,readMoneyDraft,writeMoneyReview,readMoneyReview } from '@gatopago/shared/v3/money-review-record';
@@ -21,11 +20,8 @@ const credentials = [{ scope: f.keys.input.scope,credential_ref: sdk.createResou
   public_key: f.keys.input.publicKey,device_availability: 'unknown',onchain_authority: 'not_assessed' }];
 const data = JSON.stringify({ selection: f.selection,environment: f.environment,credentials });
 const preparations = new Map(), metrics = { prepared: 0,proofs: 0,confirmed: 0,deliveries: 0,status_reads: 0 };
-const from = resolve(web,'src/app/base.css');
-const css = (await postcss([tailwind()]).process(await readFile(from,'utf8'),{ from })).css
-  + await readFile(resolve(web,'src/auth/auth.css'),'utf8') + await readFile(resolve(web,'src/consumer/consumer.css'),'utf8');
-const result = await build({ bundle: true,write: false,platform: 'browser',format: 'iife',jsx: 'automatic',define: { 'process.env.NODE_ENV': '"development"' },
-  plugins: [{ name: 'synthetic-money-ceremony',setup(builder) {
+const css = await styles();
+const result = await buildBrowser({ plugins: [{ name: 'synthetic-money-ceremony',setup(builder) {
     builder.onResolve({ filter: /^\.\/passkeys$/ },() => ({ path: 'synthetic-proof',namespace: 'synthetic' }));
     builder.onLoad({ filter: /.*/,namespace: 'synthetic' },() => ({ loader: 'js',contents: `
       export async function requestPasskeyProof(input) {

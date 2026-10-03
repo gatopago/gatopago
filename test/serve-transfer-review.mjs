@@ -1,22 +1,18 @@
 // Actual React UI; synthetic public account and a deliberately cancelled
 // ceremony adapter. No Firebase, real authenticator, RPC or remote funds.
 import { build } from 'esbuild';
+import { buildBrowser, styles, webRoot as web } from './harness.mjs';
 import { readFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { createServer } from 'node:http';
-import postcss from 'postcss';
-import tailwind from '@tailwindcss/postcss';
-const web = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureFile = resolve(web,'output/playwright/v3-transfer-review-fixture.mjs');
 await build({ outfile:fixtureFile,bundle:true,platform:'node',format:'esm',stdin:{ resolveDir:web,
   contents:"export { transferFixture } from '@gatopago/test-fixtures/v3-transfer'; export { writeTransferDraft,readTransferDraft } from '@gatopago/shared/v3/transfer-review-record'; export { CLIENT_RELEASE_ID } from '@gatopago/shared/v3/client-release';" } });
 const { transferFixture,writeTransferDraft,readTransferDraft,CLIENT_RELEASE_ID } = await import(pathToFileURL(fixtureFile).href), f = transferFixture();
 const data = { request:f.request,context:f.context,policy:f.approval.policy,scope:f.approval.scope,document:f.approval.security_evidence.document };
 const json = JSON.stringify(data,(_,value) => typeof value === 'bigint' ? { bigint:value.toString() } : value);
-const from = resolve(web,'src/app/base.css');
-const css = (await postcss([tailwind()]).process(await readFile(from,'utf8'),{ from })).css
-  + await readFile(resolve(web,'src/auth/auth.css'),'utf8') + await readFile(resolve(web,'src/consumer/consumer.css'),'utf8');
+const css = await styles();
 let restorationMode = 'held', restoreReads = 0, restoreDeliveries = 0, restoreDeliveryRequests = 0, balanceReads = 0;
 const restoreBase = transferFixture(false);
 function newRestoration() {
@@ -43,7 +39,7 @@ function restorationWire() {
       funds_reserved:state !== 'expired' && state !== 'reconciled',settlement:'not_assessed',send_enabled:false } };
 }
 const restorationJSON = JSON.stringify({ selected:restoration.selected,bookmark:restoration.bookmark,metadata:restoration.metadata });
-const result = await build({ bundle:true,write:false,platform:'browser',format:'iife',jsx:'automatic',
+const result = await buildBrowser({ bundle:true,write:false,platform:'browser',format:'iife',jsx:'automatic',
   plugins:[{ name:'synthetic-cancelled-signature',setup(builder) {
     // This is a component harness, not a Next server: only adapt its read-only
     // navigation hook. Production routing is checked by the real Next build.

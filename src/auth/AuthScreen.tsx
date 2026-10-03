@@ -22,6 +22,7 @@ export function AuthScreen({ config, view, art, english = false }: {
     <h2>{english ? 'Sign-in is not available yet' : 'El acceso todavía no está disponible'}</h2>
     <p>{english ? 'This environment has no provisioned identity service. No account or key has been created.' : 'Este ambiente aún no tiene su servicio de identidad configurado. No se creó ninguna cuenta ni llave.'}</p>
     <p>{english ? 'Do not send funds to test this version.' : 'No envíes fondos para probar esta versión.'}</p>
+    <NavigationLink className="auth-secondary btn btn-ghost btn-block" href={english ? '/en' : '/'}>{english ? 'Back to GatoPago' : 'Volver a GatoPago'}</NavigationLink>
   </AuthContent></ConsumerFrame>;
   return <EnabledAuthScreen config={config} view={view} art={art} english={english} />;
 }
