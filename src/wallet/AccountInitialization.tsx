@@ -122,6 +122,20 @@ export default function AccountInitialization({
     );
   }, [state.phase, creationActive, onActiveChange]);
   const busy = ['preparing', 'restoring', 'proving', 'submitting'].includes(state.phase);
+  if (state.consent && ['done', 'operation-recorded'].includes(state.phase)) {
+    return (
+      <CreationOperationPanel
+        key={state.consent.preparation.initialization_id}
+        runtime={runtime}
+        uid={uid}
+        pin={pin}
+        consent={state.consent}
+        knownRecorded={state.phase === 'operation-recorded'}
+        english={en}
+        onActiveChange={setCreationActive}
+      />
+    );
+  }
   return (
     <section
       className="account-initialization"
@@ -308,18 +322,6 @@ export default function AccountInitialization({
             {en ? 'Reference' : 'Referencia'}: <code>{state.reference}</code>
           </p>
         </div>
-      ) : null}
-      {state.consent && ['done', 'operation-recorded'].includes(state.phase) ? (
-        <CreationOperationPanel
-          key={state.consent.preparation.initialization_id}
-          runtime={runtime}
-          uid={uid}
-          pin={pin}
-          consent={state.consent}
-          knownRecorded={state.phase === 'operation-recorded'}
-          english={en}
-          onActiveChange={setCreationActive}
-        />
       ) : null}
       {state.phase === 'closed' ? (
         <button

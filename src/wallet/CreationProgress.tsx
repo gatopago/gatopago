@@ -1,7 +1,5 @@
 import type { parseCreationPreview } from '@gatopago/shared/v3/creation-operation-wire';
 
-import { NavigationLink } from '../consumer/NavigationLink';
-
 type Lifecycle = ReturnType<typeof parseCreationPreview>['lifecycle'];
 const messages = {
   projected: ['Cuenta creada', 'Account created'],
@@ -90,8 +88,8 @@ export default function CreationProgress({
       {b ? (
         <p>
           {en
-            ? 'Creation was confirmed. Open your wallet to check its current status before receiving or sending funds.'
-            : 'La creación se confirmó. Abre tu wallet para comprobar su estado actual antes de recibir o enviar fondos.'}
+            ? 'Creation was confirmed. We are verifying receiving and finishing setup.'
+            : 'La creación se confirmó. Estamos verificando la recepción y terminando la preparación.'}
         </p>
       ) : (
         <p>
@@ -101,24 +99,6 @@ export default function CreationProgress({
         </p>
       )}
       {reason && reason in reasons ? <p>{reasons[reason as keyof typeof reasons][index]}</p> : null}
-      {b ? (
-        <>
-          <NavigationLink
-            className="auth-primary btn btn-primary btn-block"
-            href={en ? '/app?lang=en' : '/app'}
-          >
-            {en ? 'Go to my wallet' : 'Ir a mi wallet'}
-          </NavigationLink>
-          <NavigationLink
-            className="auth-secondary btn btn-ghost btn-block"
-            href={en ? '/profile?lang=en' : '/profile'}
-          >
-            {en
-              ? 'Verify receiving and publish my username'
-              : 'Verificar recepción y publicar mi usuario'}
-          </NavigationLink>
-        </>
-      ) : null}
       <details>
         <summary>{en ? 'Creation record' : 'Comprobante de creación'}</summary>
         {b ? (

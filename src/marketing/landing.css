@@ -157,16 +157,6 @@ body:has(.meli-landing) {
   color: var(--meli-ink);
 }
 
-/* The previous landing styled these legacy IDs with higher-specificity gradients. */
-.meli-landing #control.meli-section--ink,
-.meli-landing #api.meli-section--ink {
-  background: var(--meli-ink);
-}
-
-.meli-landing #faq.meli-section--milk {
-  background: var(--meli-milk);
-}
-
 .meli-kicker {
   display: flex;
   align-items: center;

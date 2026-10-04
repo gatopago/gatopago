@@ -82,7 +82,9 @@ export default function CreationOperationPanel({
     // Skip StrictMode's trial mount. Open restores the same request and obtains
     // its fee automatically; it never signs or sends an operation.
     let connected = true;
-    queueMicrotask(() => { if (connected) void flow.open(); });
+    queueMicrotask(() => {
+      if (connected) void flow.open();
+    });
     return () => {
       connected = false;
       unsubscribe();
@@ -119,9 +121,7 @@ export default function CreationOperationPanel({
       aria-labelledby="creation-operation-heading"
       aria-busy={busy}
     >
-      <h2 id="creation-operation-heading">
-        {en ? 'Confirm to finish' : 'Confirma para terminar'}
-      </h2>
+      <h2 id="creation-operation-heading">{en ? 'Confirm to finish' : 'Confirma para terminar'}</h2>
       <p>
         {en
           ? 'Review the fee and confirm with your passkey.'
@@ -246,9 +246,14 @@ export default function CreationOperationPanel({
         />
       ) : null}
       {state.receipt?.state === 'authorized' && state.lifecycle?.bootstrap ? (
-        <FinishRegistration key={uid} runtime={runtime} uid={uid}
+        <FinishRegistration
+          key={uid}
+          runtime={runtime}
+          uid={uid}
           walletId={state.lifecycle.bootstrap.wallet_id}
-          accountId={state.lifecycle.bootstrap.wallet_account_id} english={en} />
+          accountId={state.lifecycle.bootstrap.wallet_account_id}
+          english={en}
+        />
       ) : null}
 
       {busy ? (
@@ -288,8 +293,18 @@ export default function CreationOperationPanel({
   );
 }
 
-function FinishRegistration({ runtime, uid, walletId, accountId, english: en }: {
-  runtime: BrowserAuth; uid: string; walletId: string; accountId: string; english: boolean;
+function FinishRegistration({
+  runtime,
+  uid,
+  walletId,
+  accountId,
+  english: en,
+}: {
+  runtime: BrowserAuth;
+  uid: string;
+  walletId: string;
+  accountId: string;
+  english: boolean;
 }) {
   const router = useRouter();
   const [attempt, setAttempt] = useState(0);
@@ -299,22 +314,36 @@ function FinishRegistration({ runtime, uid, walletId, accountId, english: en }: 
     let connected = true;
     queueMicrotask(() => {
       if (!connected) return;
-      void finishRegisteredAccount(runtime.profile(uid), walletId, accountId, controller.signal)
+      void Promise.resolve()
+        .then(() =>
+          finishRegisteredAccount(runtime.profile(uid), walletId, accountId, controller.signal),
+        )
         .then(() => {
           if (!controller.signal.aborted) router.replace(en ? '/app?lang=en' : '/app');
         })
-        .catch(failure => {
+        .catch((failure) => {
           if (!controller.signal.aborted) setError(profileMessage(failure, en));
         });
     });
-    return () => { connected = false; controller.abort(); };
+    return () => {
+      connected = false;
+      controller.abort();
+    };
   }, [runtime, uid, walletId, accountId, en, router, attempt]);
   return error ? (
     <div role="alert">
       <p>{error}</p>
-      <button className="auth-primary btn btn-primary btn-block" onClick={() => {
-        setError(''); setAttempt(value => value + 1);
-      }}>{en ? 'Retry finishing setup' : 'Reintentar finalización'}</button>
+      <button
+        className="auth-primary btn btn-primary btn-block"
+        onClick={() => {
+          setError('');
+          setAttempt((value) => value + 1);
+        }}
+      >
+        {en ? 'Retry finishing setup' : 'Reintentar finalización'}
+      </button>
     </div>
-  ) : <p role="status">{en ? 'Finishing your account…' : 'Terminando de preparar tu cuenta…'}</p>;
+  ) : (
+    <p role="status">{en ? 'Finishing your account…' : 'Terminando de preparar tu cuenta…'}</p>
+  );
 }
