@@ -44,11 +44,9 @@ export function pwaManifest(): MetadataRoute.Manifest {
       { src: PWA_ICONS.small, sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: PWA_ICONS.large, sizes: '512x512', type: 'image/png', purpose: 'any' },
     ],
-    // Shortcuts appear only when the corresponding actions are available.
   };
 }
 
-/** @internal Next build headers, not a runtime API. */
 export function pwaHeaders() {
   return [
     {

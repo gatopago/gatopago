@@ -15,7 +15,6 @@ export type TransferReview = { readonly wire: unknown };
 type Preparation = ReturnType<typeof parseTransferPreparation>;
 const fail = () => new WalletCoreError('wallet/unavailable');
 
-/** Reservation receipt, NOT an onchain receipt or permission to skip preflight. */
 export function parseTransferConfirmationReceipt(input: unknown, preparation: Preparation) {
   if (
     !record(input) ||
@@ -67,9 +66,6 @@ export function parseTransferDeliveryReceipt(
   });
 }
 
-/** Explicit single requests only. Errors/timeouts after an HTTP mutation are NOT
- * proof of failure: callers must retain operation identity and read status.
- * No passkey prompt, retry, background submission, local storage or RPC here. */
 export function transferCommandClient(config: EnabledAuthConfig, token: () => Promise<string>) {
   function capture(
     selected: TransferSelection,
@@ -88,8 +84,7 @@ export function transferCommandClient(config: EnabledAuthConfig, token: () => Pr
     );
     const path = `/wallets/${prepared.candidate.request.wallet_id}/accounts/${prepared.wallet_account_id}`;
     const account = { generation: '3', contract_manifest_version: manifest.manifest_id };
-    // Recheck consent lifetime after token acquisition too. A refresh must not
-    // send a proof whose window expired while waiting for Firebase.
+
     const getToken = async () => {
       view();
       const value = await token();

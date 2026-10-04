@@ -1,6 +1,5 @@
 import Link from 'next/link';
 
-/** Avoid the default error page's inline style block under the nonce-only CSP. */
 export default function NotFound() {
   return (
     <main className="mx-auto max-w-lg px-6 py-16">

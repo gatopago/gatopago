@@ -1,4 +1,3 @@
-// Browser-only coordination, not authorization. Never store a user, token or operation payload here.
 let active = 0;
 const listeners = new Set<() => void>();
 export const subscribeReloadGuard = (listener: () => void) => {

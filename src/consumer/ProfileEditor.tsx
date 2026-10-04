@@ -102,8 +102,7 @@ export function ProfileEditor({
           setBusy(false);
         }
       });
-    // Read-only setup must not publish a username or authorize an operation.
-    // Keep the same pending guard as explicit actions until selection is ready.
+
     return () => {
       controller.abort();
       unsubscribe?.();

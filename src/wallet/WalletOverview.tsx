@@ -12,7 +12,6 @@ const Onboarding = dynamic(() => import('./WalletOnboarding'));
 type State =
   { phase: 'loading' } | { phase: 'ready'; page: WalletPage } | { phase: 'error'; code: string };
 
-/** Parent keys this component by Firebase UID. No data survives a change of identity. */
 export function WalletOverview({
   runtime,
   uid,
@@ -55,7 +54,7 @@ export function WalletOverview({
 
   async function more() {
     if (state.phase !== 'ready' || !state.page.next_cursor || morePending.current) return;
-    // Ref protects against two click handlers before React commits the loading state.
+
     morePending.current = true;
     if (active.current && !active.current.signal.aborted) active.current.abort();
     const controller = new AbortController();

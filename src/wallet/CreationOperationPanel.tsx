@@ -79,8 +79,7 @@ export default function CreationOperationPanel({
       if (identity?.uid !== uid) flow.invalidate();
       else flow.checkSession();
     });
-    // Skip StrictMode's trial mount. Open restores the same request and obtains
-    // its fee automatically; it never signs or sends an operation.
+
     let connected = true;
     queueMicrotask(() => {
       if (connected) void flow.open();
@@ -104,7 +103,7 @@ export default function CreationOperationPanel({
       state.receipt?.delivery_state === 'expired'
     )
       return;
-    // Read only this operation. Never prepare, authorize or resend from an effect.
+
     const read = () => {
       if (document.visibilityState === 'visible') void flow.restore();
     };

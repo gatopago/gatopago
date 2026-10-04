@@ -37,8 +37,7 @@ export class AccessError extends Error {
 const invalid = (): never => {
   throw new AccessError('auth/invalid-response');
 };
-// Admission challenges are issued for 300 seconds by WalletCore. Tolerate a
-// small server clock lead, then cap the local deadline to the same lifetime.
+
 const CHALLENGE_LIFETIME_MS = 300_000;
 const CHALLENGE_CLOCK_SKEW_MS = 5_000;
 function bytes32(input: unknown): Hex {
@@ -81,7 +80,6 @@ function challenge(value: unknown, config: EnabledAuthConfig): LoginChallenge {
   });
 }
 
-/** Public admission endpoints: no existing bearer, cookies, redirects or automatic retries. */
 export function passkeyClient(config: EnabledAuthConfig) {
   let updateRequired = false;
   async function request(path: string, input: object, caller: AbortSignal): Promise<unknown> {

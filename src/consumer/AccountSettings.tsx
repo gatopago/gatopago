@@ -2,7 +2,6 @@ import { NavigationLink as Link } from './NavigationLink';
 import { SettingsSection } from './SettingsSection';
 import { BackIcon, SecurityIcon, HomeIcon } from './Icons';
 
-/** Account settings navigation. */
 export function AccountSettings({ english: en }: { english: boolean }) {
   const suffix = en ? '?lang=en' : '';
   return (

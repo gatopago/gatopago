@@ -22,8 +22,7 @@ type Preparation = {
     readonly prepared_at: number;
   };
 };
-/** Instance-local proof collection. A saved credential is only a candidate for
- * a ceremony, never evidence that the device can use it. No storage or network. */
+
 export class SpendSigning {
   private readonly preparation: Preparation;
   private readonly credentials: CredentialDetail[];
@@ -96,8 +95,6 @@ export class SpendSigning {
     const controller = new AbortController();
     this.active = controller;
     try {
-      // Synchronous invocation retains Safari user activation. No imports, token
-      // refresh or preparation fetch can occur before this call.
       const wire = await this.prove({
         scope: this.preparation.review.scope,
         key: credential.public_key,

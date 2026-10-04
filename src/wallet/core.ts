@@ -39,9 +39,6 @@ function parsePage(input: unknown): WalletPage {
   return { data, next_cursor: next };
 }
 
-/** Browser-only transport; no private cache, polling, redirect following or monetary retry.
- * getToken must remain bound to the same Firebase user for the whole operation.
- */
 export async function loadWalletPage(
   config: EnabledAuthConfig,
   getToken: () => Promise<string>,

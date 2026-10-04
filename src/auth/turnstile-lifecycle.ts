@@ -2,7 +2,6 @@ export type ChallengeState =
   | { status: 'loading' | 'error' | 'expired' | 'used'; token: null }
   | { status: 'verified'; token: string };
 
-/** Resolved is not terminal: expiry/error MUST invalidate a previously verified token. */
 export function createChallengeLifecycle(publish: (state: ChallengeState) => void) {
   let disposed = false;
   let terminal = false;

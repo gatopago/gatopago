@@ -1,7 +1,5 @@
 import { atomicToDecimal, decimalToAtomic } from '@gatopago/shared/v3/amount';
 
-// Presentation units only. These entries do not admit a network or a contract.
-// Real creation still requires the compiled profile AND Wallet Core admission.
 const units = Object.freeze({
   'eip155:84532': Object.freeze({ network: 'Base Sepolia', symbol: 'ETH', decimals: 18 }),
   'eip155:421614': Object.freeze({ network: 'Arbitrum Sepolia', symbol: 'ETH', decimals: 18 }),

@@ -54,7 +54,6 @@ export function mayRegisterWorker(
   }
 }
 
-// One listener set per browser document, including React strict remounts. No SSR user state.
 export function startPwa(canonicalOrigin: string, release: boolean): void {
   if (typeof window === 'undefined' || initialized) return;
   initialized = true;
@@ -78,7 +77,6 @@ export function startPwa(canonicalOrigin: string, release: boolean): void {
     installPrompt = null;
     update({ canPrompt: false });
     detect();
-    // Installation elsewhere does not mean this browser tab is running standalone.
   });
   if (
     !mayRegisterWorker(window.location.origin, canonicalOrigin, release) ||
@@ -96,7 +94,6 @@ export function startPwa(canonicalOrigin: string, release: boolean): void {
       observeInstall();
       registration.addEventListener('updatefound', observeInstall);
       navigator.serviceWorker.addEventListener('controllerchange', observe);
-      // No skipWaiting message, force claim or reload. Existing tabs keep their current worker.
     })
     .catch(() => update({ workerError: true }));
 }
@@ -114,7 +111,6 @@ export async function requestInstall(): Promise<
     timer = setTimeout(() => reject(new Error('Install prompt timeout')), 30_000);
   });
   try {
-    // Invoke directly from the click handler, before any unrelated await.
     await Promise.race([prompt.prompt(), deadline]);
     return (await Promise.race([prompt.userChoice, deadline])).outcome;
   } catch {

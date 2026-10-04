@@ -35,7 +35,6 @@ type Props = {
   onReconciled?: (status: ReturnType<typeof parseTransferStatus>) => void;
 };
 
-/** Automatically reset all reviewed state if identity, account or consent changes. */
 export function TransferReview(props: Props) {
   return (
     <ReviewedTransfer
@@ -156,9 +155,7 @@ function ReviewedTransfer({
       mounted.current = false;
       clearTimeout(timer);
       unsubscribe();
-      // React Strict Mode replays setup/cleanup without unmounting the instance.
-      // Invalidate on actual detachment; synchronous mount tracking already
-      // prevents late UI updates. No action here can submit or create a proof.
+
       queueMicrotask(() => {
         if (!mounted.current) close();
       });
@@ -166,8 +163,7 @@ function ReviewedTransfer({
   }, [bound, runtime, uid]);
   useEffect(() => {
     if (!bound.flow.canTrack()) return;
-    // Only read an already identified operation. Never sign, confirm, deliver,
-    // or recover an uncertain confirmation from a background effect.
+
     const read = () => {
       if (document.visibilityState === 'visible') void bound.flow.readStatus();
     };
@@ -186,7 +182,7 @@ function ReviewedTransfer({
     inFlight.current = true;
     setBusy(true);
     setError(false);
-    // Invoke immediately in the click stack: no await before the passkey prompt.
+
     void action()
       .catch(() => {
         if (mounted.current) setError(true);
@@ -358,9 +354,13 @@ function ReviewedTransfer({
         : null}
       {error || state.error ? (
         <p role="alert">
-          {en
-            ? 'The action could not be verified. Do not assume a submitted transfer failed.'
-            : 'No se pudo verificar la acción. No supongas que un envío presentado falló.'}
+          {bound.flow.canEdit()
+            ? en
+              ? 'Authorization was not completed. No funds were sent. You can try again.'
+              : 'No se completó la autorización. No se enviaron fondos. Puedes volver a intentarlo.'
+            : en
+              ? 'The result could not be verified. Check this transfer before trying again.'
+              : 'No se pudo verificar el resultado. Consulta este envío antes de volver a intentarlo.'}
         </p>
       ) : null}
       {expired ? (

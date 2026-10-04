@@ -11,9 +11,6 @@ export type TransferBookmark = Readonly<{
   expires_at: number;
 }>;
 
-/** A locator only: no credentials, proofs, amount, destination or send authority.
- * URL fragments survive reload without entering API requests or HTTP referrers.
- * Every restoration still requires current server-side account ownership. */
 export function parseTransferBookmark(hash: string): TransferBookmark | null {
   if (!hash.startsWith(prefix)) return null;
   if (hash.length > 1024) throw new Error('Invalid transfer bookmark');

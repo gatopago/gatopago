@@ -74,10 +74,6 @@ const codeOf = (error: unknown) =>
     ? error.code
     : 'initialization/unavailable';
 
-/** Per mounted identity/inventory. No I/O or ceremony at construction. The profile
- * is compiled into the reviewed release; the HTTP reply cannot choose it. Only
- * the confirmation click invokes WebAuthn. Proofs stay in memory, never storage.
- */
 export class InitializationFlow {
   private readonly pin: CreationProfilePin;
   private readonly inventory: CredentialInventory;
@@ -150,8 +146,7 @@ export class InitializationFlow {
     this.active = null;
     this.attempt = null;
     this.completedSession = null;
-    // React StrictMode may reconnect the effect on the same instance. This
-    // releases work without reopening an explicitly invalidated identity.
+
     this.set(this.view.phase === 'closed' ? 'closed' : 'idle', null, {
       review: null,
       reference: null,
@@ -163,8 +158,7 @@ export class InitializationFlow {
     if (['closed', 'done', 'operation-recorded'].includes(this.view.phase)) return;
     this.active?.abort();
     this.active = null;
-    // A request already sent cannot be undone by closing a dialog. Keep the
-    // exact authorization available for explicit replay, not a second account.
+
     if (this.attempt?.proof) {
       this.set('retry', 'initialization/result-unknown');
       return;
@@ -323,8 +317,7 @@ export class InitializationFlow {
         }
         const response = await attempt.session.prepare({ ...attempt.request }, signal);
         current();
-        // Rebuild the expected values from our own selection, scope, salt and pin,
-        // not response.expected (which is convenient metadata, not authority).
+
         const expected = Object.freeze({
           id: attempt.request.request_id,
           credentialRef: attempt.request.credential_ref,
@@ -377,7 +370,7 @@ export class InitializationFlow {
           prepared = consent.preparation;
         if (Date.now() < prepared.valid_after * 1000 || Date.now() >= prepared.valid_until * 1000)
           throw failure('initialization/expired');
-        // No fetch, token acquisition, dynamic import or await before the gesture.
+
         const proof = await this.prove({
           scope: consent.expected.scope,
           key: prepared.public_key,
@@ -416,8 +409,7 @@ export class InitializationFlow {
       throw failure('initialization/invalid');
     }
     if (receipt.state !== 'authorized') throw failure('initialization/invalid');
-    // Only verified public consent crosses into the operation UI. The initial
-    // assertion is discarded, and is not reused as an execution authorization.
+
     const consent = Object.freeze({
       expected: attempt.consent!.expected,
       preparation: parseInitializationPreparation(

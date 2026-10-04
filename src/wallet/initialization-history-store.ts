@@ -12,7 +12,6 @@ type View =
   | { phase: 'ready'; history: History; canStart: boolean }
   | { phase: 'error' | 'closed'; code: string };
 
-/** Selects a screen to review; never prepares or authorizes an operation. */
 export function initialSetupChoice(
   history: History,
   canStart: boolean,
@@ -30,10 +29,6 @@ export function initialSetupChoice(
     : null;
 }
 
-/** Bounded, component-owned discovery. No signatures, storage or automatic polling.
- * New setup is offered only after all pages checked in this traversal are expired
- * and unsigned. This is UX coordination, NOT server authorization or an account lock.
- */
 export class InitializationHistoryStore {
   private view: View = Object.freeze({ phase: 'loading' });
   private listeners = new Set<() => void>();

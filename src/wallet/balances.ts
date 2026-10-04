@@ -71,9 +71,6 @@ function accounts(input: unknown, walletId: string, after: string | null): Accou
   return { data, next_cursor: cursor };
 }
 
-/** Display-only parser. Finality is asserted by Wallet Core, not a browser light client.
- * Never turn this response into receive/spend permission or a transfer budget.
- */
 export function parseBalanceView(
   input: unknown,
   selected: AccountChoice,

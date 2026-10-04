@@ -1,7 +1,6 @@
 import { buildAuthConfig } from './config';
 import { environment } from '../lib/brand';
 
-// Server entry point. Public Firebase Web API key is not an Admin/service-account key.
 export function webAuthConfig() {
   return buildAuthConfig(environment, {
     nodeEnv: process.env.NODE_ENV,

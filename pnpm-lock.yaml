@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@gatopago/shared@3.2.1': file:vendor/gatopago-shared-3.2.1.tgz
+  '@gatopago/shared@3.2.3': file:vendor/gatopago-shared-3.2.3.tgz
   '@grpc/grpc-js@<1.14.5': 1.14.5
 
 importers:
@@ -19,11 +19,11 @@ importers:
         specifier: file:vendor/gatopago-brand-3.1.0.tgz
         version: file:vendor/gatopago-brand-3.1.0.tgz
       '@gatopago/environment':
-        specifier: file:vendor/gatopago-environment-3.2.1.tgz
-        version: file:vendor/gatopago-environment-3.2.1.tgz(typescript@6.0.3)(zod@4.5.4)
+        specifier: file:vendor/gatopago-environment-3.2.3.tgz
+        version: file:vendor/gatopago-environment-3.2.3.tgz(typescript@6.0.3)(zod@4.5.4)
       '@gatopago/shared':
-        specifier: file:vendor/gatopago-shared-3.2.1.tgz
-        version: file:vendor/gatopago-shared-3.2.1.tgz(typescript@6.0.3)(zod@4.5.4)
+        specifier: file:vendor/gatopago-shared-3.2.3.tgz
+        version: file:vendor/gatopago-shared-3.2.3.tgz(typescript@6.0.3)(zod@4.5.4)
       firebase:
         specifier: 12.18.0
         version: 12.18.0
@@ -44,8 +44,8 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.11.0(jiti@2.7.0)(supports-color@7.2.0))
       '@gatopago/test-fixtures':
-        specifier: file:vendor/gatopago-test-fixtures-3.2.1.tgz
-        version: file:vendor/gatopago-test-fixtures-3.2.1.tgz(typescript@6.0.3)(vitest@4.1.11(@types/node@24.13.6)(vite@8.3.0(@types/node@24.13.6)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.1)))(zod@4.5.4)
+        specifier: file:vendor/gatopago-test-fixtures-3.2.3.tgz
+        version: file:vendor/gatopago-test-fixtures-3.2.3.tgz(typescript@6.0.3)(vitest@4.1.11(@types/node@24.13.6)(vite@8.3.0(@types/node@24.13.6)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.1)))(zod@4.5.4)
       '@next/eslint-plugin-next':
         specifier: 16.3.6
         version: 16.3.6(eslint@10.11.0(jiti@2.7.0)(supports-color@7.2.0))
@@ -619,19 +619,19 @@ packages:
     resolution: {integrity: sha512-slMH/YA3BhS8igsCZvikHeH5dhm5belvOE9EteIuWvtWsbmIRDhJsr50H6JQ3P1785BVpYt4h3zFjejJ5F8krw==, tarball: file:vendor/gatopago-brand-3.1.0.tgz}
     version: 3.1.0
 
-  '@gatopago/environment@file:vendor/gatopago-environment-3.2.1.tgz':
-    resolution: {integrity: sha512-nCbwAamETWuXgl3MGU0QC2iRGs+IF+QSpmWKXsFwrepmAcQi/ttEZtZ34gkAlGaz3LtKgjm8owPHh1zEf9UD8A==, tarball: file:vendor/gatopago-environment-3.2.1.tgz}
-    version: 3.2.1
+  '@gatopago/environment@file:vendor/gatopago-environment-3.2.3.tgz':
+    resolution: {integrity: sha512-x8crDs3auy7KH3kIKQShu6Cypp3GFRiSmvgHvqpVX8NvciwSeZZ6w3VyutQL0SHTTAXSeZZbMMzWdrnoJDODkQ==, tarball: file:vendor/gatopago-environment-3.2.3.tgz}
+    version: 3.2.3
     engines: {node: '>=24'}
 
-  '@gatopago/shared@file:vendor/gatopago-shared-3.2.1.tgz':
-    resolution: {integrity: sha512-Q2MN/bi9sFVIj2DsOe1tMn6DDfifZE0jbrbUV6q0sVXJYARbho4ZTQCVoR6e9ajOX7LTWnijOmXYX1ixNqRVXA==, tarball: file:vendor/gatopago-shared-3.2.1.tgz}
-    version: 3.2.1
+  '@gatopago/shared@file:vendor/gatopago-shared-3.2.3.tgz':
+    resolution: {integrity: sha512-bb7GaVg0jNYzxk8RFd8X5weiM3qhwo7JCt9HC5B4zbeouda6VdN68RTOBmfy0NSjLTnJOKagwwqinj4+j/JFuw==, tarball: file:vendor/gatopago-shared-3.2.3.tgz}
+    version: 3.2.3
     engines: {node: '>=24'}
 
-  '@gatopago/test-fixtures@file:vendor/gatopago-test-fixtures-3.2.1.tgz':
-    resolution: {integrity: sha512-KGUCLPU94H8Af+9tnOln2xTO+pMcKb2f5bojye0XFGVKwI2ci9KtTSDHH84ZSSEuwOkOXqyt18T5ub/Qiz1JSA==, tarball: file:vendor/gatopago-test-fixtures-3.2.1.tgz}
-    version: 3.2.1
+  '@gatopago/test-fixtures@file:vendor/gatopago-test-fixtures-3.2.3.tgz':
+    resolution: {integrity: sha512-GvYMgwhQO1vuRi/wXLuw1bp9pyqhQEEJdvw3EOxyOavA0OSKvESCe7PQJJJ7H3RqZUD9BWU9pPsAqznNezluZw==, tarball: file:vendor/gatopago-test-fixtures-3.2.3.tgz}
+    version: 3.2.3
     engines: {node: '>=24'}
     peerDependencies:
       vitest: ^4.1.11
@@ -2920,16 +2920,16 @@ snapshots:
 
   '@gatopago/brand@file:vendor/gatopago-brand-3.1.0.tgz': {}
 
-  '@gatopago/environment@file:vendor/gatopago-environment-3.2.1.tgz(typescript@6.0.3)(zod@4.5.4)':
+  '@gatopago/environment@file:vendor/gatopago-environment-3.2.3.tgz(typescript@6.0.3)(zod@4.5.4)':
     dependencies:
-      '@gatopago/shared': file:vendor/gatopago-shared-3.2.1.tgz(typescript@6.0.3)(zod@4.5.4)
+      '@gatopago/shared': file:vendor/gatopago-shared-3.2.3.tgz(typescript@6.0.3)(zod@4.5.4)
     transitivePeerDependencies:
       - bufferutil
       - typescript
       - utf-8-validate
       - zod
 
-  '@gatopago/shared@file:vendor/gatopago-shared-3.2.1.tgz(typescript@6.0.3)(zod@4.5.4)':
+  '@gatopago/shared@file:vendor/gatopago-shared-3.2.3.tgz(typescript@6.0.3)(zod@4.5.4)':
     dependencies:
       '@noble/curves': 1.9.7
       viem: 2.55.19(typescript@6.0.3)(zod@4.5.4)
@@ -2939,9 +2939,9 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@gatopago/test-fixtures@file:vendor/gatopago-test-fixtures-3.2.1.tgz(typescript@6.0.3)(vitest@4.1.11(@types/node@24.13.6)(vite@8.3.0(@types/node@24.13.6)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.1)))(zod@4.5.4)':
+  '@gatopago/test-fixtures@file:vendor/gatopago-test-fixtures-3.2.3.tgz(typescript@6.0.3)(vitest@4.1.11(@types/node@24.13.6)(vite@8.3.0(@types/node@24.13.6)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.1)))(zod@4.5.4)':
     dependencies:
-      '@gatopago/shared': file:vendor/gatopago-shared-3.2.1.tgz(typescript@6.0.3)(zod@4.5.4)
+      '@gatopago/shared': file:vendor/gatopago-shared-3.2.3.tgz(typescript@6.0.3)(zod@4.5.4)
       viem: 2.55.19(typescript@6.0.3)(zod@4.5.4)
       vitest: 4.1.11(@types/node@24.13.6)(vite@8.3.0(@types/node@24.13.6)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.1))
     transitivePeerDependencies:

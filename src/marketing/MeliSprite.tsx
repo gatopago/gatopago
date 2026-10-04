@@ -31,8 +31,6 @@ const sprites = {
   'head-sleepy': headSleepy,
 } satisfies Record<string, StaticImageData>;
 
-// Package imports can resolve to URLs without Next's image metadata in dev.
-// These are the native dimensions of the pinned @gatopago/brand WebPs.
 const dimensions = {
   'body-conveyor': [477, 420],
   'body-courier': [430, 428],

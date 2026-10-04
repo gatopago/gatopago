@@ -52,7 +52,7 @@ export function WalletFundingEntry(props: {
   try {
     saved = parseMoneyBookmark(hash);
   } catch {
-    /* Invalid bookmarks remain blocked by the operation screen. */
+    /* empty */
   }
   const retained = stored !== '[]';
   const effectiveSource =

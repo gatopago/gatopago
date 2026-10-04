@@ -102,8 +102,6 @@ function OwnedTransferForm({
     try {
       session = runtime.transferPreparations(uid);
     } catch {
-      // Identity may change between render and effect. Do not throw through the
-      // React tree, and do not update an instance detached by StrictMode replay.
       queueMicrotask(() => {
         if (live) close();
       });
@@ -148,8 +146,7 @@ function OwnedTransferForm({
         transfers = runtime.transferPreparations(uid);
       const inventory = await credentialsSession.read(controller.signal),
         credentials: CredentialDetail[] = [];
-      // Bounded batches; complete public credential discovery before starting
-      // the short economic review window. This never prompts an authenticator.
+
       for (let offset = 0; offset < inventory.data.length; offset += 4) {
         controller.signal.throwIfAborted();
         credentials.push(

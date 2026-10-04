@@ -1,4 +1,3 @@
-// Keep product descriptions consistent with the implemented account model.
 export type LegalCopy = {
   title: string;
   updated: string;

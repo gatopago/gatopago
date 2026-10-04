@@ -38,10 +38,6 @@ function success(result: { status: number }) {
   throw new CreationClientError('creation/unavailable');
 }
 
-/** Resource client only: no ceremony, polling, storage, account funding or broadcast.
- * A view reconstructs exact factory calldata and gas locally before a user can sign.
- * Captured Firebase session checks wrap every method in BrowserAuth.
- */
 export function creationOperationClient(
   config: EnabledAuthConfig,
   getToken: () => Promise<string>,
@@ -88,8 +84,7 @@ export function creationOperationClient(
           maximumGasCharge === null
             ? null
             : parseCreationCapRequest({ maximum_gas_charge: maximumGasCharge });
-      // Empty request asks for server-admitted terms. It cannot authorize gas,
-      // select providers or silently replace a previously prepared operation.
+
       const result = await walletTransport(config, getToken, signal).request(
         path(selected),
         'POST',

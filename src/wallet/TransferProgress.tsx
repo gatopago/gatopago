@@ -6,7 +6,6 @@ import type { AccountChoice } from './balances';
 import { TransferStore } from './transfer-store';
 import type { parseTransferStatus } from './transfers';
 
-/** Parent must key by identity and selected account; no automatic query or signing. */
 export function TransferProgress({
   runtime,
   uid,

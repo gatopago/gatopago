@@ -64,10 +64,6 @@ const sessionErrors = new Set([
   'client/update-required',
 ]);
 
-/** Component-owned operation. Reading never prepares/signs/sends; a signature is
- * requested only from confirm(), synchronously in the user's activation. No
- * storage, polling, account funding, automatic retry or replacement operation.
- */
 export class CreationFlow {
   private readonly consent: CreationConsent;
   private view: View;
@@ -209,8 +205,7 @@ export class CreationFlow {
       phase === 'proving' ? 90_000 : 30_000,
     );
     this.set(phase);
-    // Attach the cancellation race even if the initial session assertion throws.
-    // The async body still runs synchronously through the WebAuthn invocation.
+
     try {
       await Promise.race([
         (async () => {
@@ -334,8 +329,7 @@ export class CreationFlow {
       'uncertain',
     );
   }
-  /** Entry to the already-consented account. Restore first, then obtain fees
-   * only when the same request is confirmed absent. Never signs or delivers. */
+
   async open() {
     await this.restore();
     if (this.view.phase === 'absent' && !this.knownRecorded) await this.prepare();
@@ -388,7 +382,7 @@ export class CreationFlow {
         if (!creationFeeUnit(this.view.network)) throw failure('creation/unsupported-network');
         const p = this.consent.preparation,
           preview = parseCreationPreview(this.operation!.wire, this.consent);
-        // Preserve Safari user activation: no token, import, fetch or await before get().
+
         const proof = await this.prove({
           scope: this.consent.expected.scope,
           key: p.public_key,

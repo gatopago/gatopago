@@ -9,7 +9,7 @@ export type MoneySelection = TransferSelection & {
   market: AaveMarketPin;
   gas: typeof configuration.gas;
 };
-/** Generated reviewed release, never a target or fee ceiling chosen by HTTP. */
+
 export function moneySelectionForRelease(
   selected: TransferSelection,
   environment: Environment,

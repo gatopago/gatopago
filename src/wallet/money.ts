@@ -98,7 +98,7 @@ export function parseMoneyPreparation(
   assertMoneyGas(selection, request.kind, restored.review.context.gas, now);
   return restored;
 }
-/** Historical locator lookup works past consent expiry and cannot authorize. */
+
 export function parseMoneyPreparationHistory(
   input: unknown,
   selection: MoneySelection,
@@ -424,8 +424,6 @@ function parseMoneyReceipt(
   });
 }
 
-/** Each method performs one request. Retrying mutations is an explicit action
- * using the original idempotency key; restored status never sends or signs. */
 export function moneyClient(config: EnabledAuthConfig, token: () => Promise<string>) {
   const path = (s: MoneySelection) =>
     `/wallets/${parseResourceId('wallet', s.wallet_id)}/accounts/${parseResourceId('walletAccount', s.wallet_account_id)}`;

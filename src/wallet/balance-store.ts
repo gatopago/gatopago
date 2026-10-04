@@ -12,7 +12,6 @@ type View = {
   error: string | null;
 };
 
-/** Inert constructor, component-local reads, no signing or balance polling. */
 export class BalanceStore {
   private view: View = { phase: 'idle', page: null, selected: null, balance: null, error: null };
   private readonly listeners = new Set<() => void>();
@@ -82,12 +81,10 @@ export class BalanceStore {
         const page = await session.accounts(this.walletId, after, signal);
         signal.throwIfAborted();
         session.assertCurrent();
-        // Do not infer uniqueness from a partial page. A single complete account
-        // can be selected for display only; sending still requires its own checks.
+
         if (selectSingle && page.next_cursor === null && page.data.length === 1) {
           const selected = page.data[0];
-          // The owned account is usable for historical lookup even if its balance
-          // RPC fails. Publish no amount or spending permission before that read.
+
           this.set({ page, selected });
           signal.throwIfAborted();
           session.assertCurrent();
@@ -114,8 +111,7 @@ export class BalanceStore {
   async refresh() {
     if (this.view.selected) await this.select(this.view.selected.id);
   }
-  /** A parsed, owned terminal status can request one fresh display-only GET.
-   * It never changes a reservation, authorizes spending or retries delivery. */
+
   refreshAfterTransfer = async (input: ReturnType<typeof parseTransferStatus>) => {
     const selected = this.view.selected;
     if (!selected || this.view.phase === 'closed') return;
@@ -132,8 +128,7 @@ export class BalanceStore {
     }
     if (status.status !== 'reconciled' || this.reconciledReads.has(status.operation_id)) return;
     this.reconciledReads.add(status.operation_id);
-    // Replace an in-flight pre-reconciliation read; do not deduplicate against
-    // an observation which started before this result was known.
+
     await this.run(
       async (session, signal) => {
         const balance = await session.read(selected, signal);

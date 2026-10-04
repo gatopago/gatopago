@@ -13,7 +13,7 @@ export type TransferReceiptProps = {
   readonly request: TransferRequest;
   readonly selected: TransferSelection;
   readonly status: ReturnType<typeof parseTransferStatus>;
-  /** Exact amount resolved by the verified review, including MAX. */
+
   readonly amountAtomic: string;
   readonly metadata: readonly TransferAsset[];
   readonly onClose?: () => void;
@@ -26,8 +26,6 @@ function getExplorerTxUrl(networkId: string, txHash: string): string | null {
   return null;
 }
 
-/** Structured Consumer receipt showing final status, transaction hash, and reconciliation state.
- * CRITICAL: A reverted transfer is NEVER displayed as paid. */
 export function TransferReceipt({
   english: en,
   request,
@@ -177,12 +175,13 @@ export function TransferReceipt({
 
         <dt>{en ? 'Operation reference' : 'Referencia de operación'}</dt>
         <dd style={{ overflowWrap: 'anywhere' }}>{status.operation_id}</dd>
-
-        <dt>{en ? 'UserOp hash' : 'Hash de UserOp'}</dt>
-        <dd style={{ overflowWrap: 'anywhere' }}>
-          <code>{status.userop_hash}</code>
-        </dd>
       </dl>
+      <details>
+        <summary>{en ? 'Technical details' : 'Detalles técnicos'}</summary>
+        <p style={{ overflowWrap: 'anywhere' }}>
+          {en ? 'UserOp hash' : 'Hash de UserOp'}: <code>{status.userop_hash}</code>
+        </p>
+      </details>
 
       {onClose && canClose ? (
         <button type="button" className="auth-primary btn btn-primary btn-block" onClick={onClose}>

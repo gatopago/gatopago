@@ -23,7 +23,6 @@ export async function loadCredentialInventory(
       record(result.value) &&
       result.value.error_code === 'SESSION_REQUIRED'
     ) {
-      // Reading security never bootstraps a profile or starts an enrollment.
       throw new CredentialInventoryError('credentials/profile-required');
     }
     if (result.status !== 200) throw new CredentialInventoryError('credentials/unavailable');

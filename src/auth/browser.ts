@@ -28,7 +28,6 @@ export type Identity = { uid: string };
 export type BrowserAuth = ReturnType<typeof createBrowserAuth>;
 const identity = (user: User | null): Identity | null => (user ? { uid: user.uid } : null);
 
-// Browser lifetime only, initialized from an effect. Never holds an SSR request/user.
 let instance: { key: string; runtime: BrowserAuth } | undefined;
 
 export function getBrowserAuth(config: EnabledAuthConfig): BrowserAuth {
@@ -43,7 +42,6 @@ export function getBrowserAuth(config: EnabledAuthConfig): BrowserAuth {
 }
 
 function createBrowserAuth(config: EnabledAuthConfig) {
-  // An existing SDK app without its runtime indicates HMR/config drift. Do not silently reuse it.
   if (getApps().some((app) => app.name === 'gatopago-v3')) throw new Error('Reload the auth page');
   const app = initializeApp(config.firebase, 'gatopago-v3');
   const auth = initializeAuth(app, {
@@ -54,7 +52,7 @@ function createBrowserAuth(config: EnabledAuthConfig) {
   const ready = (async () => {
     await auth.authStateReady();
   })().finally(releaseReady);
-  // Observe immediately to prevent an unhandled rejection while the component mounts.
+
   void ready.catch(() => undefined);
   let inFlight: Promise<unknown> | null = null;
   const access = passkeyClient(config);
@@ -86,8 +84,7 @@ function createBrowserAuth(config: EnabledAuthConfig) {
   async function startSession(token: string, signal: AbortSignal) {
     signal.throwIfAborted();
     assertSignedOut();
-    // Firebase exchange is not abortable. Once started, settle it and let the
-    // auth observer reflect the result; never automatically repeat an admission.
+
     await signInWithCustomToken(auth, token);
   }
   function captureSession(expectedUid: string) {
@@ -444,8 +441,7 @@ function createBrowserAuth(config: EnabledAuthConfig) {
     ) => {
       const session = captureSession(expectedUid);
       const trusted = Object.freeze({ ...pin });
-      // Loading/preparing is not a WebAuthn gesture. Keep this code out of the auth
-      // bootstrap; the subsequent confirmation button invokes the passkey directly.
+
       const { initializationClient: createClient } = await import('../wallet/initialization');
       session.assertCurrent();
       const client = createClient(config, session.token, trusted);

@@ -37,9 +37,6 @@ const errorCode = (error: unknown) =>
     ? error.code
     : 'enrollment/unavailable';
 
-/** Component-owned, not a global store. No private key, persistence, payment or recovery.
- * Each action starts synchronously from its own user gesture. Late responses cannot advance a cancelled flow.
- */
 export class EnrollmentFlow {
   private view: EnrollmentView = Object.freeze({ phase: 'idle', error: null, keyMayExist: false });
   private listeners = new Set<() => void>();
@@ -92,7 +89,7 @@ export class EnrollmentFlow {
     this.active?.abort();
     this.active = null;
     this.attempt = null;
-    this.set('idle'); // keyMayExist is deliberately retained: cancelling cannot delete a device credential.
+    this.set('idle');
   }
   private async run(
     phase: Phase,
@@ -164,7 +161,7 @@ export class EnrollmentFlow {
         const attempt = this.attempt!,
           prepared = attempt.prepared!;
         this.set('creating', null, true);
-        // No token fetch, dynamic import, timer or await before this browser ceremony.
+
         const registered = await this.ceremonies.create({
           scope: prepared.scope,
           challenge: prepared.challenge,
@@ -199,7 +196,7 @@ export class EnrollmentFlow {
           signal,
         });
         current();
-        // Keep the exact proof only in memory for explicit, idempotent completion retries.
+
         attempt.submission = structuredClone({ ...registered.registration, proof });
         this.set('submitting');
         await attempt.session.complete(attempt.id, attempt.submission, signal);

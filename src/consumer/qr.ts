@@ -2,7 +2,6 @@ const addressPattern = /^0x[a-fA-F0-9]{40}$/;
 export type QrDestination =
   { kind: 'address'; address: string; chain: string | null } | { kind: 'link'; path: string };
 
-/** Untrusted input can select a recipient, never amount, calls or authorization. */
 export function parseConsumerQr(raw: string, origin: string): QrDestination | null {
   const text = raw.trim();
   if (
@@ -33,7 +32,7 @@ export function parseConsumerQr(raw: string, origin: string): QrDestination | nu
       return { kind: 'link', path: url.pathname };
     }
   } catch {
-    /* Invalid URL stays on the scanner. */
+    /* empty */
   }
   return null;
 }

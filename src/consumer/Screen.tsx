@@ -1,6 +1,3 @@
-// Standard route-screen container: safe-area padding, phone-width column.
-// Defined once so the page frame can't drift between screens.
-
 import type { HTMLAttributes, ReactNode } from 'react';
 
 export default function Screen({
@@ -10,7 +7,7 @@ export default function Screen({
   ...props
 }: {
   children: ReactNode;
-  /** Reserves space for the persistent four-destination navigation. */
+
   withPrimaryNav?: boolean;
   className?: string;
 } & Omit<HTMLAttributes<HTMLElement>, 'children' | 'className'>) {

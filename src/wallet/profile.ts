@@ -171,9 +171,6 @@ export function parseRecipient(
   return Object.freeze(value as Recipient);
 }
 
-/** Finish signup using its reserved username and the exact deployed account.
- * Publication verifies receiving on the server; a retry reads its result first.
- */
 export async function finishRegisteredAccount(
   client: ReturnType<typeof profileClient> & { assertCurrent(): void },
   walletId: string,
@@ -197,7 +194,7 @@ export async function finishRegisteredAccount(
     throw new ProfileClientError('profile/receiving-unavailable');
   return published;
 }
-/** No session, private wallet IDs or remote URL overrides cross this public boundary. */
+
 export async function resolveUsername(
   environment: Environment,
   input: string,

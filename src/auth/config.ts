@@ -14,11 +14,10 @@ export type WebAuthConfig =
 export type EnabledAuthConfig = Exclude<WebAuthConfig, { mode: 'disabled' }>;
 
 export const LOCAL_AUTH_ORIGIN = 'http://127.0.0.1:9099';
-// The browser origin needs a domain RP ID for WebAuthn. Emulator transport can remain an IP.
+
 export const LOCAL_WEB_ORIGIN = 'http://localhost:3000';
 export const LOCAL_AUTH_PROJECT = 'demo-gatopago-v3';
 
-/** Takes only explicitly selected PUBLIC inputs. Never serialize process.env. */
 export function buildAuthConfig(
   environment: Environment,
   input: {
@@ -106,7 +105,6 @@ export function assertBrowserOrigin(config: EnabledAuthConfig, origin: string): 
   }
 }
 
-/** @internal Next build headers, not a runtime API. */
 export function authHeaders() {
   const privateHeaders = [
     { key: 'Cache-Control', value: 'private, no-store, max-age=0' },

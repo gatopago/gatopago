@@ -1,8 +1,5 @@
-// Presentation preserved from client/src/components/SettingsSection.tsx.
 import type { ReactNode } from 'react';
 
-/** Reusable organism for settings groups. It keeps heading, accent, spacing and
- * card semantics identical while each page owns only its domain controls. */
 export function SettingsSection({
   title,
   icon,

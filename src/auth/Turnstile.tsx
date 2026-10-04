@@ -160,7 +160,7 @@ export function Turnstile({
         try {
           window.turnstile?.remove(widget);
         } catch {
-          /* Already removed. */
+          /* empty */
         }
       }
     };

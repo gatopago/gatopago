@@ -60,15 +60,13 @@ function OwnedTransferEntry({ runtime, uid, account, balance, english: en, onRec
     return () => {
       mounted.current = false;
       unsubscribe();
-      // StrictMode setup replay is not a real unmount.
+
       queueMicrotask(() => {
         if (!mounted.current) store.dispose();
       });
     };
   }, [runtime, uid, store]);
   useEffect(() => {
-    // Enter the form with authenticated GETs only; authorizing and sending
-    // remain user gestures. A saved operation always takes precedence.
     if (state.phase !== 'idle' || blockedBookmark) return;
     if (bookmark) void store.open(null, bookmark);
     else if (balance) void store.open(balance);
@@ -114,12 +112,7 @@ function OwnedTransferEntry({ runtime, uid, account, balance, english: en, onRec
           className="auth-primary btn btn-primary btn-block"
           type="button"
           disabled={!balance && !bookmark}
-          onClick={() =>
-            void store.open(
-              bookmark ? null : balance,
-              bookmark ?? undefined,
-            )
-          }
+          onClick={() => void store.open(bookmark ? null : balance, bookmark ?? undefined)}
         >
           {en ? 'Try again' : 'Reintentar'}
         </button>

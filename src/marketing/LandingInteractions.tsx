@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { navigationScrollState } from './navigation-scroll';
 
-/** Progressive enhancement of server-rendered marketing only. No wallet/auth SDK. */
 export function LandingInteractions({ locale }: { locale: 'es' | 'en' }) {
   useEffect(() => {
     const root = document.querySelector<HTMLElement>('.meli-landing');
@@ -78,7 +77,6 @@ export function LandingInteractions({ locale }: { locale: 'es' | 'en' }) {
         dialog.showModal();
       }
       if (target.matches('[data-copy-payment]')) {
-        // This is a clearly labelled demo, never an economic intent or a QR to fund.
         const label = target.querySelector<HTMLElement>('[data-copy-label]');
         try {
           await navigator.clipboard.writeText(
@@ -118,7 +116,7 @@ export function LandingInteractions({ locale }: { locale: 'es' | 'en' }) {
       { signal: controller.signal },
     );
     dialog?.addEventListener('close', () => dialogTrigger?.focus(), { signal: controller.signal });
-    // Only clicks outside the dialog rectangle dismiss it; padding is not a backdrop.
+
     dialog?.addEventListener(
       'click',
       (event) => {

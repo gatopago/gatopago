@@ -31,8 +31,6 @@ type View = Readonly<{
   error: boolean;
 }>;
 
-/** One consent per instance, no background mutations. Uncertain confirmation is
- * recovered with owned GETs only. A read cannot re-enable an uncertain delivery. */
 export class MoneyExecutionFlow {
   private view: View;
   private active: AbortController | null = null;
@@ -228,8 +226,7 @@ export class MoneyExecutionFlow {
         status.candidate.digest !== this.initial.candidate.digest
       )
         throw new Error('MONEY_STATUS_MISMATCH');
-      // Only a never-dispatched, still-current authorization can resume by an
-      // explicit button after restoration. Uncertain local sends remain inert.
+
       let phase: Phase = 'observed';
       if (status.state === 'authorized' && !this.deliveryAttempted) {
         try {

@@ -26,13 +26,11 @@ export class PasskeyRequestError extends Error {
   }
 }
 
-// A browser ceremony guard only: no account, session, token or authorization is stored globally.
 let busy = false;
 const fail = (code: PasskeyRequestError['code']): never => {
   throw new PasskeyRequestError(code);
 };
 
-// Synchronous setup so get/create still runs in the initiating user gesture.
 function ceremonyDeadline(timeout: number, signal?: AbortSignal) {
   const controller = new AbortController();
   const cancel = () => controller.abort(new PasskeyRequestError('cancelled'));
@@ -67,12 +65,6 @@ function credentialIdBytes(id: string): Uint8Array<ArrayBuffer> {
   }
 }
 
-/**
- * Low-level ceremony, invoked only from an explicit confirmation action. The caller must derive
- * challenge from the reviewed typed authorization, validate the enrolled signer/current manifest,
- * and cancel on account/route changes. This function does not prepare, submit or retry a payment.
- * Import lazily from the future security/confirmation screen, never from marketing or a mount effect.
- */
 type AssertionInput = {
   scope: WebAuthnScope;
   key: Hex;
@@ -87,8 +79,6 @@ const base64url = (bytes: Uint8Array) =>
     .replaceAll('/', '_')
     .replace(/=+$/, '');
 
-/** Public assertion bytes for the exact caller-reconstructed challenge. Enrollment,
- * InitializationApproval and UserOperation are distinct consents, never interchangeable. */
 export async function requestPasskeyProof(input: AssertionInput) {
   return (await requestAssertion(input)).proof;
 }
@@ -110,7 +100,7 @@ async function requestAssertion(input: AssertionInput, registrationContinuation 
   const signal = input.signal;
   if (signal?.aborted) return fail('cancelled');
   if (busy) return fail('busy');
-  // Snapshot caller data before the first await: route/account changes cannot replace the expected key.
+
   const expected = {
     scope: { ...input.scope },
     key: input.key,
@@ -123,7 +113,6 @@ async function requestAssertion(input: AssertionInput, registrationContinuation 
   const release = holdPageReload();
   busy = true;
   try {
-    // No await before get(): retain the initiating click's user activation (notably Safari).
     const credential = await Promise.race([
       navigator.credentials.get({
         publicKey: {
@@ -176,10 +165,6 @@ async function requestAssertion(input: AssertionInput, registrationContinuation 
   }
 }
 
-/** Explicit create gesture. The
- * Worker re-derives the key from attestation; this local SPKI is only used to
- * check the following signature before sending it. Nothing is persisted here.
- */
 type RegistrationInput = {
   scope: WebAuthnScope;
   challenge: Hex;
@@ -196,7 +181,7 @@ export async function requestPasskeyRegistration(
 ) {
   if (typeof window === 'undefined' || !window.isSecureContext || !navigator.credentials?.create)
     return fail('unsupported');
-  // Capture the initiating click before obtaining the server challenge.
+
   if (window.top !== window || navigator.userActivation?.isActive !== true) return fail('context');
   if (typeof input === 'function') input = await input();
   assertWebAuthnScope(input.scope);
@@ -345,8 +330,6 @@ export async function requestPasskeyRegistration(
   }
 }
 
-/** Discoverable login only. Wallet Core verifies the returned key and signature;
- * this assertion never substitutes for an onchain operation's authorization. */
 type LoginInput = {
   scope: WebAuthnScope;
   challenge: Hex;
@@ -456,8 +439,6 @@ export async function requestPasskeyLogin(input: LoginInput | (() => Promise<Log
   }
 }
 
-/** One Create account click starts both registration ceremonies. The second
- * assertion proves the newly created credential, never a wallet/payment consent. */
 export async function requestAccountRegistration(
   prepare: () => Promise<RegistrationChallenge>,
   onCreated: (

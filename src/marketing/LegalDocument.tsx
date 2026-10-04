@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { privacy, terms } from './legal-copy';
 
-// Preserved public contact from the source landing; no new mailbox is implied.
 const privacyEmail = 'privacy@parmelia.me';
 
 function Paragraph({ text }: { text: string }) {

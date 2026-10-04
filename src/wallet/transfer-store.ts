@@ -7,7 +7,6 @@ type View = {
   result: ReturnType<typeof parseTransferStatus> | null;
 };
 
-/** Instance-local, explicit reads. Late results cannot restore cleared identity/selection. */
 export class TransferStore {
   private view: View = { phase: 'idle', result: null };
   private active: AbortController | null = null;

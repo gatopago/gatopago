@@ -11,8 +11,7 @@ export type MoneyBookmark = Readonly<{
   preparation_id: string;
   operation_id: string | null;
 }>;
-/** Resource locators only. Fragments never enter HTTP requests or referrers.
- * They carry no review, amount, recipient, signature or sending authority. */
+
 export function parseMoneyBookmark(hash: string): MoneyBookmark | null {
   if (!hash.startsWith(prefix)) return null;
   if (hash.length > 2048) throw new Error('INVALID_MONEY_BOOKMARK');
@@ -117,8 +116,7 @@ function storageScope(input: Pick<MoneyBookmark, 'wallet_id' | 'wallet_account_i
 }
 const storageKey = (input: MoneyBookmark) =>
   storageScope(input) + parseResourceId('operation', input.preparation_id);
-/** Persist only bounded resource locators so opening the plain app URL can find
- * unresolved operations. Each recovered ID still needs server-side ownership. */
+
 export function moneyStoredSnapshot(
   account: Pick<MoneyBookmark, 'wallet_id' | 'wallet_account_id'>,
 ) {

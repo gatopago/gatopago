@@ -742,7 +742,6 @@ const intent = await response.json();`;
                 <pre>
                   <code>
                     <span className="code-muted">
-                      //{' '}
                       {isSpanish
                         ? 'crear un cobro desde tu servidor'
                         : 'create a payment from your server'}

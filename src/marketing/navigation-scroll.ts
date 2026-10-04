@@ -1,4 +1,3 @@
-/** Ignore small scroll jitter; always reveal navigation near the top or while in use. */
 export function navigationScrollState(previousY: number, scrollY: number, heldOpen: boolean) {
   const currentY = Math.max(0, scrollY);
   const scrolled = currentY > 16;

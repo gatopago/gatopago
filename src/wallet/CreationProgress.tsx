@@ -43,8 +43,6 @@ const finalityLabels = {
   unavailable: ['no disponible', 'unavailable'],
 } as const;
 
-/** Historical evidence is labelled as such. Never renders a deposit address or
- * payment CTA; timestamps do not turn stale evidence into present readiness. */
 export default function CreationProgress({
   lifecycle,
   delivery,

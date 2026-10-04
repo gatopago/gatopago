@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useSyncExternalStore, type ComponentProps } from 'react';
 import { isReloadBlocked, serverReloadBlocked, subscribeReloadGuard } from '../pwa/reload-guard';
 
-/** Preserve the monetary operation guard for every consumer navigation action. */
 export function NavigationLink(props: ComponentProps<typeof Link>) {
   const blocked = useSyncExternalStore(subscribeReloadGuard, isReloadBlocked, serverReloadBlocked);
   return (

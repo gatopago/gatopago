@@ -128,7 +128,7 @@ function ReviewedMoney({
     inFlight.current = true;
     setBusy(true);
     setError(false);
-    // Invoke in the click stack, before imports, HTTP or token refresh.
+
     void action()
       .catch(() => {
         if (mounted.current) setError(true);
@@ -319,9 +319,13 @@ function ReviewedMoney({
       ) : null}
       {error || state.error ? (
         <p role="alert">
-          {en
-            ? 'This action could not be verified. Check the existing reference before repeating anything.'
-            : 'No se pudo verificar esta acción. Consulta la referencia existente antes de repetir algo.'}
+          {bound.flow.canEdit()
+            ? en
+              ? 'Authorization was not completed. No funds were sent. You can try again.'
+              : 'No se completó la autorización. No se enviaron fondos. Puedes volver a intentarlo.'
+            : en
+              ? 'The result could not be verified. Check this operation before trying again.'
+              : 'No se pudo verificar el resultado. Consulta esta operación antes de volver a intentarlo.'}
         </p>
       ) : null}
       {!fresh ? (

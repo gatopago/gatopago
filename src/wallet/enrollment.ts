@@ -214,7 +214,7 @@ export async function completeEnrollment(
 ) {
   try {
     parseResourceId('operation', id);
-    // This is a public-key proof, not a payment signature. Only the Worker can attest registration.
+
     if (new TextEncoder().encode(JSON.stringify(submission)).length > 24576) return invalid();
     const { request } = walletTransport(config, getToken, signal);
     const result = await request(`/security/enrollments/${id}/complete`, 'POST', submission);

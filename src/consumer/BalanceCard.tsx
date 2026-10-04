@@ -5,7 +5,6 @@ import { atomicToDecimal } from '@gatopago/shared/v3/amount';
 import type { BalanceView } from '../wallet/balances';
 import { EyeIcon } from './Icons';
 
-/** Home's original visual hierarchy; V3 observed balances are never labelled spendable. */
 export function BalanceCard({
   balance,
   network,

@@ -1,4 +1,4 @@
-/* Migrated from client/src/index.css; selectors are isolated from marketing. */
+/* Account styles are scoped separately from marketing. */
 @reference "../app/base.css";
 .consumer-ui .money-panel {
   display: grid;
@@ -107,33 +107,28 @@
 }
 
 .consumer-ui {
-  color-scheme: light;
+  color-scheme: dark;
   --recursive-linear: 'MONO' 0, 'CASL' 0, 'slnt' 0, 'CRSV' 0.5;
   --recursive-casual: 'MONO' 0, 'CASL' 1, 'slnt' 0, 'CRSV' 0.5;
   --recursive-mono: 'MONO' 1, 'CASL' 0, 'slnt' 0, 'CRSV' 0.5;
   --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   --ease-press: cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.consumer-ui {
-  background: #0b0b0f;
-  color-scheme: light;
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-.consumer-ui {
   min-height: 100dvh;
   margin: 0;
   background: #0b0b0f;
-  color: var(--color-text);
+  color: #fff8f0;
   font-family: var(--font-sans);
   font-variation-settings: var(--recursive-linear);
   font-size: 16px;
   line-height: 1.55;
   letter-spacing: -0.01em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  isolation: isolate;
 }
 
 .consumer-ui::before,
@@ -162,14 +157,6 @@
   mask-image: linear-gradient(to bottom, black, transparent 54%);
 }
 
-.consumer-ui {
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  isolation: isolate;
-}
-
 .consumer-ui > * {
   width: 100%;
 }
@@ -179,6 +166,7 @@
   isolation: isolate;
   background: var(--color-canvas);
   color: var(--color-text);
+  color-scheme: light;
 }
 
 .consumer-ui .app-frame::after {
@@ -658,9 +646,6 @@
 
 .consumer-ui .primary-nav__item.is-active::before {
   background: var(--color-text);
-}
-.consumer-ui :where(.app-frame) [class*='rounded-'] {
-  border-radius: 0 !important;
 }
 
 @media (hover: hover) and (pointer: fine) {

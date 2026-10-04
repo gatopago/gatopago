@@ -110,7 +110,7 @@ export function transferRestorationClient(config: EnabledAuthConfig, token: () =
     ) {
       const selected = structuredClone(selectedInput),
         bookmark = structuredClone(bookmarkInput);
-      // Validate the locator before acquiring a token or composing its path.
+
       const locator = parseTransferBookmark(transferBookmarkHash(bookmark))!;
       if (
         locator.wallet_id !== selected.wallet_id ||

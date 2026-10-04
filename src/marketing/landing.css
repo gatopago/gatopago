@@ -3,26 +3,18 @@
 :root {
   --meli-cat-fire: #f85239;
   --meli-cat-shadow: #cf3433;
-  --meli-cat-deep: #9f292e;
   --meli-ink: #0b0b0f;
   --meli-ink-soft: #15151b;
   --meli-ink-raised: #1d1d24;
   --meli-milk: #fff8f0;
   --meli-paper: #fffdf9;
   --meli-oat: #eee4d8;
-  --meli-stone: #a99f96;
   --meli-growth: #71d5a1;
   --meli-info: #79b9ff;
   --meli-pending: #f6c65b;
   --meli-danger: #ff6b7a;
   --meli-border-dark: rgb(255 248 240 / 14%);
   --meli-border-light: rgb(11 11 15 / 14%);
-  --meli-shadow-pixel: 4px 4px 0 var(--meli-cat-shadow);
-  --meli-shadow-ink: 6px 6px 0 var(--meli-ink);
-  --meli-radius-sm: 8px;
-  --meli-radius-md: 16px;
-  --meli-radius-lg: 24px;
-  --meli-radius-xl: 32px;
   --meli-container: 1200px;
   --meli-section-space: clamp(6rem, 11vw, 10rem);
   --meli-font: 'Recursive Variable', 'Recursive', ui-sans-serif, system-ui, sans-serif;
@@ -1406,7 +1398,6 @@ body:has(.meli-landing) {
 .meli-avatar .cat-glyph {
   width: 31px;
   height: 31px;
-  --cat-glyph-shadow: #9f292e;
 }
 
 .meli-app-frame__header strong,
@@ -2608,7 +2599,6 @@ body:has(.meli-landing) {
 .meli-concept-card__head .cat-glyph {
   width: 42px;
   height: 42px;
-  --cat-glyph-shadow: #9f292e;
 }
 
 .meli-concept-card__head span {

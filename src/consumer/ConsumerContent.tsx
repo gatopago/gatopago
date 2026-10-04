@@ -27,7 +27,6 @@ const Profile = dynamic(() => import('./AccountScreens').then((m) => m.ProfileSc
 const Recovery = dynamic(() => import('./AccountScreens').then((m) => m.RecoveryScreen));
 const Onboarding = dynamic(() => import('../wallet/WalletOnboarding'));
 
-/** Account routes receive a confirmed session from AuthScreen. */
 export function ConsumerContent({
   view,
   english: en,

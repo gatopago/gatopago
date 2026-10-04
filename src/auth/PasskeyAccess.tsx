@@ -150,7 +150,7 @@ export function PasskeyAccess({
     pending.current = true;
     setBusy(true);
     setErrorCode('');
-    // Invoke synchronously so WebAuthn retains the click's user activation.
+
     void operation(controller.signal)
       .catch((failure: unknown) => {
         if (!controller.signal.aborted) {

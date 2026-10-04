@@ -4,7 +4,6 @@ import { MeliSprite } from '../marketing/MeliSprite';
 import { ActionCard } from './Primitives';
 import { ReceiveIcon, SendIcon, GrowIcon } from './Icons';
 
-/** Daily actions that have a connected account flow. */
 export function MoveMenu({ english: en }: { english: boolean }) {
   return (
     <>

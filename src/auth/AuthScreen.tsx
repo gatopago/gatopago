@@ -69,7 +69,6 @@ function LoginRedirect({ english: en }: { english: boolean }) {
   const blocked = useSyncExternalStore(subscribeReloadGuard, isReloadBlocked, serverReloadBlocked);
   const destination = en ? '/login?lang=en' : '/login';
   useEffect(() => {
-    // Do not interrupt an operation still protected by the navigation guard.
     if (!blocked) router.replace(destination);
   }, [blocked, destination, router]);
   return (
@@ -245,8 +244,7 @@ function EnabledAuthScreen({
             ) : null}
           </section>
         ) : null}
-        {/* Keep registration mounted while Firebase publishes the session.
-            Continue setup here instead of opening another account screen. */}
+        {}
         {runtime && view === 'login' ? (
           <div hidden={!!user}>
             <PasskeyAccess

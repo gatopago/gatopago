@@ -38,9 +38,6 @@ type View = Readonly<{
   error: boolean;
 }>;
 
-/** One explicit reviewed operation per component instance. Signing is owned by
- * gesture handlers; no automatic proof collection, confirmation or send.
- * An ambiguous delivery NEVER returns to the sendable state. Read status instead. */
 export class TransferExecutionFlow {
   private view: View = Object.freeze({
     phase: 'ready',
@@ -120,8 +117,7 @@ export class TransferExecutionFlow {
         (this.view.phase === 'observed' && this.view.status?.status === 'held'))
     );
   }
-  /** Background reads require an existing operation receipt. In particular,
-   * uncertain confirmation recovery can replay a command and stays explicit. */
+
   canTrack() {
     return (
       !!this.view.confirmation &&
@@ -130,8 +126,7 @@ export class TransferExecutionFlow {
       !['reconciled', 'expired', 'review_required'].includes(this.view.status?.status ?? '')
     );
   }
-  /** Only abandon a review which never reached the confirmation command.
-   * An uncertain response may already have reserved funds; never replace it. */
+
   discardUnsubmitted(): boolean {
     if (!this.canEdit()) return false;
     this.invalidate();
@@ -273,7 +268,7 @@ export class TransferExecutionFlow {
       const status = parseTransferStatus(response, locator);
       if (status.userop_hash !== this.initial.candidate.userOpHash)
         throw new Error('Mismatched operation');
-      // Reading even a held state never re-enables delivery after an ambiguous send.
+
       this.set({
         phase: previous === 'reserved' && status.status === 'held' ? 'reserved' : 'observed',
         status,

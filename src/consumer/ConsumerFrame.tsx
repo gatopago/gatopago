@@ -7,7 +7,6 @@ import { PrimaryNav } from './PrimaryNav';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { PwaControls } from '../pwa/PwaControls';
 
-/** Shared frame for account and access screens. */
 export function ConsumerFrame({
   children,
   english: en,

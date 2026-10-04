@@ -20,7 +20,6 @@ const fail = () => new WalletCoreError('wallet/unavailable');
 const hash = (value: unknown): value is string =>
   typeof value === 'string' && /^0x[0-9a-f]{64}$(?![\s\S])/.test(value) && !/^0x0+$/.test(value);
 
-/** Historical display contract, never a send grant or an available balance. */
 export function parseTransferStatus(
   input: unknown,
   selected: TransferLocator,
@@ -95,7 +94,6 @@ export function parseTransferStatus(
 export function transferClient(config: EnabledAuthConfig, token: () => Promise<string>) {
   return {
     async status(selected: TransferLocator, signal: AbortSignal) {
-      // Snapshot selection before token acquisition / network awaits.
       const expected = {
         wallet_id: parseResourceId('wallet', selected.wallet_id),
         wallet_account_id: parseResourceId('walletAccount', selected.wallet_account_id),

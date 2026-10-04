@@ -114,7 +114,7 @@ export default function ScanScreen({ english: en }: { english: boolean }) {
             }
           }
         } catch {
-          /* Keep manual/image entry available if this frame cannot decode. */
+          /* empty */
         }
         if (generation.current === current) timer.current = setTimeout(() => void scan(), 180);
       };

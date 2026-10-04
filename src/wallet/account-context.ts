@@ -10,8 +10,6 @@ import { exact, record, walletTransport, WalletCoreError } from './http';
 export type AccountContextPin = Readonly<{ document: string; digest: string }>;
 const fail = () => new WalletCoreError('wallet/unavailable');
 
-/** The response is an owned identity projection, not chain evidence. Its pin must
- * additionally match an independently admitted Web release, never itself. */
 export function parseAccountContext(
   input: unknown,
   selected: AccountChoice,
@@ -94,7 +92,7 @@ export function accountContextClient(
         network_id: parseNetworkId(selected.network_id),
       };
       signal.throwIfAborted();
-      // Do not query private resources when this Web release admits no deployment.
+
       if (!pins.length || pins.length > 32) throw fail();
       const result = await walletTransport(config, token, signal, 'transfer-preparation').request(
         `/wallets/${expected.wallet_id}/accounts/${expected.id}/context`,

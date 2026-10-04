@@ -11,7 +11,6 @@ const destinations = [
   { href: '/statement', es: 'Envíos', en: 'Transfers', icon: ActivityIcon },
 ] as const;
 
-/** Navigation to connected account features. */
 export function PrimaryNav({ english: en }: { english: boolean }) {
   const pathname = usePathname();
   return (

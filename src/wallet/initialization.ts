@@ -51,10 +51,6 @@ function requireSuccess(result: { status: number; value: unknown }) {
   throw new InitializationClientError('initialization/unavailable');
 }
 
-/** A captured-session resource client. No reads/writes or WebAuthn on construction.
- * The pin comes from the reviewed Web release, not the preparation response.
- * UI must separately present typed consent and invoke a passkey from a user gesture.
- */
 export function initializationClient(
   config: EnabledAuthConfig,
   getToken: () => Promise<string>,
@@ -99,7 +95,6 @@ export function initializationClient(
       }
     },
     async restore(selected: InitializationHistoryItem, signal: AbortSignal) {
-      // Snapshot before awaiting the token. History selects a resource, not a URL or pin.
       const item = parseInitializationHistory({
         observed_at: Math.max(
           selected.created_at,

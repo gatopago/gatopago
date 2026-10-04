@@ -70,16 +70,11 @@ async function body(response: Response, signal: AbortSignal, limit: number): Pro
     }
     return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
   } finally {
-    // A stalled stream cancellation must not defeat the operation's deadline.
     if (!finished) void reader.cancel().catch(() => undefined);
     reader.releaseLock();
   }
 }
 
-/** One bounded operation, including token acquisition, requests and response bodies.
- * No cross-request state, redirects, cookies, polling or automatic network retries.
- * getToken is supplied by a captured Firebase session, never from local storage.
- */
 export function walletTransport(
   config: EnabledAuthConfig,
   getToken: () => Promise<string>,
@@ -98,7 +93,7 @@ export function walletTransport(
     api.password
   )
     throw new WalletCoreError('wallet/unavailable');
-  // Fixed local profiles, never limits chosen by a remote response or user input.
+
   const transfer = profile === 'transfer-preparation';
   const signal = AbortSignal.any([
     inputSignal,
@@ -111,7 +106,6 @@ export function walletTransport(
     account?: AccountReleaseContext | 'identity',
     idempotencyKey?: string,
   ) {
-    // Only resource paths authored by our resource clients; never a server-provided URL.
     if (!path.startsWith('/') || path.startsWith('//') || /[\\#\r\n]/.test(path))
       throw new WalletCoreError('wallet/unavailable');
     if (

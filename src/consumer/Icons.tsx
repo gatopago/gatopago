@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 
-/** Original client icon geometry, shared by the Next.js account screens. */
 function Icon({ children, size = 20 }: { children: ReactNode; size?: number }) {
   return (
     <svg

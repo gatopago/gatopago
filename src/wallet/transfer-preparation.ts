@@ -38,8 +38,6 @@ function selection(input: TransferSelection) {
   };
 }
 
-/** Rebuild a public unsigned review for owned historical display. Expiry and
- * release admission are deliberately checked separately for every mutation. */
 export function parseOwnedTransferDraft(
   json: unknown,
   digest: unknown,
@@ -66,8 +64,6 @@ export function parseOwnedTransferDraft(
   return restored;
 }
 
-/** Rebuilds the exact request and signing digest locally. Not chain evidence or a
- * signing grant: the UI must still obtain explicit consent and server confirmation. */
 export function parseTransferPreparation(
   input: unknown,
   selected: TransferSelection,

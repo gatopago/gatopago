@@ -105,9 +105,7 @@ export default function AccountInitialization({
   }, [flow, resume]);
   useEffect(() => {
     if (resume) return;
-    // History has established that no request needs restoring. Only prepare
-    // signing metadata; WebAuthn still runs directly from the confirm button.
-    // Defer through StrictMode's cleanup so its trial mount sends no request.
+
     let connected = true;
     queueMicrotask(() => {
       if (connected) void flow.prepare(selected);

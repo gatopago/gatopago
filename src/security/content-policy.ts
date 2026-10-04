@@ -3,7 +3,6 @@ import type { WebAuthConfig } from '../auth/config';
 import { LOCAL_AUTH_ORIGIN, LOCAL_WEB_ORIGIN } from '../auth/config';
 import { validNonce } from './nonce';
 
-/** Inputs are validated build configuration, never request URLs or arbitrary origin lists. */
 export function documentCsp(input: {
   nonce: string;
   environment: Environment;
@@ -40,7 +39,7 @@ export function documentCsp(input: {
     `script-src 'nonce-${input.nonce}' 'strict-dynamic'${development ? " 'unsafe-eval'" : ''}`,
     "script-src-attr 'none'",
     `style-src 'self' ${development ? "'unsafe-inline'" : `'nonce-${input.nonce}'`}`,
-    // React style properties/animation geometry are used by UI. This does not allow inline scripts.
+
     "style-src-attr 'unsafe-inline'",
     `connect-src ${connections.join(' ')}`,
     `frame-src ${frames.join(' ')}`,

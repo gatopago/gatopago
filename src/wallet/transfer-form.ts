@@ -8,8 +8,6 @@ import type { BalanceView } from './balances';
 
 export type TransferAsset = Readonly<{ asset_id: string; decimals: number; symbol: string }>;
 
-/** Display metadata from the owned, validated balance response. Never uses its
- * amount as available funds or resolves MAX in the browser. */
 export function transferAssets(
   balance: BalanceView,
   selected: TransferSelection,

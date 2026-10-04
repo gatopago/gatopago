@@ -60,7 +60,6 @@ export default function SecurityEnrollment({
   uid: string;
   english?: boolean;
 }) {
-  // Construction is read-only. Only the inventory is read on mount; no ceremony.
   const [flow] = useState(
     () =>
       new EnrollmentFlow(() => runtime.enrollment(uid), {

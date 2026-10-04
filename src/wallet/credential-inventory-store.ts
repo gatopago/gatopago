@@ -7,7 +7,6 @@ type View =
   | { phase: 'ready'; inventory: CredentialInventory }
   | { phase: 'error' | 'closed'; code: string };
 
-/** Component-owned read model. No timers/polling, persistence, or WebAuthn calls. */
 export class CredentialInventoryStore {
   private view: View = Object.freeze({ phase: 'loading' });
   private readonly listeners = new Set<() => void>();
@@ -49,7 +48,7 @@ export class CredentialInventoryStore {
     this.active?.abort();
     const controller = new AbortController();
     this.active = controller;
-    this.set({ phase: 'loading' }); // Never show an old count while checking a newer registration.
+    this.set({ phase: 'loading' });
     try {
       const session = this.captureSession();
       this.session = session;

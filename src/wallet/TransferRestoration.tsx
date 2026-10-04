@@ -24,9 +24,6 @@ type Props = {
   onClosed?: () => void;
 };
 
-/** Resume a server-owned operation, not its signing ceremony. All mount/timer
- * work is GET-only. An explicit delivery locks this instance before the POST;
- * an ambiguous response never restores its Send button. */
 export function TransferRestoration({
   runtime,
   uid,

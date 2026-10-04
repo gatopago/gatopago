@@ -1,6 +1,14 @@
 'use client';
 
-import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { getAddress } from 'viem';
 import { CLIENT_RELEASE_ID } from '@gatopago/shared/v3/client-release';
 import { atomicToDecimal, decimalToAtomic } from '@gatopago/shared/v3/amount';
@@ -59,7 +67,7 @@ function OwnedWalletMoney({
   const [amount, setAmount] = useState(''),
     [recipient, setRecipient] = useState(''),
     [kind, setKind] = useState<MoneyKind>(mode === 'pay' ? 'aave_withdraw_and_pay' : 'aave_supply');
-  const [busy, setBusy] = useState(false),
+  const [busy, setBusy] = useState(account.network_id === 'eip155:421614'),
     [error, setError] = useState(false),
     [closed, setClosed] = useState(false),
     [stale, setStale] = useState(false);
@@ -187,6 +195,13 @@ function OwnedWalletMoney({
       }
     }
   }
+  const readPosition = useEffectEvent(() => {
+    if (account.network_id === 'eip155:421614' && !closed) void open();
+  });
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => readPosition());
+    return () => cancelAnimationFrame(frame);
+  }, [account.network_id, runtime, uid]);
   async function prepare() {
     if (
       !opened ||
@@ -236,7 +251,7 @@ function OwnedWalletMoney({
       }
       credentialsSession.assertCurrent();
       opened.session.assertCurrent();
-      // Credential discovery finishes before the short financial review window.
+
       const preparation = await opened.session.prepare(
         opened.selected,
         request,
@@ -282,6 +297,7 @@ function OwnedWalletMoney({
           setOpened(null);
           setAmount('');
           setRecipient('');
+          void open();
         }}
       />
     );

@@ -1,4 +1,3 @@
-/** Consumer route inventory. Next owns routing; no nested SPA/router. */
 export const consumerRoutes = {
   '/app': 'account',
   '/onboarding': 'onboarding',
