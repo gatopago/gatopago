@@ -4,9 +4,27 @@ import { writeMoneyDraft } from '@gatopago/shared/v3/money-review-record';
 import { createResourceId } from '@gatopago/shared/v3/primitives';
 import { moneyClient, parseMoneyPreparation, parseMoneyStatus } from '../src/wallet/money';
 import { moneyFixture } from './money.fixture';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import type { BrowserAuth } from '../src/auth/browser';
+import { MoneyOperationReview } from '../src/wallet/MoneyOperationReview';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 describe('Browser monetary consent reconstruction', () => {
+  it('shows the resolved username beside the signed address and rejects a different address', () => {
+    const f = moneyFixture('aave_withdraw_and_pay');
+    const recipient = { username: 'alice', display_name: 'Alice', network_id: f.request.network_id,
+      address: f.request.recipient_address!, verified_at: f.now, expires_at: f.now + 10 };
+    const props = { runtime: {} as BrowserAuth, uid: 'synthetic',
+      session: { environment: f.environment, assertCurrent() {} } as Awaited<ReturnType<BrowserAuth['money']>>,
+      selected: f.selection, preparation: parseMoneyPreparation(f.wire, f.selection, f.request, f.environment),
+      credentials: [], recipient, english: false, onClose() {} };
+    const html = renderToStaticMarkup(createElement(MoneyOperationReview, props));
+    expect(html).toContain('@alice');
+    expect(html).toContain(f.request.recipient_address);
+    expect(() => renderToStaticMarkup(createElement(MoneyOperationReview, { ...props,
+      recipient: { ...recipient, address: `0x${'ab'.repeat(20)}` } }))).toThrow('Recipient');
+  });
   it.each(['aave_supply','aave_withdraw','aave_withdraw_and_pay'] as const)('rebuilds %s exactly without a signature or send grant', kind => {
     const f = moneyFixture(kind), parsed = parseMoneyPreparation(f.wire, f.selection, f.request, f.environment, f.now);
     expect(parsed.candidate).toEqual(f.candidate); expect(parsed.send_enabled).toBe(false); expect(parsed.candidate.operation.signature).toBe('0x');
@@ -83,6 +101,23 @@ describe('Monetary HTTP boundary', () => {
     const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
     await expect(moneyClient(f.config, async () => { clock.mockReturnValue(f.candidate.plan.validUntil * 1000); return 'synthetic-token'; }).confirm(f.selection, prepared,
       [{ signerIndex: 0, kind: 'webauthn', assertion: f.keys.assertion(f.candidate.digest) }], 'confirm-fixed', new AbortController().signal)).rejects.toThrow();
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it.each(['confirm', 'deliver'] as const)('refuses %s if recipient resolution expires during token refresh', async kind => {
+    const f = moneyFixture('aave_withdraw_and_pay'),
+      prepared = parseMoneyPreparation(f.wire, f.selection, f.request, f.environment),
+      clock = vi.spyOn(Date, 'now').mockReturnValue(f.now * 1000), fetcher = vi.fn();
+    vi.stubGlobal('fetch', fetcher);
+    const client = moneyClient(f.config, async () => {
+      clock.mockReturnValue((f.now + 1) * 1000);
+      return 'synthetic-token';
+    });
+    const action = kind === 'confirm'
+      ? client.confirm(f.selection, prepared,
+        [{ signerIndex: 0, kind: 'webauthn', assertion: f.keys.assertion(f.candidate.digest) }],
+        'confirm-fixed', new AbortController().signal, f.now + 1)
+      : client.deliver(f.selection, prepared, f.operationId, new AbortController().signal, f.now + 1);
+    await expect(action).rejects.toThrow();
     expect(fetcher).not.toHaveBeenCalled();
   });
 });

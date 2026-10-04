@@ -39,6 +39,7 @@ export class MoneyExecutionFlow {
   private readonly confirmationKey = createResourceId('operation');
   private readonly initial: MoneyPreparation;
   private readonly selected: MoneySelection;
+  private readonly consentExpiresAt: number;
   private readonly listeners = new Set<() => void>();
   constructor(
     private readonly session: Session,
@@ -46,6 +47,7 @@ export class MoneyExecutionFlow {
     preparation: MoneyPreparation,
     private readonly persist: (bookmark: MoneyBookmark) => void,
     restored = false,
+    consentExpiresAt = preparation.expires_at,
   ) {
     this.selected = structuredClone(selected);
     this.initial = parseMoneyPreparationHistory(
@@ -54,6 +56,9 @@ export class MoneyExecutionFlow {
       session.environment,
       preparation.preparation_id,
     );
+    if (!Number.isSafeInteger(consentExpiresAt) || consentExpiresAt <= 0)
+      throw new Error('MONEY_CONSENT_EXPIRY_INVALID');
+    this.consentExpiresAt = Math.min(this.initial.expires_at, consentExpiresAt);
     this.confirmationAttempted = restored || this.initial.operation_id !== null;
     this.view = Object.freeze({
       phase: this.confirmationAttempted ? 'confirmation-uncertain' : 'review',
@@ -79,6 +84,8 @@ export class MoneyExecutionFlow {
   }
   private fresh() {
     this.live();
+    if (Date.now() >= this.consentExpiresAt * 1000)
+      throw new Error('MONEY_CONSENT_EXPIRED');
     return parseMoneyPreparation(
       this.initial.wire,
       this.selected,
@@ -144,6 +151,7 @@ export class MoneyExecutionFlow {
         structuredClone(input),
         this.confirmationKey,
         controller.signal,
+        this.consentExpiresAt,
       );
       if (!this.alive(controller)) return;
       this.live();
@@ -173,7 +181,7 @@ export class MoneyExecutionFlow {
       this.persist(this.bookmark());
       this.deliveryAttempted = true;
       this.set({ phase: 'delivering', error: false });
-      const result = await this.session.deliver(this.selected, this.initial, id, controller.signal);
+      const result = await this.session.deliver(this.selected, this.initial, id, controller.signal, this.consentExpiresAt);
       if (!this.alive(controller)) return;
       this.live();
       this.set({

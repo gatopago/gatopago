@@ -7,7 +7,7 @@ import { moneyFixture } from './money.fixture';
 
 beforeEach(() => vi.stubGlobal('window', {}));
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
-function fixture(restored = false) {
+function fixture(restored = false, consentLifetime?: number) {
   const f = moneyFixture(), preparation = parseMoneyPreparation(f.wire, f.selection, f.request, f.environment);
   const confirmation = { id: f.operationId, preparation_id: preparation.preparation_id, consent_digest: preparation.candidate.digest,
     state: 'authorized' as const, expires_at: preparation.expires_at, send_enabled: false as const };
@@ -18,10 +18,30 @@ function fixture(restored = false) {
   const unused = async () => { throw new Error('unexpected method'); };
   const session: Awaited<ReturnType<BrowserAuth['money']>> = { environment: f.environment, assertCurrent, selection: () => f.selection,
     prepare: unused, preparation: unused, restorePreparation: restore, confirm, deliver, status, capabilities: unused, position: unused };
-  const flow = new MoneyExecutionFlow(session, f.selection, preparation, persist, restored);
+  const flow = new MoneyExecutionFlow(session, f.selection, preparation, persist, restored,
+    consentLifetime === undefined ? undefined : f.now + consentLifetime);
   return { ...f, preparation, restore, status, confirm, deliver, assertCurrent, persist, flow };
 }
 describe('Explicit monetary flow and recovery', () => {
+  it('does not confirm after recipient resolution expires even while the money review is valid', async () => {
+    const f = fixture(false, 1);
+    vi.spyOn(Date, 'now').mockReturnValue((f.now + 1) * 1000);
+    await f.flow.confirm([]);
+    expect(f.confirm).not.toHaveBeenCalled();
+    expect(f.persist).not.toHaveBeenCalled();
+    expect(f.flow.canEdit()).toBe(true);
+  });
+  it('keeps read-only recovery after recipient expiry and refuses a first delivery', async () => {
+    const f = fixture(false, 1);
+    await f.flow.confirm([]);
+    vi.spyOn(Date, 'now').mockReturnValue((f.now + 1) * 1000);
+    await f.flow.deliver();
+    expect(f.deliver).not.toHaveBeenCalled();
+    await f.flow.readStatus();
+    expect(f.status).toHaveBeenCalledTimes(1);
+    expect(f.flow.snapshot()).toMatchObject({ phase: 'expired', operation_id: f.operationId, error: false });
+    expect(f.flow.snapshot().status?.funds_reserved).toBe(true);
+  });
   it('does nothing before a gesture; concurrent confirmation has one request and keeps a locator first', async () => {
     const f = fixture(); expect(f.confirm).not.toHaveBeenCalled(); expect(f.deliver).not.toHaveBeenCalled();
     await Promise.all([f.flow.confirm([]), f.flow.confirm([])]);

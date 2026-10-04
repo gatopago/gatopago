@@ -19,6 +19,7 @@ import type { AccountChoice } from './balances';
 import type { MoneySelection } from './money-release';
 import type { MoneyPreparation } from './money';
 import { MoneyOperationReview } from './MoneyOperationReview';
+import { normalizeUsername, parseRecipient, type Recipient } from './profile';
 import {
   moneyBookmarkSnapshot,
   moneyBookmarkServerSnapshot,
@@ -42,6 +43,7 @@ type Prepared = {
   selected: MoneySelection;
   preparation: MoneyPreparation;
   credentials: CredentialDetail[];
+  recipient: Recipient | null;
   restored: boolean;
 };
 export function WalletMoney(props: {
@@ -173,7 +175,7 @@ function OwnedWalletMoney({
         controller.signal.throwIfAborted();
         session.assertCurrent();
         if (mounted.current)
-          setPrepared({ session, selected, preparation, credentials: [], restored: true });
+          setPrepared({ session, selected, preparation, credentials: [], recipient: null, restored: true });
       } else {
         const [capabilities, position] = await Promise.all([
           session.capabilities(selected, controller.signal),
@@ -222,20 +224,13 @@ function OwnedWalletMoney({
     const input = { kind, amount, recipient };
     try {
       opened.session.assertCurrent();
-      const request = parseMoneyRequest({
-        schema_version: 1,
-        kind: input.kind,
-        wallet_id: account.wallet_id,
-        wallet_account_id: account.id,
-        network_id: account.network_id,
-        market_id: 'aave-v3-arbitrum-sepolia-usdc',
-        asset_id: JSON.parse(opened.selected.market.document).asset_id,
-        amount_atomic: decimalToAtomic(input.amount, 6),
-        client_release_id: CLIENT_RELEASE_ID,
-        ...(input.kind === 'aave_withdraw_and_pay'
-          ? { recipient_address: getAddress(input.recipient) }
-          : {}),
-      });
+      const amountAtomic = decimalToAtomic(input.amount, 6);
+      const username = input.kind === 'aave_withdraw_and_pay' && !input.recipient.startsWith('0x')
+        ? normalizeUsername(input.recipient)
+        : null;
+      const address = input.kind === 'aave_withdraw_and_pay' && !username
+        ? getAddress(input.recipient)
+        : null;
       const credentialsSession = runtime.credentialInventory(uid),
         inventory = await credentialsSession.read(controller.signal),
         credentials: CredentialDetail[] = [];
@@ -252,6 +247,27 @@ function OwnedWalletMoney({
       credentialsSession.assertCurrent();
       opened.session.assertCurrent();
 
+      const destination = username
+        ? parseRecipient(
+            await runtime.recipient(uid, username, account.network_id, controller.signal),
+            username,
+            account.network_id,
+          )
+        : null;
+      const request = parseMoneyRequest({
+        schema_version: 1,
+        kind: input.kind,
+        wallet_id: account.wallet_id,
+        wallet_account_id: account.id,
+        network_id: account.network_id,
+        market_id: 'aave-v3-arbitrum-sepolia-usdc',
+        asset_id: JSON.parse(opened.selected.market.document).asset_id,
+        amount_atomic: amountAtomic,
+        client_release_id: CLIENT_RELEASE_ID,
+        ...(input.kind === 'aave_withdraw_and_pay'
+          ? { recipient_address: destination?.address ?? address }
+          : {}),
+      });
       const preparation = await opened.session.prepare(
         opened.selected,
         request,
@@ -260,12 +276,14 @@ function OwnedWalletMoney({
       );
       controller.signal.throwIfAborted();
       opened.session.assertCurrent();
+      if (destination) parseRecipient(destination, username!, account.network_id);
       if (mounted.current)
         setPrepared({
           session: opened.session,
           selected: opened.selected,
           preparation,
           credentials,
+          recipient: destination,
           restored: !!preparation.operation_id,
         });
     } catch {
@@ -428,7 +446,7 @@ function OwnedWalletMoney({
           </label>
           {mode === 'pay' ? (
             <label htmlFor={`${form}-recipient`}>
-              {en ? 'Recipient address' : 'Dirección del destinatario'}
+              {en ? 'Username or recipient address' : 'Username o dirección del destinatario'}
               <input
                 id={`${form}-recipient`}
                 autoComplete="off"

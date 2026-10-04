@@ -13,6 +13,7 @@ import { MoneyExecutionFlow } from './money-execution-flow';
 import { saveMoneyBookmark, clearMoneyBookmark } from './money-bookmark';
 import { MoneyOperationReceipt } from './MoneyOperationReceipt';
 import { holdPageReload } from '../pwa/reload-guard';
+import { parseRecipient, type Recipient } from './profile';
 
 type Props = {
   runtime: BrowserAuth;
@@ -21,6 +22,7 @@ type Props = {
   selected: MoneySelection;
   preparation: MoneyPreparation;
   credentials: readonly CredentialDetail[];
+  recipient?: Recipient | null;
   english: boolean;
   restored?: boolean;
   onClose: () => void;
@@ -33,6 +35,7 @@ export function MoneyOperationReview(props: Props) {
         props.selected,
         props.preparation.wire,
         props.credentials,
+        props.recipient,
         props.restored,
       ])}
       {...props}
@@ -46,25 +49,36 @@ function ReviewedMoney({
   selected,
   preparation,
   credentials,
+  recipient,
   english: en,
   restored = false,
   onClose,
 }: Props) {
   const [bound] = useState(() => {
+    const destination = recipient
+      ? parseRecipient(recipient, recipient.username, preparation.candidate.request.network_id, recipient.verified_at)
+      : null;
+    if (destination && destination.address !== preparation.candidate.request.recipient_address)
+      throw new Error('Recipient does not match the reviewed address');
+    const expiresAt = Math.min(preparation.expires_at, destination?.expires_at ?? preparation.expires_at);
     const flow = new MoneyExecutionFlow(
       session,
       selected,
       preparation,
       saveMoneyBookmark,
       restored,
+      expiresAt,
     );
     const signing = new SpendSigning(
       preparation,
       credentials,
-      session.assertCurrent,
+      () => {
+        session.assertCurrent();
+        if (Date.now() >= expiresAt * 1000) throw new Error('Recipient or money review expired');
+      },
       requestPasskeyProof,
     );
-    return { flow, signing };
+    return { flow, signing, recipient: destination, expiresAt };
   });
   const state = useSyncExternalStore(
     bound.flow.subscribe,
@@ -97,7 +111,7 @@ function ReviewedMoney({
         setExpired(true);
         bound.signing.dispose();
       },
-      Math.max(0, preparation.expires_at * 1000 - Date.now()),
+      Math.max(0, bound.expiresAt * 1000 - Date.now()),
     );
     return () => {
       mounted.current = false;
@@ -107,7 +121,7 @@ function ReviewedMoney({
         if (!mounted.current) invalidate();
       });
     };
-  }, [bound, runtime, uid, session, preparation.expires_at]);
+  }, [bound, runtime, uid, session]);
   useEffect(() => {
     if (restored) void bound.flow.readStatus();
   }, [bound, restored]);
@@ -190,6 +204,12 @@ function ReviewedMoney({
       <dl>
         <dt>{en ? 'Amount' : 'Importe'}</dt>
         <dd>{atomicToDecimal(c.request.amount_atomic, 6)} USDC</dd>
+        {bound.recipient ? (
+          <>
+            <dt>Username</dt>
+            <dd>@{bound.recipient.username} · {bound.recipient.display_name}</dd>
+          </>
+        ) : null}
         {c.request.recipient_address ? (
           <>
             <dt>{en ? 'Recipient' : 'Destinatario'}</dt>

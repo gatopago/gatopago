@@ -425,6 +425,11 @@ function parseMoneyReceipt(
 }
 
 export function moneyClient(config: EnabledAuthConfig, token: () => Promise<string>) {
+  const assertConsentFresh = (expiresAt: number, preparation: MoneyPreparation) => {
+    if (!Number.isSafeInteger(expiresAt) || expiresAt <= 0 ||
+      Date.now() >= Math.min(expiresAt, preparation.expires_at) * 1000)
+      throw fail();
+  };
   const path = (s: MoneySelection) =>
     `/wallets/${parseResourceId('wallet', s.wallet_id)}/accounts/${parseResourceId('walletAccount', s.wallet_account_id)}`;
   const account = (s: MoneySelection) => ({
@@ -499,6 +504,7 @@ export function moneyClient(config: EnabledAuthConfig, token: () => Promise<stri
       proofsInput: readonly MoneyProof[],
       key: string,
       signal: AbortSignal,
+      consentExpiresAt = prepared.expires_at,
     ) {
       const expected = structuredClone(s),
         preparation = parseMoneyPreparation(
@@ -507,6 +513,7 @@ export function moneyClient(config: EnabledAuthConfig, token: () => Promise<stri
           prepared.candidate.request,
           config.deployment,
         );
+      assertConsentFresh(consentExpiresAt, preparation);
       const proofs = structuredClone(proofsInput);
       await verifyTransferQuorum(
         preparation.candidate.digest,
@@ -517,6 +524,7 @@ export function moneyClient(config: EnabledAuthConfig, token: () => Promise<stri
       signal.throwIfAborted();
       const getToken = async () => {
         const value = await token();
+        assertConsentFresh(consentExpiresAt, preparation);
         parseMoneyPreparation(
           preparation.wire,
           expected,
@@ -546,6 +554,7 @@ export function moneyClient(config: EnabledAuthConfig, token: () => Promise<stri
       prepared: MoneyPreparation,
       operationId: string,
       signal: AbortSignal,
+      consentExpiresAt = prepared.expires_at,
     ) {
       const expected = structuredClone(s),
         preparation = parseMoneyPreparation(
@@ -555,8 +564,10 @@ export function moneyClient(config: EnabledAuthConfig, token: () => Promise<stri
           config.deployment,
         ),
         id = parseResourceId('operation', operationId);
+      assertConsentFresh(consentExpiresAt, preparation);
       const getToken = async () => {
         const value = await token();
+        assertConsentFresh(consentExpiresAt, preparation);
         parseMoneyPreparation(
           preparation.wire,
           expected,
