@@ -15,12 +15,12 @@ afterEach(() => {
 });
 describe('Browser monetary consent reconstruction', () => {
   it('shows the resolved username beside the signed address and rejects a different address', () => {
-    const f = moneyFixture('aave_withdraw_and_pay');
+    const f = moneyFixture('aave_withdraw_and_pay', `0x${'ab'.repeat(20)}`);
     const recipient = {
       username: 'alice',
       display_name: 'Alice',
       network_id: f.request.network_id,
-      address: f.request.recipient_address!,
+      address: f.request.recipient_address!.toLowerCase() as `0x${string}`,
       verified_at: f.now,
       expires_at: f.now + 10,
     };
@@ -44,7 +44,7 @@ describe('Browser monetary consent reconstruction', () => {
       renderToStaticMarkup(
         createElement(MoneyOperationReview, {
           ...props,
-          recipient: { ...recipient, address: `0x${'ab'.repeat(20)}` },
+          recipient: { ...recipient, address: `0x${'cd'.repeat(20)}` },
         }),
       ),
     ).toThrow('Recipient');

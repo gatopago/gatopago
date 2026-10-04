@@ -12,10 +12,14 @@ import { balanceFixture } from './balances.fixture';
 import { PrimaryNav } from '../src/consumer/PrimaryNav';
 import { MoveMenu } from '../src/consumer/MoveMenu';
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/send', useSearchParams: () => new URLSearchParams() }));
-// Next's compiler supplies static image dimensions; Vitest's asset loader does not.
-// The production build/browser checks cover the real sprite, this unit covers routing.
-vi.mock('../src/marketing/MeliSprite', () => ({ MeliSprite: () => createElement('span', { 'aria-hidden': true }) }));
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/send',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock('../src/marketing/MeliSprite', () => ({
+  MeliSprite: () => createElement('span', { 'aria-hidden': true }),
+}));
 
 describe('Consumer presentation migration', () => {
   it('offers only connected destinations in the main navigation', () => {
@@ -45,7 +49,9 @@ describe('Consumer presentation migration', () => {
     }
   });
   it('never displays an unavailable observation as a zero balance', () => {
-    const html = renderToStaticMarkup(createElement(BalanceCard, { balance: null, network: 'Arbitrum Sepolia', english: false }));
+    const html = renderToStaticMarkup(
+      createElement(BalanceCard, { balance: null, network: 'Arbitrum Sepolia', english: false }),
+    );
     expect(html).toContain('Esto no significa que tu saldo sea cero');
     expect(html).toContain('—');
     expect(html).not.toContain('Disponible');
@@ -53,8 +59,12 @@ describe('Consumer presentation migration', () => {
   it('preserves atomic precision without floating point conversion', () => {
     const f = balanceFixture();
     const balance = parseBalanceView(f.wire, f.account, f.now);
-    balance.assets = [{ ...balance.assets[1], amount_atomic: '9007199254740993123456', decimals: 6 }];
-    const html = renderToStaticMarkup(createElement(BalanceCard, { balance, network: 'Arbitrum Sepolia', english: true }));
+    balance.assets = [
+      { ...balance.assets[1], amount_atomic: '9007199254740993123456', decimals: 6 },
+    ];
+    const html = renderToStaticMarkup(
+      createElement(BalanceCard, { balance, network: 'Arbitrum Sepolia', english: true }),
+    );
     expect(html).toContain('9007199254740993.123456');
     expect(html).toContain('Balance');
     expect(html).not.toContain('available to spend');
@@ -63,13 +73,15 @@ describe('Consumer presentation migration', () => {
     const f = balanceFixture();
     const balance = parseBalanceView(f.wire, f.account, f.now);
     balance.assets = [balance.assets[0]];
-    const html = renderToStaticMarkup(createElement(BalanceCard, { balance, network: 'Arbitrum Sepolia', english: true }));
+    const html = renderToStaticMarkup(
+      createElement(BalanceCard, { balance, network: 'Arbitrum Sepolia', english: true }),
+    );
     expect(html).toMatch(/>0<\/p>/);
     expect(html).not.toContain('No current observation');
   });
   it('isolates all consumer selectors from marketing', () => {
     const root = postcss.parse(readFileSync(resolve('src/consumer/consumer.css'), 'utf8'));
-    root.walkRules(rule => {
+    root.walkRules((rule) => {
       for (let parent: AnyNode | undefined = rule.parent; parent; parent = parent.parent) {
         if (parent.type === 'atrule' && /keyframes$/.test(parent.name)) return;
       }
@@ -79,8 +91,10 @@ describe('Consumer presentation migration', () => {
   it('keeps the asset selector readable on the light surface inside the dark balance card', () => {
     const root = postcss.parse(readFileSync(resolve('src/consumer/consumer.css'), 'utf8'));
     const declarations: string[] = [];
-    root.walkRules('.consumer-ui .meli-balance-card-app select.text-text', rule => {
-      rule.walkDecls('color', declaration => { declarations.push(declaration.value); });
+    root.walkRules('.consumer-ui .meli-balance-card-app select.text-text', (rule) => {
+      rule.walkDecls('color', (declaration) => {
+        declarations.push(declaration.value);
+      });
     });
     expect(declarations).toEqual(['var(--color-text)']);
   });

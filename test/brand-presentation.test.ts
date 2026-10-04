@@ -11,7 +11,11 @@ import type { EnabledAuthConfig } from '../src/auth/config';
 import { PwaControls } from '../src/pwa/PwaControls';
 import { pwaMetadata } from '../src/pwa/manifest';
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({}), usePathname: () => '/login', useSearchParams: () => new URLSearchParams() }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({}),
+  usePathname: () => '/login',
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 describe('Unified GatoPago presentation', () => {
   it('uses the official symbol instead of redrawing the logo', () => {
@@ -24,11 +28,20 @@ describe('Unified GatoPago presentation', () => {
 
   it('renders all 14 package sprites with explicit native dimensions', () => {
     const dimensions = {
-      'body-conveyor': [477, 420], 'body-courier': [430, 428], 'body-peek-card': [435, 443],
-      'body-qr': [348, 466], 'body-sitting': [304, 429], 'body-sleeping': [427, 343],
-      'head-cautious': [376, 280], 'head-curious': [366, 349], 'head-excited': [332, 332],
-      'head-focused': [330, 314], 'head-happy': [329, 314], 'head-neutral': [330, 314],
-      'head-peek': [204, 343], 'head-sleepy': [343, 314],
+      'body-conveyor': [477, 420],
+      'body-courier': [430, 428],
+      'body-peek-card': [435, 443],
+      'body-qr': [348, 466],
+      'body-sitting': [304, 429],
+      'body-sleeping': [427, 343],
+      'head-cautious': [376, 280],
+      'head-curious': [366, 349],
+      'head-excited': [332, 332],
+      'head-focused': [330, 314],
+      'head-happy': [329, 314],
+      'head-neutral': [330, 314],
+      'head-peek': [204, 343],
+      'head-sleepy': [343, 314],
     } as const;
     for (const variant of Object.keys(dimensions) as (keyof typeof dimensions)[]) {
       const html = renderToStaticMarkup(createElement(MeliSprite, { variant }));
@@ -40,10 +53,14 @@ describe('Unified GatoPago presentation', () => {
 
   it('keeps access separate from account navigation without hiding safety notices', () => {
     for (const english of [false, true]) {
-      const html = renderToStaticMarkup(createElement(AuthScreen, {
-        config: { mode: 'disabled' }, view: 'login', english,
-        art: createElement(MeliSprite, { variant: 'body-sitting' }),
-      }));
+      const html = renderToStaticMarkup(
+        createElement(AuthScreen, {
+          config: { mode: 'disabled' },
+          view: 'login',
+          english,
+          art: createElement(MeliSprite, { variant: 'body-sitting' }),
+        }),
+      );
       expect(html).toContain('auth-login-grid');
       expect(html).toContain('auth-frame');
       expect(html).toContain(`href="${english ? '/en' : '/'}"`);
@@ -54,10 +71,19 @@ describe('Unified GatoPago presentation', () => {
   });
 
   it('uses shared buttons for passkey options, without performing authentication', () => {
-    const html = renderToStaticMarkup(createElement(PasskeyAccess, {
-      runtime: {} as BrowserAuth, config: { mode: 'firebase' } as EnabledAuthConfig,
-      english: false, onSignedIn: () => { throw new Error('Presentation must not sign in'); }, onRegistered: () => { throw new Error('Presentation must not register'); },
-    }));
+    const html = renderToStaticMarkup(
+      createElement(PasskeyAccess, {
+        runtime: {} as BrowserAuth,
+        config: { mode: 'firebase' } as EnabledAuthConfig,
+        english: false,
+        onSignedIn: () => {
+          throw new Error('Presentation must not sign in');
+        },
+        onRegistered: () => {
+          throw new Error('Presentation must not register');
+        },
+      }),
+    );
     expect(html).toContain('auth-primary btn btn-primary btn-block');
     expect(html).toContain('auth-secondary btn btn-ghost btn-block');
     expect(html).toContain('Iniciar sesión');
@@ -66,9 +92,14 @@ describe('Unified GatoPago presentation', () => {
 
   it('does not offer a blank account screen when identity is unavailable', () => {
     for (const english of [false, true]) {
-      const html = renderToStaticMarkup(createElement(AuthScreen, {
-        config: { mode: 'disabled' }, view: 'account', english, art: null,
-      }));
+      const html = renderToStaticMarkup(
+        createElement(AuthScreen, {
+          config: { mode: 'disabled' },
+          view: 'account',
+          english,
+          art: null,
+        }),
+      );
       expect(html).toContain(english ? 'Opening sign-in' : 'Abriendo el acceso');
       expect(html).not.toContain('Entra para ver tu cuenta');
       expect(html).not.toContain('href="/settings');
@@ -76,10 +107,14 @@ describe('Unified GatoPago presentation', () => {
   });
 
   it('keeps phone-first access without a blocking desktop notice', () => {
-    const html = renderToStaticMarkup(createElement(AuthScreen, {
-      config: { mode: 'disabled' }, view: 'login', english: false,
-      art: createElement(MeliSprite, { variant: 'body-sitting' }),
-    }));
+    const html = renderToStaticMarkup(
+      createElement(AuthScreen, {
+        config: { mode: 'disabled' },
+        view: 'login',
+        english: false,
+        art: createElement(MeliSprite, { variant: 'body-sitting' }),
+      }),
+    );
     expect(html).toContain('auth-login-hero');
     expect(html).toContain('Iniciar sesión o crear cuenta');
     expect(html).not.toContain('<dialog');
@@ -89,7 +124,12 @@ describe('Unified GatoPago presentation', () => {
   });
 
   it('applies shared buttons beyond login and uses a widget that fits narrow forms', () => {
-    for (const source of ['src/wallet/TransferForm.tsx', 'src/wallet/SecurityEnrollment.tsx', 'src/consumer/ProfileEditor.tsx', 'src/consumer/PublicUsername.tsx']) {
+    for (const source of [
+      'src/wallet/TransferForm.tsx',
+      'src/wallet/SecurityEnrollment.tsx',
+      'src/consumer/ProfileEditor.tsx',
+      'src/consumer/PublicUsername.tsx',
+    ]) {
       const text = readFileSync(source, 'utf8');
       expect(text).not.toMatch(/className="auth-(primary|secondary)"/);
       expect(text).toContain('auth-primary btn btn-primary btn-block');

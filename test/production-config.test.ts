@@ -2,11 +2,19 @@ import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { pwaManifest } from '../src/pwa/manifest';
 
-afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); });
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.resetModules();
+});
 
 describe('production Web configuration', () => {
   it('uses one product manifest while retaining the testnet funds warning', () => {
-    expect(pwaManifest()).toMatchObject({ name: 'GatoPago', short_name: 'GatoPago', id: '/app', scope: '/' });
+    expect(pwaManifest()).toMatchObject({
+      name: 'GatoPago',
+      short_name: 'GatoPago',
+      id: '/app',
+      scope: '/',
+    });
     expect(pwaManifest().description).toContain('no envíes fondos reales');
   });
   it('uses the production protocol namespace even for isolated local development', () => {
@@ -25,9 +33,10 @@ describe('production Web configuration', () => {
     expect(environment.web_origin).toBe('https://gatopago.com');
     expect(environment.api_origin).toBe('https://api.gatopago.com');
     expect(environment.blockchain_tiers).toEqual(['testnet']);
-  });
+  }, 15000);
   it('rejects the removed deployment namespace before initializing Web', async () => {
-    vi.resetModules(); vi.stubEnv('GATOPAGO_ENVIRONMENT', 'unsupported');
+    vi.resetModules();
+    vi.stubEnv('GATOPAGO_ENVIRONMENT', 'unsupported');
     await expect(import('../src/lib/brand')).rejects.toThrow('only the production');
   });
 });

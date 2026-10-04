@@ -1,12 +1,9 @@
 @theme {
-  /* Meli UI — los mismos pigmentos de la landing. */
   --color-cat-50: #fff0eb;
   --color-cat-300: #cf3433;
   --color-cat-500: #f85239;
   --color-cat-700: #9f292e;
   --color-on-cat: #0b0b0f;
-
-  /* El producto vive en Leche/Papel; Ink enmarca y da contraste. */
   --color-canvas: #fff8f0;
   --color-surface: #fffdf9;
   --color-surface-2: #eee4d8;
@@ -16,8 +13,6 @@
   --color-text: #0b0b0f;
   --color-text-muted: #5f5650;
   --color-text-faint: #6f625b;
-
-  /* Semánticos: comunican estado, no decoran. */
   --color-growth: #287b55;
   --color-info: #256aa8;
   --color-pending: #8a6200;

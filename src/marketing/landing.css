@@ -240,8 +240,6 @@ body:has(.meli-landing) {
   gap: clamp(64px, 9vw, 128px);
   align-items: center;
 }
-
-/* Navigation */
 .meli-nav-shell {
   position: fixed;
   z-index: 100;
@@ -263,8 +261,6 @@ body:has(.meli-landing) {
   border-bottom: 1px solid var(--meli-border-dark);
   background: var(--meli-ink);
 }
-
-/* Keep a solid fallback; only the header glass is translucent, not the menu. */
 @supports ((backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px))) {
   .meli-nav-shell {
     background: rgb(11 11 15 / 82%);
@@ -456,8 +452,6 @@ body:has(.meli-landing) {
   width: 100%;
   margin-top: 12px;
 }
-
-/* Buttons */
 .meli-button {
   @apply inline-flex min-h-12 items-center justify-center gap-2.5 rounded-none px-5 py-0;
   --button-bg: transparent;
@@ -545,8 +539,6 @@ body:has(.meli-landing) {
   color: var(--meli-milk) !important;
   font-weight: 700;
 }
-
-/* Hero */
 .meli-hero {
   position: relative;
   display: grid;
@@ -977,8 +969,6 @@ body:has(.meli-landing) {
     transform: translate(4px, -5px);
   }
 }
-
-/* Product principle strip */
 .meli-signal-strip {
   position: relative;
   z-index: 3;
@@ -1030,8 +1020,6 @@ body:has(.meli-landing) {
   font-size: 0.78rem;
   line-height: 1.45;
 }
-
-/* Interactive money cycle */
 .meli-cycle::before {
   position: absolute;
   top: 0;
@@ -1255,8 +1243,6 @@ body:has(.meli-landing) {
   font-weight: 560;
   line-height: 1.55;
 }
-
-/* Account concept */
 .meli-account {
   overflow: hidden;
 }
@@ -1617,8 +1603,6 @@ body:has(.meli-landing) {
     'MONO' 1,
     'wght' 750;
 }
-
-/* Receive */
 .meli-receive {
   overflow: hidden;
 }
@@ -1867,8 +1851,6 @@ body:has(.meli-landing) {
   --button-bg: var(--meli-growth);
   --button-color: var(--meli-ink);
 }
-
-/* Growing route */
 .meli-grow {
   overflow: hidden;
 }
@@ -2091,8 +2073,6 @@ body:has(.meli-landing) {
     'MONO' 1,
     'wght' 800;
 }
-
-/* Use paths */
 .meli-move .meli-container {
   position: relative;
 }
@@ -2234,8 +2214,6 @@ body:has(.meli-landing) {
   background: var(--meli-ink);
   color: var(--meli-cat-fire);
 }
-
-/* Control and dialog */
 .meli-control {
   border-bottom: 1px solid var(--meli-border-dark);
 }
@@ -2494,8 +2472,6 @@ body:has(.meli-landing) {
   gap: 14px;
   margin-top: 26px;
 }
-
-/* Card concept */
 .meli-card-section {
   overflow: hidden;
 }
@@ -2696,8 +2672,6 @@ body:has(.meli-landing) {
     'MONO' 1,
     'wght' 580;
 }
-
-/* Developers */
 .meli-feature-pills {
   display: flex;
   flex-wrap: wrap;
@@ -2864,8 +2838,6 @@ body:has(.meli-landing) {
   background: var(--meli-cat-fire);
   box-shadow: 3px 3px 0 var(--meli-cat-shadow);
 }
-
-/* FAQ */
 .meli-split--faq {
   align-items: start;
 }
@@ -2982,8 +2954,6 @@ body:has(.meli-landing) {
   font-size: 0.88rem;
   line-height: 1.65;
 }
-
-/* Final and footer */
 .meli-final {
   position: relative;
   padding-block: clamp(7rem, 14vw, 12rem);
@@ -3162,8 +3132,6 @@ body:has(.meli-landing) {
   color: var(--meli-cat-fire);
   letter-spacing: 5px;
 }
-
-/* Responsive */
 @media (max-width: 1080px) {
   .meli-nav {
     grid-template-columns: 1fr auto;

@@ -1,4 +1,4 @@
-// Actual landing components and styles. No Next server, account services or funds.
+                                                                                   
 import { buildBrowser, styles, webRoot as web } from './harness.mjs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';

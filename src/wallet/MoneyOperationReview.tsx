@@ -63,7 +63,10 @@ function ReviewedMoney({
           recipient.verified_at,
         )
       : null;
-    if (destination && destination.address !== preparation.candidate.request.recipient_address)
+    if (
+      destination &&
+      destination.address !== preparation.candidate.request.recipient_address?.toLowerCase()
+    )
       throw new Error('Recipient does not match the reviewed address');
     const expiresAt = Math.min(
       preparation.expires_at,

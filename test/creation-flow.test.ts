@@ -604,8 +604,7 @@ describe('creation confirmation controller; synthetic session, real P256 and exe
       cap: '4000000000000000',
       error: 'creation/conflict',
     });
-    // A fresh mount can inspect the persisted operation's own terms, but an
-    // in-flight approved cap must not be silently replaced by a GET response.
+
     t.flow.dispose();
     await t.flow.restore();
     expect(t.flow.snapshot().phase).toBe('ready');

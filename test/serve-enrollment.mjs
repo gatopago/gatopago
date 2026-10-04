@@ -1,5 +1,5 @@
-// Local browser acceptance harness: actual React UI, WebAuthn adapters and server cryptographic verifier.
-// Synthetic identity + in-memory persistence; NOT Firebase, D1, an admitted deployment or onchain activation.
+                                                                                                          
+                                                                                                              
 import { build } from 'esbuild';
 import { buildBrowser, styles, webRoot } from './harness.mjs';
 import { resolve } from 'node:path';
@@ -217,7 +217,7 @@ async function creationRequest(request, response) {
   let operation = operations.get(id);
   if (request.url === '/fixture/creation/prepare') {
     if (!operation) {
-      // Synthetic fixture estimate. It never calls RPC, funds or broadcasts.
+                                                                             
       const terms = { verificationGasLimit: 2_000_000n, callGasLimit: 100_000n, preVerificationGas: 150_000n,
         maxFeePerGas: 1_000_000_000n, maxPriorityFeePerGas: 0n, maximumGasCharge: cap === null ? 2_250_000_000_000_000n : BigInt(cap) };
       if (terms.maximumGasCharge < 2_250_000_000_000_000n) { response.writeHead(422); response.end(JSON.stringify({ code: 'creation/cap-too-low' })); return; }

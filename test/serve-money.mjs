@@ -1,5 +1,5 @@
-// Local React harness with ephemeral synthetic P256 assertions. No Firebase,
-// real authenticator, deployed account, RPC, relayer or financial transaction.
+                                                                             
+                                                                               
 import { build } from 'esbuild';
 import { buildBrowser, styles, webRoot as web } from './harness.mjs';
 import { resolve } from 'node:path';
@@ -18,7 +18,7 @@ const sdk = await import(pathToFileURL(fixtureFile).href), f = sdk.moneyFixture(
 const credentials = [{ scope: f.keys.input.scope,credential_ref: sdk.createResourceId('operation'),credential_id: 'c3ludGhldGlj',
   public_key: f.keys.input.publicKey,device_availability: 'unknown',onchain_authority: 'not_assessed' }];
 const data = JSON.stringify({ selection: f.selection,environment: f.environment,credentials });
-const preparations = new Map(), metrics = { prepared: 0,proofs: 0,confirmed: 0,deliveries: 0,status_reads: 0 };
+const preparations = new Map(), metrics = { prepared: 0,proofs: 0,confirmed: 0,deliveries: 0,status_reads: 0,recipient_reads: 0 };
 const css = await styles();
 const result = await buildBrowser({ plugins: [{ name: 'synthetic-money-ceremony',setup(builder) {
     builder.onResolve({ filter: /^\.\/passkeys$/ },() => ({ path: 'synthetic-proof',namespace: 'synthetic' }));
@@ -48,6 +48,8 @@ const result = await buildBrowser({ plugins: [{ name: 'synthetic-money-ceremony'
       async status(_s,id){return parseMoneyStatus(await rpc('/status?id='+id),s,data.environment,id);}
     };
     const runtime={ subscribe(){return ()=>{};},accountContexts(){return {assertCurrent(){},async read(){return s;}};},async money(){return session;},
+      async recipient(_uid,username,network,signal){const response=await fetch('/recipient?username='+encodeURIComponent(username)+'&network='+encodeURIComponent(network),{signal,cache:'no-store'});
+        if(!response.ok)throw new Error('Synthetic recipient unavailable');return response.json();},
       credentialInventory(){return {assertCurrent(){},async read(){return {data:data.credentials};},async detail(){return data.credentials[0];}};}
     };
     createRoot(document.getElementById('root')).render(<StrictMode><main className="app-frame mx-auto max-w-[480px] px-6 py-6">
@@ -62,6 +64,13 @@ createServer(async (req,res) => {
   const url = new URL(req.url,'http://127.0.0.1');
   try {
     if (url.pathname === '/metrics') return json(res,metrics);
+    if (url.pathname === '/recipient') {
+      if (url.searchParams.get('username') !== 'alice' || url.searchParams.get('network') !== f.request.network_id)
+        throw new Error('No synthetic recipient');
+      const now = Math.floor(Date.now()/1000); metrics.recipient_reads++;
+      return json(res,{username:'alice',display_name:'Alice',network_id:f.request.network_id,
+        address:`0x${'77'.repeat(20)}`,verified_at:now,expires_at:now+60});
+    }
     if (url.pathname === '/proof') {
       const value = [...preparations.values()].find(p => p.candidate.digest === url.searchParams.get('digest'));
       if (!value) throw new Error('No synthetic review'); metrics.proofs++;

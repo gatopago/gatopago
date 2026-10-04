@@ -1,4 +1,4 @@
-// Local synthetic UI only. No Firebase, RPC, signatures or remote funds.
+                                                                         
 import { buildBrowser, styles } from './harness.mjs';
 import { createServer } from 'node:http';
 const css = await styles();

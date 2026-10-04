@@ -1,5 +1,5 @@
-// Local-only browser harness. It serves the actual React component with a synthetic runtime.
-// Not part of the Next route tree, deploy inputs, real Firebase or Wallet Core configuration.
+                                                                                             
+                                                                                              
 import { buildBrowser, styles } from './harness.mjs';
 import { createServer } from 'node:http';
 

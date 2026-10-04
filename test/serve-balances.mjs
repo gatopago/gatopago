@@ -1,4 +1,4 @@
-// Reproducible local UI harness; no Firebase, real RPC, signatures or funds.
+                                                                             
 import { buildBrowser, styles } from './harness.mjs';
 import { createServer } from 'node:http';
 const css = await styles();

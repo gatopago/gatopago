@@ -1,5 +1,5 @@
-// Actual React UI; synthetic public account and a deliberately cancelled
-// ceremony adapter. No Firebase, real authenticator, RPC or remote funds.
+                                                                         
+                                                                          
 import { build } from 'esbuild';
 import { buildBrowser, styles, webRoot as web } from './harness.mjs';
 import { resolve } from 'node:path';
@@ -39,8 +39,8 @@ function restorationWire() {
 }
 const restorationJSON = JSON.stringify({ selected:restoration.selected,bookmark:restoration.bookmark,metadata:restoration.metadata });
 const result = await buildBrowser({   plugins:[{ name:'synthetic-cancelled-signature',setup(builder) {
-    // This is a component harness, not a Next server: only adapt its read-only
-    // navigation hook. Production routing is checked by the real Next build.
+                                                                               
+                                                                             
     builder.onResolve({ filter:/^next\/navigation$/ },() => ({ path:'navigation',namespace:'synthetic-navigation' }));
     builder.onLoad({ filter:/.*/,namespace:'synthetic-navigation' },() => ({ contents:'export function useSearchParams() { return new URLSearchParams(location.search); }',loader:'js' }));
     builder.onResolve({ filter:/^next\/dynamic$/ },() => ({ path:'dynamic',namespace:'synthetic-dynamic' }));
@@ -132,9 +132,9 @@ createServer((req,res) => { res.setHeader('Cache-Control','no-store');
     if (restorationMode !== 'held') { res.writeHead(409,{ 'Content-Type':'application/json' }); res.end('{"error":"already claimed"}'); }
     else {
       restoreDeliveries++; restorationMode = 'delivery_pending';
-      // Drop a response after headers/partial bytes, not an idle connection:
-      // browsers may transparently retry a request on a stale socket. The real
-      // backend's atomic claim protects either case; model one accepted claim.
+                                                                             
+                                                                               
+                                                                               
       res.writeHead(202,{ 'Content-Type':'application/json' }); res.write('{'); setTimeout(() => res.destroy(),10);
     }
   }
