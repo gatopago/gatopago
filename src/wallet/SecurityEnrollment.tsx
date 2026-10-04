@@ -121,15 +121,15 @@ export default function SecurityEnrollment({
           <>
             <p>
               {en
-                ? 'Next, your browser will ask where to save your passkey.'
-                : 'Ahora tu navegador te preguntará dónde guardar la passkey.'}
+                ? 'Your device will ask where to save your access key.'
+                : 'Tu dispositivo te preguntará dónde guardar tu llave de acceso.'}
             </p>
             <button
               type="button"
               className="auth-primary btn btn-primary btn-block"
               onClick={() => void flow.create(preference)}
             >
-              {en ? 'Create passkey' : 'Crear passkey'}
+              {en ? 'Add an access key' : 'Añadir una llave de acceso'}
             </button>
             <details>
               <summary>

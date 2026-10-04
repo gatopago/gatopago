@@ -20,7 +20,7 @@ type View = {
   } | null;
 };
 
-/** Opening an editor is explicit and read-only. A balance is metadata, not a
+/** Opening an editor is read-only. A balance is metadata, not a
  * budget. Snapshot it once: expiration/refresh must not discard an active payment. */
 export class TransferEntryStore {
   private view: View = { phase: 'idle', error: null, form: null };

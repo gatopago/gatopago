@@ -47,14 +47,7 @@ export function ConsumerContent({
     case 'receive':
       return <Receive english={en} runtime={runtime} uid={identity.uid} />;
     case 'profile':
-      return (
-        <Profile
-          key={identity.uid}
-          english={en}
-          runtime={runtime}
-          uid={identity.uid}
-        />
-      );
+      return <Profile key={identity.uid} english={en} runtime={runtime} uid={identity.uid} />;
     case 'recovery':
       return <Recovery english={en} />;
     case 'onboarding':
@@ -69,26 +62,7 @@ export function ConsumerContent({
             english={en}
             to="/settings"
           />
-          {runtime && identity ? (
-            <Security key={identity.uid} runtime={runtime} uid={identity.uid} english={en} />
-          ) : (
-            <Panel>
-              <h2 className="mb-4 font-display text-xl">
-                {en ? 'Your device protects your key' : 'Tu dispositivo protege tu llave'}
-              </h2>
-              <p className="mb-4">
-                {en
-                  ? 'Your fingerprint, face or PIN unlocks the key used to authorize operations.'
-                  : 'Tu huella, rostro o PIN desbloquea la llave que autoriza operaciones.'}
-              </p>
-              <IntegrationNotice english={en} identityOnly />
-              <p className="text-sm">
-                {en
-                  ? 'Key inventory is unavailable. This does not mean you have no keys.'
-                  : 'El inventario de llaves no está disponible. Esto no significa que no tengas llaves.'}
-              </p>
-            </Panel>
-          )}
+          {<Security key={identity.uid} runtime={runtime} uid={identity.uid} english={en} />}
           <ActionCard
             href="/settings/security/recovery"
             english={en}
@@ -106,16 +80,11 @@ export function ConsumerContent({
       return (
         <>
           <h1 className="sr-only">{en ? 'My GatoPago account' : 'Mi cuenta GatoPago'}</h1>
-          {runtime && identity ? (
+          {
             <WalletOverview key={identity.uid} runtime={runtime} uid={identity.uid} english={en}>
               <HomeActions english={en} />
             </WalletOverview>
-          ) : (
-            <>
-              <BalanceCard balance={null} network="Arbitrum Sepolia" english={en} />
-              <HomeActions english={en} />
-            </>
-          )}
+          }
         </>
       );
     case 'send':
@@ -129,7 +98,7 @@ export function ConsumerContent({
           >
             {en ? 'Scan QR' : 'Escanear QR'}
           </NavigationLink>
-          {runtime && identity ? (
+          {
             <WalletOverview
               key={identity.uid}
               runtime={runtime}
@@ -137,16 +106,7 @@ export function ConsumerContent({
               english={en}
               mode="send"
             />
-          ) : (
-            <Panel>
-              <IntegrationNotice english={en} identityOnly />
-              <p>
-                {en
-                  ? 'Choose a verified V3 account and balance before reviewing a transfer.'
-                  : 'Elige una cuenta y saldo V3 verificados antes de revisar un envío.'}
-              </p>
-            </Panel>
-          )}
+          }
         </>
       );
     case 'activity':
@@ -158,7 +118,7 @@ export function ConsumerContent({
               ? 'Enter the reference from your send confirmation. This is a transfer lookup, not a complete account history.'
               : 'Ingresa la referencia de tu confirmación de envío. Esta es una consulta de un envío, no un historial completo de la cuenta.'}
           </p>
-          {runtime && identity ? (
+          {
             <WalletOverview
               key={identity.uid}
               runtime={runtime}
@@ -166,11 +126,7 @@ export function ConsumerContent({
               english={en}
               mode="activity"
             />
-          ) : (
-            <Panel>
-              <IntegrationNotice english={en} identityOnly />
-            </Panel>
-          )}
+          }
         </>
       );
     case 'grow':
@@ -182,7 +138,7 @@ export function ConsumerContent({
               ? 'Manage your own USDC position in Aave on Arbitrum Sepolia.'
               : 'Gestiona tu propia posición USDC en Aave sobre Arbitrum Sepolia.'}
           </p>
-          {runtime && identity ? (
+          {
             <WalletOverview
               key={identity.uid}
               runtime={runtime}
@@ -190,11 +146,7 @@ export function ConsumerContent({
               english={en}
               mode="grow"
             />
-          ) : (
-            <Panel>
-              <IntegrationNotice english={en} identityOnly />
-            </Panel>
-          )}
+          }
         </>
       );
   }

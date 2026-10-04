@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useRouter } from 'next/navigation';
 import type { CreationConsent } from '@gatopago/shared/v3/creation-operation-wire';
 import type { BrowserAuth } from '../auth/browser';
 import type { CreationProfilePin } from './creation-release';
@@ -8,7 +9,7 @@ import { CreationFlow } from './creation-flow';
 import { creationFeeUnit, formatCreationFee } from './creation-fee';
 import { requestPasskeyProof } from './passkeys';
 import CreationProgress from './CreationProgress';
-import { ProfileEditor } from '../consumer/ProfileEditor';
+import { finishRegisteredAccount, profileMessage } from './profile';
 
 function message(code: string, en: boolean) {
   switch (code) {
@@ -78,8 +79,12 @@ export default function CreationOperationPanel({
       if (identity?.uid !== uid) flow.invalidate();
       else flow.checkSession();
     });
-    void flow.restore();
+    // Skip StrictMode's trial mount. Open restores the same request and obtains
+    // its fee automatically; it never signs or sends an operation.
+    let connected = true;
+    queueMicrotask(() => { if (connected) void flow.open(); });
     return () => {
+      connected = false;
       unsubscribe();
       flow.dispose();
       onActiveChange(false);
@@ -115,15 +120,12 @@ export default function CreationOperationPanel({
       aria-busy={busy}
     >
       <h2 id="creation-operation-heading">
-        {en ? '2. Activate your account' : '2. Activa tu cuenta'}
+        {en ? 'Confirm to finish' : 'Confirma para terminar'}
       </h2>
       <p>
         {en
-          ? 'Review the cost before activating your account. Confirm on your device when you are ready.'
-          : 'Revisa el coste antes de activar tu cuenta. Confirma en tu dispositivo cuando estés listo.'}
-      </p>
-      <p>
-        {en ? 'Network' : 'Red'}: {unit?.network ?? state.network}.
+          ? 'Review the fee and confirm with your passkey.'
+          : 'Revisa la comisión y confirma con tu passkey.'}
       </p>
       {state.error ? (
         <p className="auth-error" role="alert">
@@ -136,28 +138,6 @@ export default function CreationOperationPanel({
             ? 'This release cannot display and approve fees for this network. Reading remains available.'
             : 'Esta versión no puede mostrar ni aprobar cargos para esta red. Puedes seguir consultando el estado.'}
         </p>
-      ) : null}
-      {state.phase === 'absent' && unit ? (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void flow.prepare();
-          }}
-        >
-          <p>
-            {en
-              ? 'Check the activation cost before continuing.'
-              : 'Consulta el coste de activación antes de continuar.'}
-          </p>
-          <p>
-            {en
-              ? 'You will see the maximum amount and who pays before confirming. Checking the cost does not authorize a charge.'
-              : 'Verás el importe máximo y quién paga antes de confirmar. Consultar el coste no autoriza un cobro.'}
-          </p>
-          <button type="submit" className="auth-primary btn btn-primary btn-block">
-            {en ? 'Check network fee' : 'Consultar comisión de red'}
-          </button>
-        </form>
       ) : null}
       {state.phase === 'prepare-retry' && unit ? (
         <>
@@ -253,8 +233,8 @@ export default function CreationOperationPanel({
               ? 'Resend the same authorization, without signing again'
               : 'Reenviar la misma autorización, sin volver a firmar'
             : en
-              ? 'Activate my account'
-              : 'Activar mi cuenta'}
+              ? 'Confirm with my passkey'
+              : 'Confirmar con mi passkey'}
         </button>
       ) : null}
       {state.receipt?.state === 'authorized' ? (
@@ -266,17 +246,9 @@ export default function CreationOperationPanel({
         />
       ) : null}
       {state.receipt?.state === 'authorized' && state.lifecycle?.bootstrap ? (
-        <section aria-labelledby="creation-receiving-heading">
-          <h3 id="creation-receiving-heading">
-            {en ? '3. Set up receiving' : '3. Configura la recepción'}
-          </h3>
-          <p>
-            {en
-              ? 'Publish your username after a fresh check of your receiving account. Creation evidence alone does not enable deposits.'
-              : 'Publica tu usuario después de una comprobación actual de la cuenta receptora. La evidencia de creación por sí sola no habilita depósitos.'}
-          </p>
-          <ProfileEditor key={uid} runtime={runtime} uid={uid} english={en} />
-        </section>
+        <FinishRegistration key={uid} runtime={runtime} uid={uid}
+          walletId={state.lifecycle.bootstrap.wallet_id}
+          accountId={state.lifecycle.bootstrap.wallet_account_id} english={en} />
       ) : null}
 
       {busy ? (
@@ -303,7 +275,7 @@ export default function CreationOperationPanel({
           </button>
         </>
       ) : null}
-      {!busy && state.phase !== 'closed' ? (
+      {!busy && state.error && state.phase !== 'closed' ? (
         <button
           type="button"
           className="auth-secondary btn btn-ghost btn-block"
@@ -314,4 +286,35 @@ export default function CreationOperationPanel({
       ) : null}
     </section>
   );
+}
+
+function FinishRegistration({ runtime, uid, walletId, accountId, english: en }: {
+  runtime: BrowserAuth; uid: string; walletId: string; accountId: string; english: boolean;
+}) {
+  const router = useRouter();
+  const [attempt, setAttempt] = useState(0);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    const controller = new AbortController();
+    let connected = true;
+    queueMicrotask(() => {
+      if (!connected) return;
+      void finishRegisteredAccount(runtime.profile(uid), walletId, accountId, controller.signal)
+        .then(() => {
+          if (!controller.signal.aborted) router.replace(en ? '/app?lang=en' : '/app');
+        })
+        .catch(failure => {
+          if (!controller.signal.aborted) setError(profileMessage(failure, en));
+        });
+    });
+    return () => { connected = false; controller.abort(); };
+  }, [runtime, uid, walletId, accountId, en, router, attempt]);
+  return error ? (
+    <div role="alert">
+      <p>{error}</p>
+      <button className="auth-primary btn btn-primary btn-block" onClick={() => {
+        setError(''); setAttempt(value => value + 1);
+      }}>{en ? 'Retry finishing setup' : 'Reintentar finalización'}</button>
+    </div>
+  ) : <p role="status">{en ? 'Finishing your account…' : 'Terminando de preparar tu cuenta…'}</p>;
 }

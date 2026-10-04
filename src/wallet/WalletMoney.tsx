@@ -430,8 +430,8 @@ function OwnedWalletMoney({
           {!capability ? (
             <p role="status">
               {en
-                ? 'This operation is not enabled for this release.'
-                : 'Esta operación no está habilitada en esta release.'}
+                ? 'This operation is not available yet.'
+                : 'Esta operación todavía no está disponible.'}
             </p>
           ) : null}
           <button

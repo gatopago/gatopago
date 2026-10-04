@@ -543,20 +543,14 @@ const intent = await response.json();`;
               </div>
               <div
                 className="meli-move-mascot"
-               
-               
+
                 aria-hidden="true"
               >
                 <MeliSprite variant="body-conveyor" />
               </div>
               <div className="meli-path-grid">
                 {t.move.paths.map(([title, description, glyph], index) => (
-                  <article
-                    key={title}
-                    className="meli-path-card"
-                   
-                   
-                  >
+                  <article key={title} className="meli-path-card">
                     <div className="meli-path-card__glyph" aria-hidden="true">
                       <span>{glyph}</span>
                     </div>
@@ -594,12 +588,7 @@ const intent = await response.json();`;
               </div>
               <div className="meli-control-stack">
                 {t.control.items.map(([title, text], index) => (
-                  <article
-                    key={title}
-                    className="meli-control-card"
-                   
-                   
-                  >
+                  <article key={title} className="meli-control-card">
                     <span className="meli-control-card__index">0{index + 1}</span>
                     <div>
                       <h3>{title}</h3>
@@ -741,8 +730,7 @@ const intent = await response.json();`;
               </div>
               <div
                 className="meli-code-window"
-               
-               
+
                 aria-label={isSpanish ? 'Ejemplo de API' : 'API example'}
               >
                 <div className="meli-code-window__bar">

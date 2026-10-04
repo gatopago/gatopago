@@ -170,6 +170,33 @@ export function parseRecipient(
     return invalid();
   return Object.freeze(value as Recipient);
 }
+
+/** Finish signup using its reserved username and the exact deployed account.
+ * Publication verifies receiving on the server; a retry reads its result first.
+ */
+export async function finishRegisteredAccount(
+  client: ReturnType<typeof profileClient> & { assertCurrent(): void },
+  walletId: string,
+  accountId: string,
+  signal: AbortSignal,
+): Promise<Profile> {
+  signal.throwIfAborted();
+  client.assertCurrent();
+  const profile = await client.read(signal);
+  signal.throwIfAborted();
+  client.assertCurrent();
+  if (profile.username_published_at !== null) {
+    if (profile.receiving_wallet_id !== walletId) throw new ProfileClientError('profile/immutable');
+    return profile;
+  }
+  if (!profile.username) throw new ProfileClientError('profile/username-unavailable');
+  const published = await client.publish(profile.username, walletId, accountId, signal);
+  signal.throwIfAborted();
+  client.assertCurrent();
+  if (published.username_published_at === null || published.receiving_wallet_id !== walletId)
+    throw new ProfileClientError('profile/receiving-unavailable');
+  return published;
+}
 /** No session, private wallet IDs or remote URL overrides cross this public boundary. */
 export async function resolveUsername(
   environment: Environment,

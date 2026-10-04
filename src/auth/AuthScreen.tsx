@@ -147,9 +147,12 @@ function EnabledAuthScreen({
   const router = useRouter();
   const [runtime, setRuntime] = useState<BrowserAuth | null>(null);
   const [user, setUser] = useState<Identity | null>(null);
+  const [registered, setRegistered] = useState(false);
   const [error, setError] = useState(false),
     [busy, setBusy] = useState(false);
   const suffix = en ? '?lang=en' : '';
+  const creating = view === 'onboarding' || (view === 'login' && registered);
+  const contentView = creating || view === 'login' ? 'onboarding' : view;
   useEffect(() => {
     let alive = true,
       unsubscribe: (() => void) | undefined;
@@ -183,9 +186,9 @@ function EnabledAuthScreen({
     <ConsumerFrame
       english={en}
       navigation={!!runtime && !!user && view !== 'login' && view !== 'onboarding'}
-      presentation={view === 'login' ? 'access' : 'account'}
+      presentation={view === 'login' && !creating ? 'access' : 'account'}
     >
-      <AuthContent art={art} english={en} login={view === 'login'}>
+      <AuthContent art={art} english={en} login={view === 'login' && !creating}>
         {error ? (
           <div className="auth-error" role="alert">
             <p>
@@ -202,7 +205,7 @@ function EnabledAuthScreen({
         ) : null}
         {runtime && user ? (
           <section>
-            {view === 'login' ? (
+            {view === 'login' && !creating ? (
               <NavigationLink
                 className="auth-primary btn btn-primary btn-block"
                 href={`/app${suffix}`}
@@ -212,7 +215,7 @@ function EnabledAuthScreen({
             ) : config.mode === 'firebase' ? (
               <ConsumerContent
                 key={`${user.uid}:${view}`}
-                view={view}
+                view={contentView}
                 english={en}
                 identity={user}
                 runtime={runtime}
@@ -224,7 +227,7 @@ function EnabledAuthScreen({
                   : 'Esta sesión local no incluye una wallet. Usa el servicio de cuentas configurado para continuar.'}
               </p>
             )}
-            {view === 'settings' || view === 'login' ? (
+            {view === 'settings' || (view === 'login' && !creating) ? (
               <button
                 className="auth-secondary btn btn-ghost btn-block"
                 disabled={busy}
@@ -242,7 +245,8 @@ function EnabledAuthScreen({
             ) : null}
           </section>
         ) : null}
-        {/* Firebase can publish the user before registration resolves. Keep the callback mounted until it redirects. */}
+        {/* Keep registration mounted while Firebase publishes the session.
+            Continue setup here instead of opening another account screen. */}
         {runtime && view === 'login' ? (
           <div hidden={!!user}>
             <PasskeyAccess
@@ -250,7 +254,7 @@ function EnabledAuthScreen({
               config={config}
               english={en}
               onSignedIn={() => router.replace(`/app${suffix}`)}
-              onRegistered={() => router.replace(`/onboarding${suffix}`)}
+              onRegistered={() => setRegistered(true)}
             />
           </div>
         ) : null}

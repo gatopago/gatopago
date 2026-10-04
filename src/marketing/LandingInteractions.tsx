@@ -134,7 +134,6 @@ export function LandingInteractions({ locale }: { locale: 'es' | 'en' }) {
       },
       { signal: controller.signal },
     );
-    // No global .js class that would hide SSR content when hydration is delayed/fails.
     return () => {
       controller.abort();
       if (scrollFrame !== null) cancelAnimationFrame(scrollFrame);

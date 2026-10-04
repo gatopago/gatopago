@@ -56,7 +56,7 @@ describe('Consumer presentation migration', () => {
     balance.assets = [{ ...balance.assets[1], amount_atomic: '9007199254740993123456', decimals: 6 }];
     const html = renderToStaticMarkup(createElement(BalanceCard, { balance, network: 'Arbitrum Sepolia', english: true }));
     expect(html).toContain('9007199254740993.123456');
-    expect(html).toContain('Onchain balance');
+    expect(html).toContain('Balance');
     expect(html).not.toContain('available to spend');
   });
   it('keeps observed zero distinct from unavailable', () => {

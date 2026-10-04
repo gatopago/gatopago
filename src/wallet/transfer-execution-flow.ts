@@ -56,6 +56,7 @@ export class TransferExecutionFlow {
   private session: Session | null = null;
   private active: AbortController | null = null;
   private confirmationAttempted = false;
+  private deliveryAttempted = false;
   private trackingReadFailed = false;
   private lastSubmittedProofs: TransferProofs | null = null;
   private readonly listeners = new Set<() => void>();
@@ -109,6 +110,15 @@ export class TransferExecutionFlow {
   }
   canEdit() {
     return !this.active && !this.confirmationAttempted && this.view.phase !== 'closed';
+  }
+  canDeliver() {
+    return (
+      !this.active &&
+      !this.deliveryAttempted &&
+      this.view.confirmation?.state === 'held' &&
+      (this.view.phase === 'reserved' ||
+        (this.view.phase === 'observed' && this.view.status?.status === 'held'))
+    );
   }
   /** Background reads require an existing operation receipt. In particular,
    * uncertain confirmation recovery can replay a command and stays explicit. */
@@ -181,7 +191,7 @@ export class TransferExecutionFlow {
     }
   }
   async deliver() {
-    if (this.active || this.view.phase !== 'reserved' || !this.view.confirmation) return;
+    if (!this.canDeliver() || !this.view.confirmation) return;
     const confirmation = this.view.confirmation,
       controller = new AbortController();
     this.active = controller;
@@ -195,6 +205,7 @@ export class TransferExecutionFlow {
         return;
       }
       this.set({ phase: 'delivering', error: false });
+      this.deliveryAttempted = true;
       const result = await session.commands.deliver(
         this.selected,
         this.request,

@@ -659,9 +659,7 @@
 .consumer-ui .primary-nav__item.is-active::before {
   background: var(--color-text);
 }
-.consumer-ui
-  :where(.app-frame)
-  [class*='rounded-'] {
+.consumer-ui :where(.app-frame) [class*='rounded-'] {
   border-radius: 0 !important;
 }
 

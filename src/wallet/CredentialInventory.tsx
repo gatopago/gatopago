@@ -59,8 +59,8 @@ export default function CredentialInventory({
               : 'Tu sesión cambió o venció. Vuelve a entrar para consultar tus llaves.'
             : state.code === 'credentials/profile-required'
               ? en
-                ? 'Your V3 security profile will be prepared when you choose to register a key.'
-                : 'Tu perfil de seguridad V3 se preparará cuando elijas registrar una llave.'
+                ? 'Add an access key to protect your account.'
+                : 'Añade una llave de acceso para proteger tu cuenta.'
               : en
                 ? 'We could not check your keys. This does not mean you have no keys or need recovery.'
                 : 'No pudimos consultar tus llaves. Esto no significa que no tengas llaves ni que necesites recuperar la cuenta.'}
@@ -76,15 +76,15 @@ export default function CredentialInventory({
           {state.inventory.data.length === 0 ? (
             <p>
               {en
-                ? 'No completed V3 key registrations were found for this profile. Your password manager may still contain other keys.'
-                : 'Este perfil no tiene registros de llaves V3 completados. Tu gestor puede conservar otras llaves.'}
+                ? 'No registered keys were found for this account. Your password manager may still contain other keys.'
+                : 'No encontramos llaves registradas para esta cuenta. Tu gestor puede conservar otras llaves.'}
             </p>
           ) : (
             <ul>
               {state.inventory.data.map((key, index) => (
                 <li key={key.credential_ref}>
                   <h4>
-                    {en ? 'Key' : 'Llave'} {index + 1} · {key.credential_ref.slice(-8)}
+                    {en ? 'Key' : 'Llave'} {index + 1}
                   </h4>
                   <p>
                     {en ? 'Registered' : 'Registrada'}:{' '}
@@ -96,6 +96,7 @@ export default function CredentialInventory({
                     <summary>
                       {en ? 'Registration information' : 'Información del registro'}
                     </summary>
+                    <p className="break-all">{key.credential_ref}</p>
                     <p>
                       {key.backup_eligible
                         ? en

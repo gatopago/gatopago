@@ -44,6 +44,13 @@ function OwnedTransferEntry({ runtime, uid, account, balance, english: en, onRec
       return 'invalid' as const;
     }
   }, [hash]);
+  const matchesBookmark =
+    bookmark &&
+    bookmark !== 'invalid' &&
+    bookmark.wallet_id === account.wallet_id &&
+    bookmark.wallet_account_id === account.id &&
+    bookmark.network_id === account.network_id;
+  const blockedBookmark = bookmark === 'invalid' || (!!bookmark && !matchesBookmark);
   useEffect(() => {
     mounted.current = true;
     const unsubscribe = runtime.subscribe((identity) => {
@@ -53,25 +60,19 @@ function OwnedTransferEntry({ runtime, uid, account, balance, english: en, onRec
     return () => {
       mounted.current = false;
       unsubscribe();
-      // StrictMode setup replay is not a real unmount; opening stays inert until a click.
+      // StrictMode setup replay is not a real unmount.
       queueMicrotask(() => {
         if (!mounted.current) store.dispose();
       });
     };
   }, [runtime, uid, store]);
   useEffect(() => {
-    // Restore the existing editor with GETs only. The bookmark cannot authorize
-    // sending and is never used as a balance, identity or deployment assertion.
-    if (
-      bookmark &&
-      bookmark !== 'invalid' &&
-      bookmark.wallet_id === account.wallet_id &&
-      bookmark.wallet_account_id === account.id &&
-      bookmark.network_id === account.network_id &&
-      state.phase === 'idle'
-    )
-      void store.open(null, bookmark);
-  }, [bookmark, account, state.phase, store]);
+    // Enter the form with authenticated GETs only; authorizing and sending
+    // remain user gestures. A saved operation always takes precedence.
+    if (state.phase !== 'idle' || blockedBookmark) return;
+    if (bookmark) void store.open(null, bookmark);
+    else if (balance) void store.open(balance);
+  }, [bookmark, blockedBookmark, balance, state.phase, store]);
   if (state.phase === 'closed')
     return (
       <p role="alert">
@@ -108,29 +109,24 @@ function OwnedTransferEntry({ runtime, uid, account, balance, english: en, onRec
     );
   return (
     <section aria-busy={state.phase === 'loading'}>
-      <button
-        className="auth-primary btn btn-primary btn-block"
-        type="button"
-        disabled={bookmark === 'invalid' || (!balance && !bookmark) || state.phase === 'loading'}
-        onClick={() =>
-          void store.open(
-            bookmark && bookmark !== 'invalid' ? null : balance,
-            bookmark && bookmark !== 'invalid' ? bookmark : undefined,
-          )
-        }
-      >
-        {state.phase === 'loading'
-          ? en
-            ? 'Checking account…'
-            : 'Verificando cuenta…'
-          : bookmark
-            ? en
-              ? 'Recover this transfer'
-              : 'Recuperar este envío'
-            : en
-              ? 'Send'
-              : 'Enviar'}
-      </button>
+      {state.phase === 'error' && !blockedBookmark ? (
+        <button
+          className="auth-primary btn btn-primary btn-block"
+          type="button"
+          disabled={!balance && !bookmark}
+          onClick={() =>
+            void store.open(
+              bookmark ? null : balance,
+              bookmark ?? undefined,
+            )
+          }
+        >
+          {en ? 'Try again' : 'Reintentar'}
+        </button>
+      ) : null}
+      {!blockedBookmark && (state.phase === 'loading' || (state.phase === 'idle' && !!balance)) ? (
+        <p role="status">{en ? 'Checking account…' : 'Verificando cuenta…'}</p>
+      ) : null}
       {!balance && !bookmark ? (
         <p>
           {en
@@ -138,11 +134,11 @@ function OwnedTransferEntry({ runtime, uid, account, balance, english: en, onRec
             : 'Actualiza el saldo para comenzar un envío.'}
         </p>
       ) : null}
-      {bookmark === 'invalid' ? (
+      {blockedBookmark ? (
         <p role="alert">
           {en
-            ? 'The saved transfer reference is invalid. Do not repeat an unresolved transfer.'
-            : 'La referencia guardada del envío no es válida. No repitas un envío pendiente.'}
+            ? 'The saved transfer reference is invalid or belongs to another account. Reopen the original account before continuing.'
+            : 'La referencia guardada no es válida o pertenece a otra cuenta. Abre la cuenta original antes de continuar.'}
         </p>
       ) : null}
       {state.phase === 'error' ? (

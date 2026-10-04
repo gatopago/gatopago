@@ -50,6 +50,6 @@ describe('Complete product landing', () => {
     expect(html).toContain('El enlace no cobra ni permite enviar fondos');
     expect(html).toContain('Nada se enviará desde esta demostración');
     expect(html).toContain('data-payment-link="/pay/demo-cafe-norte"');
-    expect(readFileSync('src/app/(es)/pay/demo-cafe-norte/page.tsx', 'utf8')).toContain('no corresponden a una solicitud de pago');
+    expect(readFileSync('src/app/(es)/pay/demo-cafe-norte/page.tsx', 'utf8').replace(/\s+/g, ' ')).toContain('no corresponden a una solicitud de pago');
   });
 });

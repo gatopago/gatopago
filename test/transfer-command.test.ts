@@ -224,6 +224,7 @@ describe('Transfer execution lifecycle (commands mocked)', () => {
     await x.flow.deliver(); expect(x.flow.snapshot().phase).toBe('delivery-uncertain');
     await x.flow.deliver(); expect(x.commands.deliver).toHaveBeenCalledTimes(1);
     await x.flow.readStatus(); expect(x.flow.snapshot().phase).toBe('observed');
+    expect(x.flow.canDeliver()).toBe(false);
     await x.flow.deliver(); expect(x.commands.deliver).toHaveBeenCalledTimes(1); expect(isReloadBlocked()).toBe(false); x.flow.dispose();
   });
   it('allows only an explicit same-review retry of an uncertain confirmation', async () => {
@@ -241,6 +242,12 @@ describe('Transfer execution lifecycle (commands mocked)', () => {
     expect(x.flow.snapshot().phase).toBe('observed');
     expect(x.flow.snapshot().confirmation).not.toBeNull();
     expect(x.flow.snapshot().status).toEqual(x.status);
+    expect(x.commands.confirm.mock.calls[0].slice(0,4)).toEqual(x.commands.confirm.mock.calls[1].slice(0,4));
+    expect(x.commands.deliver).not.toHaveBeenCalled();
+    expect(x.flow.canDeliver()).toBe(true);
+    await x.flow.deliver();
+    expect(x.commands.deliver).toHaveBeenCalledTimes(1);
+    expect(x.flow.canDeliver()).toBe(false);
     x.flow.dispose();
   });
   it.each(['dispose','invalidate'] as const)('ignores late confirmation after %s', async action => {
@@ -357,8 +364,8 @@ describe('Transfer explicit proof collection', () => {
       review:x.review,environment:parseEnvironment(environments.production),credentials:[x.credential],metadata:[{ asset_id:x.request.asset_id,decimals:18,symbol:'ETH' }],english }));
     expect(markup).toContain(english ? 'Review transfer' : 'Revisar envío');
     expect(markup).toContain(x.request.destination.address); expect(markup).toContain(x.candidate.digest);
-    expect(markup).toContain(english ? 'Sign with passkey' : 'Firmar con passkey');
-    expect(markup).toContain(english ? 'Confirm reviewed transfer' : 'Confirmar el envío revisado');
+    expect(markup).toContain(english ? 'Use my key' : 'Usar mi llave');
+    expect(markup).toContain(english ? 'Send' : 'Enviar');
     expect(commands.confirm).not.toHaveBeenCalled(); expect(commands.deliver).not.toHaveBeenCalled(); expect(x.prove).not.toHaveBeenCalled();
     x.signing.dispose();
   });

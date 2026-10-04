@@ -131,8 +131,8 @@ export function WalletBalances({
           {state.phase === 'expired' ? (
             <p role="status">
               {en
-                ? 'This balance observation expired. Refresh to check again.'
-                : 'Esta observación del saldo venció. Actualiza para volver a consultar.'}
+                ? 'Refresh to check your current balance.'
+                : 'Actualiza para consultar tu saldo actual.'}
             </p>
           ) : null}
           <BalanceCard

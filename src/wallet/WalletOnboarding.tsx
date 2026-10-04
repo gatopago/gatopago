@@ -56,12 +56,12 @@ function WalletSetup({
         <div className="min-w-0 flex-1">
           <p className="meli-kicker mb-3">{en ? 'Welcome to GatoPago' : 'Bienvenido a GatoPago'}</p>
           <h1 id="wallet-setup-heading" className="font-display text-[32px]">
-            {en ? 'Your account, under your control.' : 'Tu cuenta, bajo tu control.'}
+            {en ? 'Creating your account' : 'Creando tu cuenta'}
           </h1>
           <p className="mt-3 text-sm text-text-muted">
             {en
-              ? 'Your access is saved. We are preparing your account so you can receive and send.'
-              : 'Tu acceso ya está guardado. Estamos preparando tu cuenta para recibir y enviar.'}
+              ? 'We are preparing everything. Confirm on your device when prompted.'
+              : 'Estamos preparando todo. Confirma en tu dispositivo cuando se te solicite.'}
           </p>
         </div>
         <MeliSprite variant="body-sitting" className="w-20 shrink-0" />

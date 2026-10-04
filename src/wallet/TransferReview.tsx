@@ -18,6 +18,7 @@ import { parseRecipient, type Recipient } from './profile';
 import type { parseTransferStatus } from './transfers';
 import { saveTransferBookmark, clearTransferBookmark } from './transfer-bookmark';
 import { NavigationLink } from '../consumer/NavigationLink';
+import { holdPageReload } from '../pwa/reload-guard';
 
 type Props = {
   runtime: Pick<BrowserAuth, 'transferCommands' | 'transfers' | 'subscribe'>;
@@ -187,22 +188,30 @@ function ReviewedTransfer({
     setError(false);
     // Invoke immediately in the click stack: no await before the passkey prompt.
     void action()
-      .then(() => {
-        if (mounted.current) setSigned(bound.signing.signedIndices());
-      })
       .catch(() => {
         if (mounted.current) setError(true);
       })
       .finally(() => {
         inFlight.current = false;
-        if (mounted.current) setBusy(false);
+        if (mounted.current) {
+          setSigned(bound.signing.signedIndices());
+          setBusy(false);
+        }
       });
   }
   const p = bound.preparation,
     c = p.candidate,
     policy = p.review.policy,
     native = creationFeeUnit(request.network_id);
-  const editable = !expired && !busy && ['ready', 'confirmation-uncertain'].includes(state.phase);
+  const editable = !expired && !busy && state.phase === 'ready';
+  const choices = bound.signing.choices();
+  const singleKey =
+    policy.spendThreshold === 1 &&
+    choices.length === 1 &&
+    choices[0].kind === SignerKind.WEBAUTHN &&
+    choices[0].credential_refs.length === 1
+      ? choices[0]
+      : null;
   const assets = validateTransferAssets(metadata, request.network_id);
   const amount = formatTransferAsset(c.funding.amount_atomic, request.asset_id, assets);
   const gas = formatTransferAsset(
@@ -266,77 +275,87 @@ function ReviewedTransfer({
             : 'No necesitas introducir una clave privada ni frase de recuperación.'}
         </p>
       </details>
-      <p>
-        {en ? 'Signatures' : 'Firmas'}: {signed.length}/{policy.spendThreshold}
-      </p>
-      {bound.signing.choices().map((choice) => (
-        <div key={choice.index}>
-          <h4>
-            {en ? 'Signing key' : 'Llave de firma'} {choice.index + 1}{' '}
-            {signed.includes(choice.index) ? '✓' : ''}
-          </h4>
-          {choice.kind === SignerKind.WEBAUTHN ? (
-            choice.credential_refs.length ? (
-              choice.credential_refs.map((ref) => (
-                <button
-                  key={ref}
-                  type="button"
-                  className="auth-secondary btn btn-ghost btn-block"
-                  disabled={!editable || signed.includes(choice.index)}
-                  onClick={() => run(() => bound.signing.passkey(choice.index, ref))}
-                >
-                  {en ? 'Sign with passkey' : 'Firmar con passkey'} · {ref.slice(-8)}
-                </button>
-              ))
-            ) : (
-              <p>
-                {en
-                  ? 'No registered credential matches this key.'
-                  : 'No hay una credencial registrada que corresponda a esta llave.'}{' '}
-                <NavigationLink href="/settings/security">
-                  {en ? 'Open security' : 'Ir a Seguridad'}
-                </NavigationLink>
-              </p>
-            )
-          ) : choice.kind === SignerKind.ECDSA ? (
-            <details>
-              <summary>{en ? 'External signature' : 'Firma externa'}</summary>
-              <p style={{ overflowWrap: 'anywhere' }}>{choice.key}</p>
-              <label>
-                {en
-                  ? 'Signature of this exact digest (not personal_sign)'
-                  : 'Firma de este digest exacto (no personal_sign)'}
-                <input
-                  value={external[choice.index] ?? ''}
-                  maxLength={132}
-                  autoComplete="off"
-                  spellCheck={false}
-                  disabled={!editable}
-                  onChange={(event) =>
-                    setExternal((previous) => ({ ...previous, [choice.index]: event.target.value }))
-                  }
-                />
-              </label>
-              <button
-                type="button"
-                className="auth-secondary btn btn-ghost btn-block"
-                disabled={!editable || signed.includes(choice.index)}
-                onClick={() =>
-                  run(async () => {
-                    await bound.signing.external(choice.index, external[choice.index] ?? '');
-                    if (mounted.current)
-                      setExternal((previous) => ({ ...previous, [choice.index]: '' }));
-                  })
-                }
-              >
-                {en ? 'Verify signature' : 'Verificar firma'}
-              </button>
-            </details>
-          ) : (
-            <p>{en ? 'Unsupported signing transport.' : 'Transporte de firma no disponible.'}</p>
-          )}
-        </div>
-      ))}
+      {!singleKey ? (
+        <p>
+          {en ? 'Signatures' : 'Firmas'}: {signed.length}/{policy.spendThreshold}
+        </p>
+      ) : null}
+      {!singleKey && state.phase === 'ready'
+        ? choices.map((choice) => (
+            <div key={choice.index}>
+              <h4>
+                {en ? 'Signing key' : 'Llave de firma'} {choice.index + 1}{' '}
+                {signed.includes(choice.index) ? '✓' : ''}
+              </h4>
+              {choice.kind === SignerKind.WEBAUTHN ? (
+                choice.credential_refs.length ? (
+                  choice.credential_refs.map((ref, index) => (
+                    <button
+                      key={ref}
+                      type="button"
+                      className="auth-secondary btn btn-ghost btn-block"
+                      disabled={!editable || signed.includes(choice.index)}
+                      onClick={() => run(() => bound.signing.passkey(choice.index, ref))}
+                    >
+                      {en ? 'Use my key' : 'Usar mi llave'}
+                      {choice.credential_refs.length > 1 ? ` ${index + 1}` : ''}
+                    </button>
+                  ))
+                ) : (
+                  <p>
+                    {en
+                      ? 'No registered credential matches this key.'
+                      : 'No hay una credencial registrada que corresponda a esta llave.'}{' '}
+                    <NavigationLink href="/settings/security">
+                      {en ? 'Open security' : 'Ir a Seguridad'}
+                    </NavigationLink>
+                  </p>
+                )
+              ) : choice.kind === SignerKind.ECDSA ? (
+                <details>
+                  <summary>{en ? 'External signature' : 'Firma externa'}</summary>
+                  <p style={{ overflowWrap: 'anywhere' }}>{choice.key}</p>
+                  <label>
+                    {en
+                      ? 'Signature of this exact digest (not personal_sign)'
+                      : 'Firma de este digest exacto (no personal_sign)'}
+                    <input
+                      value={external[choice.index] ?? ''}
+                      maxLength={132}
+                      autoComplete="off"
+                      spellCheck={false}
+                      disabled={!editable}
+                      onChange={(event) =>
+                        setExternal((previous) => ({
+                          ...previous,
+                          [choice.index]: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="auth-secondary btn btn-ghost btn-block"
+                    disabled={!editable || signed.includes(choice.index)}
+                    onClick={() =>
+                      run(async () => {
+                        await bound.signing.external(choice.index, external[choice.index] ?? '');
+                        if (mounted.current)
+                          setExternal((previous) => ({ ...previous, [choice.index]: '' }));
+                      })
+                    }
+                  >
+                    {en ? 'Verify signature' : 'Verificar firma'}
+                  </button>
+                </details>
+              ) : (
+                <p>
+                  {en ? 'Unsupported signing transport.' : 'Transporte de firma no disponible.'}
+                </p>
+              )}
+            </div>
+          ))
+        : null}
       {error || state.error ? (
         <p role="alert">
           {en
@@ -369,25 +388,45 @@ function ReviewedTransfer({
           {en ? 'Edit transfer' : 'Editar envío'}
         </button>
       ) : null}
-      <button
-        type="button"
-        className="auth-primary btn btn-primary btn-block"
-        disabled={!editable || signed.length < policy.spendThreshold}
-        onClick={() =>
-          run(async () => {
-            const proofs = await bound.signing.confirmationProofs();
-            await bound.flow.confirm(proofs);
-          })
-        }
-      >
-        {en ? 'Confirm reviewed transfer' : 'Confirmar el envío revisado'}
-      </button>
-      {state.phase === 'reserved' ? (
+      {state.phase === 'ready' ? (
+        <button
+          type="button"
+          className="auth-primary btn btn-primary btn-block"
+          disabled={!editable || (!singleKey && signed.length < policy.spendThreshold)}
+          onClick={() =>
+            run(async () => {
+              const release = holdPageReload();
+              try {
+                if (singleKey)
+                  await bound.signing.passkey(singleKey.index, singleKey.credential_refs[0]);
+                const proofs = await bound.signing.confirmationProofs();
+                await bound.flow.confirm(proofs);
+                if (bound.flow.canDeliver()) {
+                  bound.assertCurrent();
+                  if (Date.now() >= bound.expiresAt * 1000) throw new Error('Recipient expired');
+                  await bound.flow.deliver();
+                }
+              } finally {
+                release();
+              }
+            })
+          }
+        >
+          {busy ? (en ? 'Sending…' : 'Enviando…') : en ? 'Send' : 'Enviar'}
+        </button>
+      ) : null}
+      {bound.flow.canDeliver() ? (
         <button
           type="button"
           className="auth-primary btn btn-primary btn-block"
           disabled={busy || expired}
-          onClick={() => run(() => bound.flow.deliver())}
+          onClick={() =>
+            run(async () => {
+              bound.assertCurrent();
+              if (Date.now() >= bound.expiresAt * 1000) throw new Error('Recipient expired');
+              await bound.flow.deliver();
+            })
+          }
         >
           {en ? 'Send now' : 'Enviar ahora'}
         </button>

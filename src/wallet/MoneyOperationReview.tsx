@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import type { CredentialDetail } from '@gatopago/shared/v3/credential-detail';
 import { atomicToDecimal } from '@gatopago/shared/v3/amount';
+import { SignerKind } from '@gatopago/shared/v3/security-policy';
 import type { BrowserAuth } from '../auth/browser';
 import { SpendSigning } from './transfer-signing';
 import { requestPasskeyProof } from './passkeys';
@@ -11,6 +12,7 @@ import type { MoneySelection } from './money-release';
 import { MoneyExecutionFlow } from './money-execution-flow';
 import { saveMoneyBookmark, clearMoneyBookmark } from './money-bookmark';
 import { MoneyOperationReceipt } from './MoneyOperationReceipt';
+import { holdPageReload } from '../pwa/reload-guard';
 
 type Props = {
   runtime: BrowserAuth;
@@ -128,20 +130,40 @@ function ReviewedMoney({
     setError(false);
     // Invoke in the click stack, before imports, HTTP or token refresh.
     void action()
-      .then(() => {
-        if (mounted.current) setSigned(bound.signing.signedIndices());
-      })
       .catch(() => {
         if (mounted.current) setError(true);
       })
       .finally(() => {
         inFlight.current = false;
-        if (mounted.current) setBusy(false);
+        if (mounted.current) {
+          setSigned(bound.signing.signedIndices());
+          setBusy(false);
+        }
       });
   }
   const c = preparation.candidate,
     kind = c.request.kind,
     fresh = !expired;
+  const choices = bound.signing.choices();
+  const singleKey =
+    preparation.review.policy.spendThreshold === 1 &&
+    choices.length === 1 &&
+    choices[0].kind === SignerKind.WEBAUTHN &&
+    choices[0].credential_refs.length === 1
+      ? choices[0]
+      : null;
+  const actionLabel =
+    kind === 'aave_supply'
+      ? en
+        ? 'Deposit'
+        : 'Depositar'
+      : kind === 'aave_withdraw'
+        ? en
+          ? 'Withdraw'
+          : 'Retirar'
+        : en
+          ? 'Pay'
+          : 'Pagar';
   const title =
     kind === 'aave_supply'
       ? en
@@ -218,8 +240,8 @@ function ReviewedMoney({
           ? 'You authorize this one operation. Aave interest and withdrawal liquidity can change.'
           : 'Autorizas sólo esta operación. El interés y la liquidez para retirar en Aave pueden cambiar.'}
       </p>
-      {!restored && state.phase === 'review'
-        ? bound.signing.choices().map((choice) => (
+      {!restored && !singleKey && state.phase === 'review'
+        ? choices.map((choice) => (
             <div key={choice.index}>
               {choice.credential_refs.map((reference) => (
                 <button
@@ -241,8 +263,8 @@ function ReviewedMoney({
               {choice.credential_refs.length === 0 ? (
                 <p>
                   {en
-                    ? 'A matching passkey is unavailable on this device.'
-                    : 'No hay una passkey correspondiente disponible en este dispositivo.'}
+                    ? 'A matching access key is unavailable on this device.'
+                    : 'No hay una llave de acceso correspondiente disponible en este dispositivo.'}
                 </p>
               ) : null}
             </div>
@@ -252,15 +274,27 @@ function ReviewedMoney({
         <button
           className="auth-primary btn btn-primary btn-block"
           type="button"
-          disabled={busy || !fresh || signed.length < preparation.review.policy.spendThreshold}
+          disabled={
+            busy ||
+            !fresh ||
+            (!singleKey && signed.length < preparation.review.policy.spendThreshold)
+          }
           onClick={() =>
             run(async () => {
-              const proofs = await bound.signing.confirmationProofs();
-              await bound.flow.confirm(proofs);
+              const release = holdPageReload();
+              try {
+                if (singleKey)
+                  await bound.signing.passkey(singleKey.index, singleKey.credential_refs[0]);
+                const proofs = await bound.signing.confirmationProofs();
+                await bound.flow.confirm(proofs);
+                if (bound.flow.canDeliver()) await bound.flow.deliver();
+              } finally {
+                release();
+              }
             })
           }
         >
-          {en ? 'Confirm this operation' : 'Confirmar esta operación'}
+          {busy ? (en ? 'Processing…' : 'Procesando…') : actionLabel}
         </button>
       ) : null}
       {bound.flow.canDeliver() ? (
@@ -270,7 +304,7 @@ function ReviewedMoney({
           disabled={busy || !fresh}
           onClick={() => run(() => bound.flow.deliver())}
         >
-          {en ? 'Send reviewed operation' : 'Enviar la operación revisada'}
+          {actionLabel}
         </button>
       ) : null}
       {state.phase !== 'review' ? (
