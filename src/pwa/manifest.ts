@@ -18,16 +18,27 @@ export const pwaMetadata: Metadata = {
     apple: { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
   },
 };
-export const pwaViewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#0b0b0f' };
+export const pwaViewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#0b0b0f',
+};
 
 export function pwaManifest(): MetadataRoute.Manifest {
   return {
-    id: '/app', start_url: '/app', scope: '/',
+    id: '/app',
+    start_url: '/app',
+    scope: '/',
     name: 'GatoPago',
     short_name: 'GatoPago',
     description: 'GatoPago V3. Versión de pruebas; no envíes fondos reales.',
-    display: 'standalone', background_color: '#fff8f0', theme_color: '#0b0b0f',
-    lang: 'es', dir: 'ltr', categories: ['finance', 'utilities'],
+    display: 'standalone',
+    background_color: '#fff8f0',
+    theme_color: '#0b0b0f',
+    lang: 'es',
+    dir: 'ltr',
+    categories: ['finance', 'utilities'],
     prefer_related_applications: false,
     icons: [
       { src: PWA_ICONS.small, sizes: '192x192', type: 'image/png', purpose: 'any' },
@@ -40,12 +51,21 @@ export function pwaManifest(): MetadataRoute.Manifest {
 /** @internal Next build headers, not a runtime API. */
 export function pwaHeaders() {
   return [
-    { source: '/sw.js', headers: [
-      { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
-      { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
-      { key: 'Service-Worker-Allowed', value: '/' },
-      { key: 'Content-Security-Policy', value: "default-src 'none'; script-src 'self'; connect-src 'self'" },
-    ] },
-    { source: '/manifest.webmanifest', headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }] },
+    {
+      source: '/sw.js',
+      headers: [
+        { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+        { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+        { key: 'Service-Worker-Allowed', value: '/' },
+        {
+          key: 'Content-Security-Policy',
+          value: "default-src 'none'; script-src 'self'; connect-src 'self'",
+        },
+      ],
+    },
+    {
+      source: '/manifest.webmanifest',
+      headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }],
+    },
   ];
 }

@@ -1,7 +1,12 @@
 // Browser-only coordination, not authorization. Never store a user, token or operation payload here.
 let active = 0;
 const listeners = new Set<() => void>();
-export const subscribeReloadGuard = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
+export const subscribeReloadGuard = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
 export const isReloadBlocked = () => active > 0;
 export const serverReloadBlocked = () => false;
 

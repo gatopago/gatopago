@@ -1,11 +1,37 @@
-@import "tailwindcss";
-@import "../consumer/theme.css";
+@import 'tailwindcss';
+@import '../consumer/theme.css';
 
 @layer base {
-  *, *::before, *::after { box-sizing: border-box; }
-  body { margin: 0; font-family: var(--font-sans); font-variation-settings: 'MONO' 0, 'CASL' 0, 'slnt' 0, 'CRSV' .5; font-synthesis: none; background: var(--color-canvas); color: var(--color-text); }
-  button, input, select, textarea { font: inherit; }
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-variation-settings:
+      'MONO' 0,
+      'CASL' 0,
+      'slnt' 0,
+      'CRSV' 0.5;
+    font-synthesis: none;
+    background: var(--color-canvas);
+    color: var(--color-text);
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
 }

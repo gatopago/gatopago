@@ -17,7 +17,9 @@ export function parseCreationFee(value: string, network: string): string {
     const amount = decimalToAtomic(value, unit.decimals);
     if (amount === '0') throw new Error('Positive cap required');
     return amount;
-  } catch { throw new Error('creation/invalid-cap'); }
+  } catch {
+    throw new Error('creation/invalid-cap');
+  }
 }
 export function formatCreationFee(amount: bigint, network: string): string {
   const unit = creationFeeUnit(network);

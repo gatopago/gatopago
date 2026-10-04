@@ -1,23 +1,33 @@
 // Keep product descriptions consistent with the implemented account model.
-export type LegalCopy = { title: string; updated: string; lead: string; sections: { h: string; p?: string[]; list?: string[] }[] };
-export const terms: Record<"es" | "en", LegalCopy> = {
+export type LegalCopy = {
+  title: string;
+  updated: string;
+  lead: string;
+  sections: { h: string; p?: string[]; list?: string[] }[];
+};
+export const terms: Record<'es' | 'en', LegalCopy> = {
   es: {
     title: 'Términos de Servicio',
     updated: 'Última actualización: 2 de octubre de 2026',
-    lead:
-      'Estos Términos de Servicio regulan el uso de GatoPago, una aplicación de pagos no custodial para enviar, recibir y cobrar USDC con links de pago, códigos QR y nombres de usuario. GatoPago es operada por Daniel Cueto (Bolivia). Al usar GatoPago, aceptas estos términos.',
+    lead: 'Estos Términos de Servicio regulan el uso de GatoPago, una aplicación de pagos no custodial para enviar, recibir y cobrar USDC con links de pago, códigos QR y nombres de usuario. GatoPago es operada por Daniel Cueto (Bolivia). Al usar GatoPago, aceptas estos términos.',
     sections: [
       {
         h: '1. Aceptación',
-        p: ['Al acceder o usar GatoPago, confirmas que has leído y aceptas estos Términos. Si no estás de acuerdo, no uses el servicio.'],
+        p: [
+          'Al acceder o usar GatoPago, confirmas que has leído y aceptas estos Términos. Si no estás de acuerdo, no uses el servicio.',
+        ],
       },
       {
         h: '2. Descripción del servicio',
-        p: ['GatoPago es una aplicación web que facilita pagos en USDC y otros activos compatibles mediante links, códigos QR y usernames. GatoPago se encuentra en desarrollo activo y sus funciones pueden cambiar o estar disponibles de forma gradual.'],
+        p: [
+          'GatoPago es una aplicación web que facilita pagos en USDC y otros activos compatibles mediante links, códigos QR y usernames. GatoPago se encuentra en desarrollo activo y sus funciones pueden cambiar o estar disponibles de forma gradual.',
+        ],
       },
       {
         h: '3. Elegibilidad',
-        p: ['Debes tener la mayoría de edad legal en tu jurisdicción y capacidad para celebrar contratos. No debes usar GatoPago si te lo prohíben las leyes que te apliquen.'],
+        p: [
+          'Debes tener la mayoría de edad legal en tu jurisdicción y capacidad para celebrar contratos. No debes usar GatoPago si te lo prohíben las leyes que te apliquen.',
+        ],
       },
       {
         h: '4. Carácter no custodial y tu responsabilidad',
@@ -30,35 +40,51 @@ export const terms: Record<"es" | "en", LegalCopy> = {
       },
       {
         h: '5. Uso aceptable',
-        p: ['Te comprometes a no usar GatoPago para actividades ilegales, fraude, lavado de dinero, financiamiento de actividades prohibidas o cualquier uso que infrinja la ley o derechos de terceros.'],
+        p: [
+          'Te comprometes a no usar GatoPago para actividades ilegales, fraude, lavado de dinero, financiamiento de actividades prohibidas o cualquier uso que infrinja la ley o derechos de terceros.',
+        ],
       },
       {
         h: '6. Riesgos y ausencia de asesoría',
-        p: ['Los activos digitales son volátiles y conllevan riesgos. GatoPago no brinda asesoría financiera, legal ni fiscal. Las decisiones sobre tus activos son tuyas.'],
+        p: [
+          'Los activos digitales son volátiles y conllevan riesgos. GatoPago no brinda asesoría financiera, legal ni fiscal. Las decisiones sobre tus activos son tuyas.',
+        ],
       },
       {
         h: '7. Comisiones',
-        p: ['GatoPago cobra 0% por enviar dinero entre sus usuarios. Una red, protocolo o proveedor externo puede aplicar costos propios; cualquier costo conocido se muestra antes de confirmar.'],
+        p: [
+          'GatoPago cobra 0% por enviar dinero entre sus usuarios. Una red, protocolo o proveedor externo puede aplicar costos propios; cualquier costo conocido se muestra antes de confirmar.',
+        ],
       },
       {
         h: '8. Servicios de terceros',
-        p: ['GatoPago integra servicios de terceros para autenticación, verificación de seguridad, infraestructura y redes blockchain. El uso de esos servicios puede estar sujeto a sus propios términos y políticas.'],
+        p: [
+          'GatoPago integra servicios de terceros para autenticación, verificación de seguridad, infraestructura y redes blockchain. El uso de esos servicios puede estar sujeto a sus propios términos y políticas.',
+        ],
       },
       {
         h: '9. Sin garantías',
-        p: ['El servicio se ofrece “tal cual” y “según disponibilidad”, sin garantías de ningún tipo, en la medida permitida por la ley. No garantizamos que el servicio sea ininterrumpido o libre de errores.'],
+        p: [
+          'El servicio se ofrece “tal cual” y “según disponibilidad”, sin garantías de ningún tipo, en la medida permitida por la ley. No garantizamos que el servicio sea ininterrumpido o libre de errores.',
+        ],
       },
       {
         h: '10. Limitación de responsabilidad',
-        p: ['En la máxima medida permitida por la ley, GatoPago y su operador no serán responsables por daños indirectos, incidentales o consecuentes, ni por pérdida de fondos derivada del uso del servicio o de redes de terceros.'],
+        p: [
+          'En la máxima medida permitida por la ley, GatoPago y su operador no serán responsables por daños indirectos, incidentales o consecuentes, ni por pérdida de fondos derivada del uso del servicio o de redes de terceros.',
+        ],
       },
       {
         h: '11. Cambios',
-        p: ['Podemos modificar el servicio o estos Términos. Publicaremos la versión vigente en esta página. El uso continuado implica la aceptación de los cambios.'],
+        p: [
+          'Podemos modificar el servicio o estos Términos. Publicaremos la versión vigente en esta página. El uso continuado implica la aceptación de los cambios.',
+        ],
       },
       {
         h: '12. Ley aplicable',
-        p: ['Estos Términos se rigen por las leyes de Bolivia, sin perjuicio de los derechos que te correspondan como consumidor en tu jurisdicción.'],
+        p: [
+          'Estos Términos se rigen por las leyes de Bolivia, sin perjuicio de los derechos que te correspondan como consumidor en tu jurisdicción.',
+        ],
       },
       {
         h: '13. Contacto',
@@ -69,20 +95,25 @@ export const terms: Record<"es" | "en", LegalCopy> = {
   en: {
     title: 'Terms of Service',
     updated: 'Last updated: October 2, 2026',
-    lead:
-      'These Terms of Service govern the use of GatoPago, a non-custodial payment application to send, receive and request USDC using payment links, QR codes and usernames. GatoPago is operated by Daniel Cueto (Bolivia). By using GatoPago, you accept these terms.',
+    lead: 'These Terms of Service govern the use of GatoPago, a non-custodial payment application to send, receive and request USDC using payment links, QR codes and usernames. GatoPago is operated by Daniel Cueto (Bolivia). By using GatoPago, you accept these terms.',
     sections: [
       {
         h: '1. Acceptance',
-        p: ['By accessing or using GatoPago, you confirm that you have read and accept these Terms. If you do not agree, do not use the service.'],
+        p: [
+          'By accessing or using GatoPago, you confirm that you have read and accept these Terms. If you do not agree, do not use the service.',
+        ],
       },
       {
         h: '2. Description of the service',
-        p: ['GatoPago is a web application that facilitates payments in USDC and other supported assets through links, QR codes and usernames. GatoPago is under active development and its features may change or roll out gradually.'],
+        p: [
+          'GatoPago is a web application that facilitates payments in USDC and other supported assets through links, QR codes and usernames. GatoPago is under active development and its features may change or roll out gradually.',
+        ],
       },
       {
         h: '3. Eligibility',
-        p: ['You must be of legal age in your jurisdiction and able to enter into contracts. You must not use GatoPago if the laws that apply to you prohibit it.'],
+        p: [
+          'You must be of legal age in your jurisdiction and able to enter into contracts. You must not use GatoPago if the laws that apply to you prohibit it.',
+        ],
       },
       {
         h: '4. Non-custodial nature and your responsibility',
@@ -95,35 +126,51 @@ export const terms: Record<"es" | "en", LegalCopy> = {
       },
       {
         h: '5. Acceptable use',
-        p: ['You agree not to use GatoPago for illegal activity, fraud, money laundering, financing of prohibited activities, or any use that infringes the law or the rights of others.'],
+        p: [
+          'You agree not to use GatoPago for illegal activity, fraud, money laundering, financing of prohibited activities, or any use that infringes the law or the rights of others.',
+        ],
       },
       {
         h: '6. Risks and no advice',
-        p: ['Digital assets are volatile and carry risk. GatoPago does not provide financial, legal or tax advice. Decisions about your assets are yours.'],
+        p: [
+          'Digital assets are volatile and carry risk. GatoPago does not provide financial, legal or tax advice. Decisions about your assets are yours.',
+        ],
       },
       {
         h: '7. Fees',
-        p: ['GatoPago charges 0% for sending money between its users. A network, protocol or external provider may apply its own costs; any known cost is shown before confirmation.'],
+        p: [
+          'GatoPago charges 0% for sending money between its users. A network, protocol or external provider may apply its own costs; any known cost is shown before confirmation.',
+        ],
       },
       {
         h: '8. Third-party services',
-        p: ['GatoPago integrates third-party services for authentication, security checks, infrastructure and blockchain networks. Use of those services may be subject to their own terms and policies.'],
+        p: [
+          'GatoPago integrates third-party services for authentication, security checks, infrastructure and blockchain networks. Use of those services may be subject to their own terms and policies.',
+        ],
       },
       {
         h: '9. No warranties',
-        p: ['The service is provided “as is” and “as available”, without warranties of any kind, to the extent permitted by law. We do not guarantee that the service will be uninterrupted or error-free.'],
+        p: [
+          'The service is provided “as is” and “as available”, without warranties of any kind, to the extent permitted by law. We do not guarantee that the service will be uninterrupted or error-free.',
+        ],
       },
       {
         h: '10. Limitation of liability',
-        p: ['To the maximum extent permitted by law, GatoPago and its operator will not be liable for indirect, incidental or consequential damages, nor for loss of funds arising from use of the service or third-party networks.'],
+        p: [
+          'To the maximum extent permitted by law, GatoPago and its operator will not be liable for indirect, incidental or consequential damages, nor for loss of funds arising from use of the service or third-party networks.',
+        ],
       },
       {
         h: '11. Changes',
-        p: ['We may modify the service or these Terms. We will post the current version on this page. Continued use means acceptance of the changes.'],
+        p: [
+          'We may modify the service or these Terms. We will post the current version on this page. Continued use means acceptance of the changes.',
+        ],
       },
       {
         h: '12. Governing law',
-        p: ['These Terms are governed by the laws of Bolivia, without prejudice to any consumer rights you may have in your jurisdiction.'],
+        p: [
+          'These Terms are governed by the laws of Bolivia, without prejudice to any consumer rights you may have in your jurisdiction.',
+        ],
       },
       {
         h: '13. Contact',
@@ -132,12 +179,11 @@ export const terms: Record<"es" | "en", LegalCopy> = {
     ],
   },
 };
-export const privacy: Record<"es" | "en", LegalCopy> = {
+export const privacy: Record<'es' | 'en', LegalCopy> = {
   es: {
     title: 'Política de Privacidad',
     updated: 'Última actualización: 2 de octubre de 2026',
-    lead:
-      'GatoPago es una aplicación de pagos no custodial que permite enviar, recibir y cobrar USDC mediante links de pago, códigos QR y nombres de usuario. Esta Política de Privacidad explica qué datos tratamos, cómo los usamos y qué control tienes sobre ellos. GatoPago es operada por Daniel Cueto (Bolivia). Para cualquier consulta de privacidad, escríbenos a {{privacyEmail}}.',
+    lead: 'GatoPago es una aplicación de pagos no custodial que permite enviar, recibir y cobrar USDC mediante links de pago, códigos QR y nombres de usuario. Esta Política de Privacidad explica qué datos tratamos, cómo los usamos y qué control tienes sobre ellos. GatoPago es operada por Daniel Cueto (Bolivia). Para cualquier consulta de privacidad, escríbenos a {{privacyEmail}}.',
     sections: [
       {
         h: 'Naturaleza no custodial',
@@ -150,7 +196,7 @@ export const privacy: Record<"es" | "en", LegalCopy> = {
         list: [
           'Datos de acceso: tu nombre, nombre de usuario, invitación y la información pública de tu passkey necesaria para crear y autenticar la cuenta. La clave privada permanece en tu dispositivo o gestor de passkeys.',
           'Datos de perfil: el nombre de usuario (username) y la información de perfil que eliges dentro de GatoPago.',
-					'Datos de investigación de producto: si expresas interés en GatoPago Card, guardamos el país, casos de uso y preferencias que respondes. Esto no constituye una solicitud de tarjeta ni datos de KYC.',
+          'Datos de investigación de producto: si expresas interés en GatoPago Card, guardamos el país, casos de uso y preferencias que respondes. Esto no constituye una solicitud de tarjeta ni datos de KYC.',
           'Datos on-chain: tu(s) dirección(es) de wallet y las transacciones asociadas, que son públicas por naturaleza en la blockchain.',
           'Datos técnicos y de uso: tipo de dispositivo, navegador, dirección IP aproximada y métricas de uso anónimas o agregadas para mejorar el servicio.',
           'Comunicaciones: la información que nos envías si nos contactas por correo.',
@@ -214,8 +260,7 @@ export const privacy: Record<"es" | "en", LegalCopy> = {
   en: {
     title: 'Privacy Policy',
     updated: 'Last updated: October 2, 2026',
-    lead:
-      'GatoPago is a non-custodial payment application that lets users send, receive and request USDC using payment links, QR codes and usernames. This Privacy Policy explains what data we process, how we use it and what control you have over it. GatoPago is operated by Daniel Cueto (Bolivia). For any privacy question, contact us at {{privacyEmail}}.',
+    lead: 'GatoPago is a non-custodial payment application that lets users send, receive and request USDC using payment links, QR codes and usernames. This Privacy Policy explains what data we process, how we use it and what control you have over it. GatoPago is operated by Daniel Cueto (Bolivia). For any privacy question, contact us at {{privacyEmail}}.',
     sections: [
       {
         h: 'Non-custodial nature',
@@ -228,7 +273,7 @@ export const privacy: Record<"es" | "en", LegalCopy> = {
         list: [
           'Access data: your name, username, invitation and the public passkey information needed to create and authenticate your account. The private key remains on your device or in your passkey manager.',
           'Profile data: the username and profile information you choose within GatoPago.',
-					'Product research data: if you express interest in GatoPago Card, we store the country, use cases and preferences you submit. This is not a card application or KYC data.',
+          'Product research data: if you express interest in GatoPago Card, we store the country, use cases and preferences you submit. This is not a card application or KYC data.',
           'On-chain data: your wallet address(es) and associated transactions, which are public by nature on the blockchain.',
           'Technical and usage data: device type, browser, approximate IP address and anonymous or aggregated usage metrics to improve the service.',
           'Communications: the information you send us if you contact us by email.',

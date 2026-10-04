@@ -1,17 +1,111 @@
-.pwa-controls { position: relative; text-align: right; }
-.pwa-button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 44px; padding: .6rem .8rem; border: 2px solid var(--color-border-strong); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: .9rem; font-weight: 760; box-shadow: 3px 3px 0 var(--color-surface-2); cursor: pointer; transition: transform 150ms ease, box-shadow 150ms ease; }
-.pwa-controls--compact > .pwa-button { width: 44px; padding: 0; font-size: 1.2rem; }
-.pwa-controls--compact > .pwa-button .pwa-button__label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.pwa-controls--compact .pwa-notices { position: absolute; top: calc(100% + .75rem); right: 0; z-index: 2; width: min(20rem, calc(100vw - 4rem)); padding: 1rem; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: 4px 4px 0 var(--color-surface-2); }
-.pwa-notices .pwa-note:first-child { margin-top: 0; }
-.pwa-notices .pwa-note:last-child { margin-bottom: 0; }
-.pwa-button:not(:disabled):active { transform: translate(3px, 3px); box-shadow: none; }
-.pwa-button:disabled { opacity: .65; cursor: not-allowed; }
-.pwa-button:focus-visible { outline: 3px solid var(--color-cat-500); outline-offset: 4px; }
-.pwa-note { max-width: 24rem; font-size: .85rem; line-height: 1.5; text-align: left; }
-.pwa-dialog { width: min(30rem, calc(100% - 3rem)); max-width: 30rem; max-height: calc(100dvh - 3rem); margin: auto; overflow: auto; padding: clamp(1.5rem, 4vw, 2rem); border: 2px solid var(--color-border-strong); background: var(--color-canvas); color: var(--color-text); text-align: left; box-shadow: 5px 5px 0 var(--color-cat-300); }
-.pwa-dialog::backdrop { background: #0b0b0faa; }
-.pwa-dialog h2 { margin: 0 0 1.25rem; font-family: var(--font-display); font-size: 1.5rem; font-weight: 760; line-height: 1.2; }
-.pwa-dialog p { margin-block: 1rem; font-size: .9rem; line-height: 1.6; }
-.pwa-dialog form { margin-top: 1.5rem; }
-.pwa-dialog .pwa-button { width: 100%; min-height: 48px; background: var(--color-cat-500); border-color: var(--color-cat-500); color: var(--color-on-cat); box-shadow: 4px 4px 0 var(--color-cat-300); }
+.pwa-controls {
+  position: relative;
+  text-align: right;
+}
+.pwa-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.6rem 0.8rem;
+  border: 2px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 760;
+  box-shadow: 3px 3px 0 var(--color-surface-2);
+  cursor: pointer;
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+.pwa-controls--compact > .pwa-button {
+  width: 44px;
+  padding: 0;
+  font-size: 1.2rem;
+}
+.pwa-controls--compact > .pwa-button .pwa-button__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.pwa-controls--compact .pwa-notices {
+  position: absolute;
+  top: calc(100% + 0.75rem);
+  right: 0;
+  z-index: 2;
+  width: min(20rem, calc(100vw - 4rem));
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: 4px 4px 0 var(--color-surface-2);
+}
+.pwa-notices .pwa-note:first-child {
+  margin-top: 0;
+}
+.pwa-notices .pwa-note:last-child {
+  margin-bottom: 0;
+}
+.pwa-button:not(:disabled):active {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+.pwa-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.pwa-button:focus-visible {
+  outline: 3px solid var(--color-cat-500);
+  outline-offset: 4px;
+}
+.pwa-note {
+  max-width: 24rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-align: left;
+}
+.pwa-dialog {
+  width: min(30rem, calc(100% - 3rem));
+  max-width: 30rem;
+  max-height: calc(100dvh - 3rem);
+  margin: auto;
+  overflow: auto;
+  padding: clamp(1.5rem, 4vw, 2rem);
+  border: 2px solid var(--color-border-strong);
+  background: var(--color-canvas);
+  color: var(--color-text);
+  text-align: left;
+  box-shadow: 5px 5px 0 var(--color-cat-300);
+}
+.pwa-dialog::backdrop {
+  background: #0b0b0faa;
+}
+.pwa-dialog h2 {
+  margin: 0 0 1.25rem;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 760;
+  line-height: 1.2;
+}
+.pwa-dialog p {
+  margin-block: 1rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.pwa-dialog form {
+  margin-top: 1.5rem;
+}
+.pwa-dialog .pwa-button {
+  width: 100%;
+  min-height: 48px;
+  background: var(--color-cat-500);
+  border-color: var(--color-cat-500);
+  color: var(--color-on-cat);
+  box-shadow: 4px 4px 0 var(--color-cat-300);
+}

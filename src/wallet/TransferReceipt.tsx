@@ -28,55 +28,116 @@ function getExplorerTxUrl(networkId: string, txHash: string): string | null {
 
 /** Structured Consumer receipt showing final status, transaction hash, and reconciliation state.
  * CRITICAL: A reverted transfer is NEVER displayed as paid. */
-export function TransferReceipt({ english: en, request, selected, status: input, amountAtomic, metadata, onClose }: TransferReceiptProps) {
+export function TransferReceipt({
+  english: en,
+  request,
+  selected,
+  status: input,
+  amountAtomic,
+  metadata,
+  onClose,
+}: TransferReceiptProps) {
   const heading = useId();
-  if (request.wallet_id !== selected.wallet_id || request.network_id !== selected.network_id) throw new Error('Receipt context mismatch');
-  const status = parseTransferStatus(input, { wallet_id: selected.wallet_id, wallet_account_id: selected.wallet_account_id,
-    network_id: selected.network_id, operation_id: input.operation_id });
+  if (request.wallet_id !== selected.wallet_id || request.network_id !== selected.network_id)
+    throw new Error('Receipt context mismatch');
+  const status = parseTransferStatus(input, {
+    wallet_id: selected.wallet_id,
+    wallet_account_id: selected.wallet_account_id,
+    network_id: selected.network_id,
+    operation_id: input.operation_id,
+  });
   const resolvedAmount = parseAtomicAmount(amountAtomic);
-  if (resolvedAmount === '0' || (request.amount.kind === 'exact' && resolvedAmount !== request.amount.amount_atomic)) throw new Error('Receipt amount mismatch');
+  if (
+    resolvedAmount === '0' ||
+    (request.amount.kind === 'exact' && resolvedAmount !== request.amount.amount_atomic)
+  )
+    throw new Error('Receipt amount mismatch');
   const confirmation = status.historical_confirmation;
   const outcome = confirmation?.outcome;
   const assets = validateTransferAssets(metadata, request.network_id);
   const native = creationFeeUnit(request.network_id);
   const amount = formatTransferAsset(resolvedAmount, request.asset_id, assets);
-  const explorerUrl = confirmation?.transaction_hash ? getExplorerTxUrl(request.network_id, confirmation.transaction_hash) : null;
+  const explorerUrl = confirmation?.transaction_hash
+    ? getExplorerTxUrl(request.network_id, confirmation.transaction_hash)
+    : null;
 
   const isReverted = outcome === 'execution_reverted';
   const isSucceeded = outcome === 'execution_succeeded';
   const isReviewRequired = status.status === 'review_required';
-  const isExpired = status.status === 'expired', isHeld = status.status === 'held';
+  const isExpired = status.status === 'expired',
+    isHeld = status.status === 'held';
   const canClose = !status.funds_reserved && (status.status === 'reconciled' || isExpired);
 
   return (
     <article aria-labelledby={heading} className="auth-panel" role="region">
       <header>
         <h3 id={heading}>
-          {isReviewRequired ? (en ? 'Transfer in review' : 'Envío en revisión')
-            : isExpired ? (en ? 'Sending window expired' : 'Venció el plazo de envío')
-              : isSucceeded ? status.status === 'reconciled'
-                ? (en ? 'Transfer completed' : 'Envío completado') : (en ? 'Transfer confirmed' : 'Envío confirmado')
-                : isReverted ? (en ? 'Execution reverted' : 'Ejecución revertida')
-                  : isHeld ? (en ? 'Transfer reserved' : 'Envío reservado') : (en ? 'Transfer pending' : 'Envío en proceso')}
+          {isReviewRequired
+            ? en
+              ? 'Transfer in review'
+              : 'Envío en revisión'
+            : isExpired
+              ? en
+                ? 'Sending window expired'
+                : 'Venció el plazo de envío'
+              : isSucceeded
+                ? status.status === 'reconciled'
+                  ? en
+                    ? 'Transfer completed'
+                    : 'Envío completado'
+                  : en
+                    ? 'Transfer confirmed'
+                    : 'Envío confirmado'
+                : isReverted
+                  ? en
+                    ? 'Execution reverted'
+                    : 'Ejecución revertida'
+                  : isHeld
+                    ? en
+                      ? 'Transfer reserved'
+                      : 'Envío reservado'
+                    : en
+                      ? 'Transfer pending'
+                      : 'Envío en proceso'}
         </h3>
         <p role="status">
           {isReviewRequired
-            ? (en ? 'Conflicting transaction evidence was found. Do not create a duplicate transfer.' : 'Se registró evidencia contradictoria. No crees un envío duplicado.')
-            : isExpired ? (en ? 'The sending window expired and the reservation was released. No execution was confirmed.' : 'Venció el plazo de envío y se liberó la reserva. No se confirmó una ejecución.')
-              : isSucceeded ? (en ? 'Transaction included onchain and execution succeeded.' : 'Transacción confirmada en cadena con ejecución exitosa.')
-                : isReverted ? (en ? 'Execution reverted onchain. Funds were NOT delivered to the recipient.' : 'La ejecución revirtió en la red. Los fondos NO fueron entregados al destinatario.')
-                  : isHeld ? (en ? 'Funds are reserved. This transfer has not been submitted.' : 'Los fondos están reservados. Este envío aún no fue presentado.')
-                    : (en ? 'Transaction is waiting for block inclusion and finality.' : 'La transacción está esperando inclusión en bloque y finalidad.')}
+            ? en
+              ? 'Conflicting transaction evidence was found. Do not create a duplicate transfer.'
+              : 'Se registró evidencia contradictoria. No crees un envío duplicado.'
+            : isExpired
+              ? en
+                ? 'The sending window expired and the reservation was released. No execution was confirmed.'
+                : 'Venció el plazo de envío y se liberó la reserva. No se confirmó una ejecución.'
+              : isSucceeded
+                ? en
+                  ? 'Transaction included onchain and execution succeeded.'
+                  : 'Transacción confirmada en cadena con ejecución exitosa.'
+                : isReverted
+                  ? en
+                    ? 'Execution reverted onchain. Funds were NOT delivered to the recipient.'
+                    : 'La ejecución revirtió en la red. Los fondos NO fueron entregados al destinatario.'
+                  : isHeld
+                    ? en
+                      ? 'Funds are reserved. This transfer has not been submitted.'
+                      : 'Los fondos están reservados. Este envío aún no fue presentado.'
+                    : en
+                      ? 'Transaction is waiting for block inclusion and finality.'
+                      : 'La transacción está esperando inclusión en bloque y finalidad.'}
         </p>
       </header>
 
       {status.status === 'reconciled' ? (
         <p className="auth-local" role="status">
-          {en ? 'Balance reconciled; reserved funds released.' : 'Saldo reconciliado; reserva de fondos liberada.'}
+          {en
+            ? 'Balance reconciled; reserved funds released.'
+            : 'Saldo reconciliado; reserva de fondos liberada.'}
         </p>
       ) : status.funds_reserved && !isHeld ? (
         <p role="status">
-          {en ? 'Funds remain reserved while finality is observed.' : 'Los fondos siguen reservados mientras se observa la finalidad.'}
+          {en
+            ? 'Funds remain reserved while finality is observed.'
+            : 'Los fondos siguen reservados mientras se observa la finalidad.'}
         </p>
       ) : null}
 
@@ -85,13 +146,18 @@ export function TransferReceipt({ english: en, request, selected, status: input,
         <dd style={{ overflowWrap: 'anywhere' }}>{request.destination.address}</dd>
 
         <dt>{en ? 'Amount' : 'Importe'}</dt>
-        <dd>{amount}{request.amount.kind === 'max' ? ' (MAX)' : ''}</dd>
+        <dd>
+          {amount}
+          {request.amount.kind === 'max' ? ' (MAX)' : ''}
+        </dd>
 
         <dt>{en ? 'Network' : 'Red'}</dt>
         <dd>{native?.network ?? request.network_id}</dd>
 
         <dt>{en ? 'Sender account' : 'Cuenta de origen'}</dt>
-        <dd style={{ overflowWrap: 'anywhere' }}>{selected.address || selected.wallet_account_id}</dd>
+        <dd style={{ overflowWrap: 'anywhere' }}>
+          {selected.address || selected.wallet_account_id}
+        </dd>
 
         {confirmation?.transaction_hash ? (
           <>

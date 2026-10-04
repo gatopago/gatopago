@@ -72,7 +72,7 @@ account history or cross-device discovery.
   Arbitrum Sepolia acceptance remain outstanding.
 - Registering another passkey does not activate it as an onchain signer.
   Backup delivery and an independent exit flow are not enabled in the consumer UI.
-- Checkout links, swaps, cross-chain, Earn, contacts and a faucet are not
+- Checkout links, swaps, cross-chain, contacts and a faucet are not
   connected consumer flows. Their empty pages were removed, not presented as
   working features. The scanner accepts addresses and `/@username` profiles,
   not checkout links. This does not remove the independent Flow backend.
@@ -111,19 +111,19 @@ packages already ship compiled JavaScript and require no custom transpilation.
 ## Verification
 
 ```powershell
-pnpm verify
-node scripts/check-release.mjs --describe
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm audit --prod
 ```
 
-Verification includes lint, route/type checks, tests, both Knip modes, release
-and vendor snapshot integrity (`pnpm check:release`), and the Next.js build.
-These release checks are separate from the framework's build command.
-Review build inputs before updating
-`release.json`; its hash proves source provenance, not deployed wallet authority
-or financial readiness. The packages in `vendor/` are pinned snapshots, not
-imports from another checkout.
+CI runs these same commands. The packages in `vendor/` are pinned snapshots,
+not imports from another checkout. Wallet authority is checked against the
+admitted deployment configuration; a successful build is not financial readiness.
 
-The `dev:*harness` scripts run actual components against synthetic services.
+The `test/serve-*.mjs` harnesses run actual components against synthetic services;
+start one with, for example, `node test/serve-enrollment.mjs`.
 The enrollment harness uses browser WebAuthn and a cryptographic verifier, but
 identity, persistence and chain confirmation are simulated. Screenshots and
 virtual-authenticator results do not prove a physical-device or funded
@@ -139,7 +139,7 @@ All server feature flags remain disabled until public acceptance is complete.
 
 Unresolved operations retain resource IDs in a URL fragment and bounded local
 storage. Recovery reads the owned server reference; it does not replay signing
-or sending. The local `dev:money-harness` uses synthetic services and ephemeral
+or sending. `node test/serve-money.mjs` uses synthetic services and ephemeral
 P256 assertions. Its screenshots do not prove a public funded operation.
 
 Implementation evidence: [Arbitrum status](../protocol/docs/arbitrum-delivery/STATUS.md).

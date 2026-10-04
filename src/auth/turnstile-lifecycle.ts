@@ -1,4 +1,6 @@
-export type ChallengeState = { status: 'loading' | 'error' | 'expired' | 'used'; token: null } | { status: 'verified'; token: string };
+export type ChallengeState =
+  | { status: 'loading' | 'error' | 'expired' | 'used'; token: null }
+  | { status: 'verified'; token: string };
 
 /** Resolved is not terminal: expiry/error MUST invalidate a previously verified token. */
 export function createChallengeLifecycle(publish: (state: ChallengeState) => void) {
@@ -8,19 +10,33 @@ export function createChallengeLifecycle(publish: (state: ChallengeState) => voi
   return {
     verified(token: string) {
       if (!disposed && !terminal) {
-        if (!token.trim() || token.length > 2048) { terminal = true; publish({ status: 'error', token: null }); }
-        else { available = token; publish({ status: 'verified', token }); }
+        if (!token.trim() || token.length > 2048) {
+          terminal = true;
+          publish({ status: 'error', token: null });
+        } else {
+          available = token;
+          publish({ status: 'verified', token });
+        }
       }
     },
     invalidate(status: 'error' | 'expired') {
-      if (!disposed && !terminal) { terminal = true; available = null; publish({ status, token: null }); }
+      if (!disposed && !terminal) {
+        terminal = true;
+        available = null;
+        publish({ status, token: null });
+      }
     },
     take() {
       if (disposed || terminal || !available) return null;
-      const token = available; available = null; terminal = true;
+      const token = available;
+      available = null;
+      terminal = true;
       publish({ status: 'used', token: null });
       return token;
     },
-    dispose() { disposed = true; available = null; },
+    dispose() {
+      disposed = true;
+      available = null;
+    },
   };
 }

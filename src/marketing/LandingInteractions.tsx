@@ -18,7 +18,11 @@ export function LandingInteractions({ locale }: { locale: 'es' | 'en' }) {
     function updateNavigation() {
       scrollFrame = null;
       if (!nav) return;
-      const state = navigationScrollState(previousY, window.scrollY, menu?.hidden === false || !!nav.querySelector(':focus-visible'));
+      const state = navigationScrollState(
+        previousY,
+        window.scrollY,
+        menu?.hidden === false || !!nav.querySelector(':focus-visible'),
+      );
       nav.classList.toggle('is-scrolled', state.scrolled);
       if (state.hidden !== null) nav.classList.toggle('is-hidden', state.hidden);
       previousY = state.previousY;
@@ -32,7 +36,10 @@ export function LandingInteractions({ locale }: { locale: 'es' | 'en' }) {
       if (!menu || !menuButton) return;
       menu.hidden = !open;
       menuButton.setAttribute('aria-expanded', String(open));
-      menuButton.setAttribute('aria-label', (open ? menuButton.dataset.closeLabel : menuButton.dataset.openLabel) ?? 'Menu');
+      menuButton.setAttribute(
+        'aria-label',
+        (open ? menuButton.dataset.closeLabel : menuButton.dataset.openLabel) ?? 'Menu',
+      );
       nav?.classList.toggle('is-menu-open', open);
       if (open) nav?.classList.remove('is-hidden');
       previousY = Math.max(0, window.scrollY);
@@ -48,7 +55,8 @@ export function LandingInteractions({ locale }: { locale: 'es' | 'en' }) {
         target.setAttribute('aria-pressed', String(sleeping));
         root.querySelector('[data-cat-stage]')?.classList.toggle('is-sleeping', sleeping);
         const status = root.querySelector('[data-nap-status]');
-        if (status) status.textContent = (sleeping ? target.dataset.asleep : target.dataset.awake) ?? '';
+        if (status)
+          status.textContent = (sleeping ? target.dataset.asleep : target.dataset.awake) ?? '';
       }
       if (target.matches('[data-cycle-state]')) {
         const lab = target.closest<HTMLElement>('[data-cycle-lab]');
@@ -73,13 +81,17 @@ export function LandingInteractions({ locale }: { locale: 'es' | 'en' }) {
         // This is a clearly labelled demo, never an economic intent or a QR to fund.
         const label = target.querySelector<HTMLElement>('[data-copy-label]');
         try {
-          await navigator.clipboard.writeText(new URL(target.dataset.paymentLink ?? '/', window.location.origin).href);
+          await navigator.clipboard.writeText(
+            new URL(target.dataset.paymentLink ?? '/', window.location.origin).href,
+          );
           if (controller.signal.aborted) return;
           if (label) label.textContent = target.dataset.copiedLabel ?? 'Copied';
           target.classList.add('is-copied');
         } catch {
           if (controller.signal.aborted) return;
-          if (label) label.textContent = locale === 'es' ? 'No se pudo copiar. Reintenta.' : 'Could not copy. Try again.';
+          if (label)
+            label.textContent =
+              locale === 'es' ? 'No se pudo copiar. Reintenta.' : 'Could not copy. Try again.';
         }
         const timer = setTimeout(() => {
           if (label) label.textContent = target.dataset.defaultLabel ?? 'Copy';
@@ -92,16 +104,36 @@ export function LandingInteractions({ locale }: { locale: 'es' | 'en' }) {
     root.addEventListener('click', onClick, { signal: controller.signal });
     updateNavigation();
     window.addEventListener('scroll', onScroll, { passive: true, signal: controller.signal });
-    nav?.addEventListener('focusin', () => nav.classList.remove('is-hidden'), { signal: controller.signal });
-    root.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && menu && !menu.hidden) { toggleMenu(false); menuButton?.focus(); }
-    }, { signal: controller.signal });
+    nav?.addEventListener('focusin', () => nav.classList.remove('is-hidden'), {
+      signal: controller.signal,
+    });
+    root.addEventListener(
+      'keydown',
+      (event) => {
+        if (event.key === 'Escape' && menu && !menu.hidden) {
+          toggleMenu(false);
+          menuButton?.focus();
+        }
+      },
+      { signal: controller.signal },
+    );
     dialog?.addEventListener('close', () => dialogTrigger?.focus(), { signal: controller.signal });
     // Only clicks outside the dialog rectangle dismiss it; padding is not a backdrop.
-    dialog?.addEventListener('click', (event) => {
-      const box = dialog.getBoundingClientRect();
-      if (event.target === dialog && (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom)) dialog.close();
-    }, { signal: controller.signal });
+    dialog?.addEventListener(
+      'click',
+      (event) => {
+        const box = dialog.getBoundingClientRect();
+        if (
+          event.target === dialog &&
+          (event.clientX < box.left ||
+            event.clientX > box.right ||
+            event.clientY < box.top ||
+            event.clientY > box.bottom)
+        )
+          dialog.close();
+      },
+      { signal: controller.signal },
+    );
     // No global .js class that would hide SSR content when hydration is delayed/fails.
     return () => {
       controller.abort();

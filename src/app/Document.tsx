@@ -12,7 +12,17 @@ import { NonceProvider } from '../security/NonceProvider';
 export async function Document({ lang, children }: { lang: 'es' | 'en'; children: ReactNode }) {
   const nonce = (await headers()).get(NONCE_HEADER);
   if (!validNonce(nonce)) throw new Error('The document security proxy did not run');
-  return <html lang={lang}><body><NonceProvider nonce={nonce}>
-    <PwaBootstrap canonicalOrigin={environment.web_origin} release={process.env.NODE_ENV === 'production'} />{children}
-  </NonceProvider></body></html>;
+  return (
+    <html lang={lang}>
+      <body>
+        <NonceProvider nonce={nonce}>
+          <PwaBootstrap
+            canonicalOrigin={environment.web_origin}
+            release={process.env.NODE_ENV === 'production'}
+          />
+          {children}
+        </NonceProvider>
+      </body>
+    </html>
+  );
 }

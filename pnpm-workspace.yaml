@@ -1,4 +1,6 @@
 overrides:
   '@gatopago/shared@3.2.1': file:vendor/gatopago-shared-3.2.1.tgz
+  # Firestore pins an older minor; keep its transport on the patched release.
+  '@grpc/grpc-js@<1.14.5': '1.14.5'
 allowBuilds:
   protobufjs: false
