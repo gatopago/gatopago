@@ -56,11 +56,19 @@ function ReviewedMoney({
 }: Props) {
   const [bound] = useState(() => {
     const destination = recipient
-      ? parseRecipient(recipient, recipient.username, preparation.candidate.request.network_id, recipient.verified_at)
+      ? parseRecipient(
+          recipient,
+          recipient.username,
+          preparation.candidate.request.network_id,
+          recipient.verified_at,
+        )
       : null;
     if (destination && destination.address !== preparation.candidate.request.recipient_address)
       throw new Error('Recipient does not match the reviewed address');
-    const expiresAt = Math.min(preparation.expires_at, destination?.expires_at ?? preparation.expires_at);
+    const expiresAt = Math.min(
+      preparation.expires_at,
+      destination?.expires_at ?? preparation.expires_at,
+    );
     const flow = new MoneyExecutionFlow(
       session,
       selected,
@@ -207,7 +215,9 @@ function ReviewedMoney({
         {bound.recipient ? (
           <>
             <dt>Username</dt>
-            <dd>@{bound.recipient.username} · {bound.recipient.display_name}</dd>
+            <dd>
+              @{bound.recipient.username} · {bound.recipient.display_name}
+            </dd>
           </>
         ) : null}
         {c.request.recipient_address ? (

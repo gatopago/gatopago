@@ -84,8 +84,7 @@ export class MoneyExecutionFlow {
   }
   private fresh() {
     this.live();
-    if (Date.now() >= this.consentExpiresAt * 1000)
-      throw new Error('MONEY_CONSENT_EXPIRED');
+    if (Date.now() >= this.consentExpiresAt * 1000) throw new Error('MONEY_CONSENT_EXPIRED');
     return parseMoneyPreparation(
       this.initial.wire,
       this.selected,
@@ -181,7 +180,13 @@ export class MoneyExecutionFlow {
       this.persist(this.bookmark());
       this.deliveryAttempted = true;
       this.set({ phase: 'delivering', error: false });
-      const result = await this.session.deliver(this.selected, this.initial, id, controller.signal, this.consentExpiresAt);
+      const result = await this.session.deliver(
+        this.selected,
+        this.initial,
+        id,
+        controller.signal,
+        this.consentExpiresAt,
+      );
       if (!this.alive(controller)) return;
       this.live();
       this.set({

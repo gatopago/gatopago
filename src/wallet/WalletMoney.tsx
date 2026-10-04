@@ -175,7 +175,14 @@ function OwnedWalletMoney({
         controller.signal.throwIfAborted();
         session.assertCurrent();
         if (mounted.current)
-          setPrepared({ session, selected, preparation, credentials: [], recipient: null, restored: true });
+          setPrepared({
+            session,
+            selected,
+            preparation,
+            credentials: [],
+            recipient: null,
+            restored: true,
+          });
       } else {
         const [capabilities, position] = await Promise.all([
           session.capabilities(selected, controller.signal),
@@ -225,12 +232,12 @@ function OwnedWalletMoney({
     try {
       opened.session.assertCurrent();
       const amountAtomic = decimalToAtomic(input.amount, 6);
-      const username = input.kind === 'aave_withdraw_and_pay' && !input.recipient.startsWith('0x')
-        ? normalizeUsername(input.recipient)
-        : null;
-      const address = input.kind === 'aave_withdraw_and_pay' && !username
-        ? getAddress(input.recipient)
-        : null;
+      const username =
+        input.kind === 'aave_withdraw_and_pay' && !input.recipient.startsWith('0x')
+          ? normalizeUsername(input.recipient)
+          : null;
+      const address =
+        input.kind === 'aave_withdraw_and_pay' && !username ? getAddress(input.recipient) : null;
       const credentialsSession = runtime.credentialInventory(uid),
         inventory = await credentialsSession.read(controller.signal),
         credentials: CredentialDetail[] = [];

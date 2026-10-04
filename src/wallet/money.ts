@@ -426,8 +426,11 @@ function parseMoneyReceipt(
 
 export function moneyClient(config: EnabledAuthConfig, token: () => Promise<string>) {
   const assertConsentFresh = (expiresAt: number, preparation: MoneyPreparation) => {
-    if (!Number.isSafeInteger(expiresAt) || expiresAt <= 0 ||
-      Date.now() >= Math.min(expiresAt, preparation.expires_at) * 1000)
+    if (
+      !Number.isSafeInteger(expiresAt) ||
+      expiresAt <= 0 ||
+      Date.now() >= Math.min(expiresAt, preparation.expires_at) * 1000
+    )
       throw fail();
   };
   const path = (s: MoneySelection) =>
