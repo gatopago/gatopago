@@ -30,6 +30,11 @@ const messages: Record<string, [es: string, en: string]> = {
     'The security check did not finish. Check your connection and try again.',
   ],
   USERNAME_TAKEN: ['Ese nombre de usuario ya está en uso.', 'That username is taken.'],
+  SELF_CONTACT: ['No puedes agregarte a ti mismo.', "You can't add yourself."],
+  INVALID_SOCIAL_URL: [
+    'Usa un enlace https de Instagram, X, Telegram, TikTok o Facebook.',
+    'Use an https link from Instagram, X, Telegram, TikTok or Facebook.',
+  ],
   USERNAME_ALREADY_SET: [
     'Tu nombre de usuario ya está elegido.',
     'Your username is already chosen.',
@@ -45,10 +50,26 @@ const messages: Record<string, [es: string, en: string]> = {
   ],
   INVALID_AMOUNT: ['Ingresa un monto mayor a cero.', 'Enter an amount above zero.'],
   INSUFFICIENT_FUNDS: [
-    'No tienes ese saldo en esta red.',
-    'You do not have that balance on this network.',
+    'No te alcanza el saldo. Si está repartido entre redes, júntalo en “Entre redes”.',
+    'Your balance is not enough. If it is spread across networks, gather it in “Between networks”.',
+  ],
+  INVALID_ADDRESS: [
+    'Dirección inválida: debe ser una dirección 0x válida.',
+    'Invalid address: it must be a valid 0x address.',
   ],
   SELF_TRANSFER: ['Esa es tu propia cuenta.', 'That is your own account.'],
+  BALANCE_ON_OTHER_NETWORK: [
+    'Tu saldo en esta red no alcanza. Júntalo aquí desde tus otras redes en “Entre redes”.',
+    'Your balance on this network is not enough. Gather it here from your other networks in “Between networks”.',
+  ],
+  CCTP_FEE_UNAVAILABLE: [
+    'No pudimos consultar la comisión entre redes. Reintenta en un momento.',
+    'We could not get the cross-network fee. Try again in a moment.',
+  ],
+  CCTP_AMOUNT_BELOW_FEE: [
+    'El monto es menor que la comisión entre redes.',
+    'The amount is below the cross-network fee.',
+  ],
   RATE_LIMITED: [
     'Hay demasiados intentos. Espera un momento.',
     'Too many attempts. Wait a moment.',
@@ -74,7 +95,8 @@ function failureCode(error: unknown): string {
     if (cause instanceof ApiError) return cause.code;
     if (cause.name === 'NotAllowedError' || cause.name === 'AbortError') return 'CANCELLED';
     if (cause.name === 'InvalidStateError') return 'PASSKEY_EXISTS';
-    if (/^[A-Z_]+$/.test(cause.message)) return cause.message;
+    const own = /^([A-Z_]+)(?::|$)/.exec(cause.message);
+    if (own) return own[1];
     // Paymaster and bundler failures reach viem as HTTP errors carrying our response body.
     const code = /"error_code":"([A-Z_]+)"/.exec(cause.message);
     if (code) return code[1];

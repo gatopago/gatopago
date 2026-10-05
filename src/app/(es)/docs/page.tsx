@@ -66,9 +66,9 @@ Idempotency-Key: cafe-norte-order-001
           ? 'Reuse the same idempotency key when recovering the same request after a lost response. Consult the payment state before creating a replacement.'
           : 'Conserva la misma clave de idempotencia al recuperar una solicitud cuya respuesta se perdió. Consulta el estado del pago antes de crear otro para reemplazarlo.'}
       </p>
-      <a href={settings.businessOrigin}>
+      <Link href={en ? '/business?lang=en' : '/business'}>
         {en ? 'Open the merchant dashboard' : 'Abrir el panel de comercios'}
-      </a>
+      </Link>
     </main>
   );
 }

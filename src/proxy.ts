@@ -10,6 +10,8 @@ export function proxy(request: NextRequest) {
     nonce,
     apiOrigin: settings.apiOrigin,
     networks: settings.networks,
+    rpcUrls: settings.rpcUrls,
+    push: settings.push !== null,
     development: process.env.NODE_ENV === 'development',
     secure: request.nextUrl.protocol === 'https:',
   });

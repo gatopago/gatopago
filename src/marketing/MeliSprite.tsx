@@ -52,15 +52,18 @@ export function MeliSprite({
   variant,
   className = '',
   loading = 'lazy',
+  motion,
 }: {
   variant: keyof typeof sprites;
   className?: string;
   loading?: 'eager' | 'lazy';
+  /** The app's V2 motions (styled in consumer.css). */
+  motion?: 'idle' | 'deliver' | 'purr' | 'peek';
 }) {
   const [width, height] = dimensions[variant];
   return (
     <span
-      className={`meli-sprite meli-sprite--${variant} ${className}`}
+      className={`meli-sprite meli-sprite--${variant}${motion ? ` meli-motion-${motion}` : ''} ${className}`}
       data-meli-variant={variant}
       aria-hidden="true"
     >

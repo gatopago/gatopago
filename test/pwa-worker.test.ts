@@ -65,13 +65,19 @@ function worker() {
   const fetch = vi.fn(async () => js());
   const skipWaiting = vi.fn();
   const claim = vi.fn();
+  const windowMessages: unknown[] = [];
+  const showNotification = vi.fn(async () => undefined);
   runInNewContext(source, {
     self: {
       location: { origin },
       addEventListener: (name: string, callback: (event: unknown) => void) =>
         handlers.set(name, callback),
       skipWaiting,
-      clients: { claim },
+      clients: {
+        claim,
+        matchAll: async () => [{ postMessage: (message: unknown) => windowMessages.push(message) }],
+      },
+      registration: { showNotification },
     },
     caches,
     fetch,
@@ -81,11 +87,12 @@ function worker() {
     setTimeout,
     clearTimeout,
   });
-  function event(name: string, input?: WorkerRequest) {
+  function event(name: string, input?: WorkerRequest, data?: unknown) {
     const pending: Promise<unknown>[] = [];
     let response: Promise<Response> | undefined;
     handlers.get(name)?.({
       request: input,
+      data: data === undefined ? null : { json: () => data },
       waitUntil: (task: Promise<unknown>) => pending.push(task),
       respondWith: (task: Promise<Response>) => {
         response = task;
@@ -100,7 +107,17 @@ function worker() {
       },
     };
   }
-  return { event, fetch, caches, contents, handlers, skipWaiting, claim };
+  return {
+    event,
+    fetch,
+    caches,
+    contents,
+    handlers,
+    skipWaiting,
+    claim,
+    windowMessages,
+    showNotification,
+  };
 }
 
 describe('actual public/sw.js in an isolated browser-API harness', () => {
@@ -115,7 +132,13 @@ describe('actual public/sw.js in an isolated browser-API harness', () => {
     );
     expect(sw.skipWaiting).not.toHaveBeenCalled();
     expect(sw.claim).not.toHaveBeenCalled();
-    expect([...sw.handlers.keys()]).toEqual(['install', 'activate', 'fetch']);
+    expect([...sw.handlers.keys()]).toEqual([
+      'install',
+      'activate',
+      'fetch',
+      'push',
+      'notificationclick',
+    ]);
   });
   it.each([
     new Response('login', { headers: { 'Content-Type': 'text/html' } }),
@@ -316,6 +339,28 @@ describe('actual public/sw.js in an isolated browser-API harness', () => {
 });
 
 describe('PWA public metadata', () => {
+  it('shows payment notifications and tells open windows, ignoring other pushes', async () => {
+    const sw = worker();
+    await sw.event('push', undefined, { data: { type: 'other', title: 'x' } }).finish();
+    expect(sw.showNotification).not.toHaveBeenCalled();
+    await sw
+      .event('push', undefined, {
+        data: {
+          type: 'movement',
+          title: 'Recibiste 3,00 USDC',
+          body: 'De @ana',
+          link: '/statement',
+        },
+      })
+      .finish();
+    expect(sw.showNotification).toHaveBeenCalledWith('Recibiste 3,00 USDC', {
+      body: 'De @ana',
+      icon: '/apple-touch-icon.png',
+      data: { link: '/statement' },
+    });
+    expect(sw.windowMessages).toEqual([{ type: 'GATOPAGO_MOVEMENT' }]);
+  });
+
   it('uses the new /app identity and reviewed face-only Meli PNGs', () => {
     const manifest = pwaManifest();
     expect(manifest).toMatchObject({

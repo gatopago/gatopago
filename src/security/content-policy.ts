@@ -1,23 +1,43 @@
 import { walletNetwork } from '@gatopago/shared/networks';
 import { validNonce } from './nonce';
 
-/** RPC endpoints the browser reads balances and account state from. */
-function rpcOrigins(networks: readonly string[]): string[] {
-  return networks.flatMap((id) =>
-    walletNetwork(id).chain.rpcUrls.default.http.map((url) => new URL(url).origin),
-  );
+/**
+ * What the browser reads directly: each network's RPCs, public and configured (balances, account
+ * state), and Circle's Iris API (cross-network fees).
+ */
+function networkOrigins(
+  networks: readonly string[],
+  rpcUrls: Readonly<Record<string, string>>,
+): string[] {
+  const origins = networks.flatMap((id) => {
+    const { chain } = walletNetwork(id);
+    return [
+      ...chain.rpcUrls.default.http.map((url) => new URL(url).origin),
+      chain.testnet ? 'https://iris-api-sandbox.circle.com' : 'https://iris-api.circle.com',
+    ];
+  });
+  for (const url of Object.values(rpcUrls)) origins.push(new URL(url).origin);
+  return [...new Set(origins)];
 }
 
 export function documentCsp(input: {
   nonce: string;
   apiOrigin: string;
   networks: readonly string[];
+  rpcUrls: Readonly<Record<string, string>>;
+  /** Firebase Cloud Messaging registers devices for payment notifications. */
+  push: boolean;
   development: boolean;
   secure: boolean;
 }): string {
   if (!validNonce(input.nonce)) throw new Error('Invalid CSP nonce');
   const { development } = input;
-  const connections = ["'self'", input.apiOrigin, ...rpcOrigins(input.networks)];
+  const connections = ["'self'", input.apiOrigin, ...networkOrigins(input.networks, input.rpcUrls)];
+  if (input.push)
+    connections.push(
+      'https://firebaseinstallations.googleapis.com',
+      'https://fcmregistrations.googleapis.com',
+    );
   if (development) connections.push('ws://localhost:3000');
   return [
     "default-src 'none'",

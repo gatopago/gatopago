@@ -65,17 +65,16 @@
   line-height: 1.65;
   color: var(--color-text-muted);
 }
-.auth-login-grid:has(.auth-panel:not(.auth-panel--access-options)) .auth-login-hero {
-  flex: 0;
-  padding-block: 1.5rem 0;
-}
-.auth-login-grid:has(.auth-panel:not(.auth-panel--access-options))
-  .auth-login-hero
-  :is(.auth-art, .auth-tagline, .auth-description) {
+/* Sign-up is V2's onboarding: it replaces the sign-in hero. */
+.auth-login-grid:has(.auth-panel--signup) .auth-login-hero {
   display: none;
 }
-.auth-login-grid:has(.auth-panel:not(.auth-panel--access-options)) .auth-login-hero h1 {
-  font-size: 1.25rem;
+.auth-login-copy .auth-panel--signup {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
 }
 .auth-login-copy {
   min-width: 0;
@@ -160,7 +159,7 @@
 .auth-panel > :last-child {
   margin-bottom: 0;
 }
-.auth-panel form > p {
+.auth-panel:not(.auth-panel--signup) form > p {
   margin-block: 1rem;
   font-size: 0.875rem;
   line-height: 1.65;

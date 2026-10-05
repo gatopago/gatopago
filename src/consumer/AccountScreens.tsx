@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { BackHeader, Panel } from './Primitives';
 import { NavigationLink } from './NavigationLink';
 import { localizedPath } from './routes';
+import { MeliSprite } from '../marketing/MeliSprite';
 
 export function RecoveryScreen({ english: en }: { english: boolean }) {
   const [details, setDetails] = useState(false);
@@ -19,6 +20,7 @@ export function RecoveryScreen({ english: en }: { english: boolean }) {
           ? 'First try your password manager or another device where you saved access.'
           : 'Primero intenta con tu gestor de contraseñas u otro dispositivo donde guardaste tu acceso.'}
       </p>
+      <MeliSprite variant="head-cautious" className="mx-auto mb-6 w-20" />
       <Panel>
         <ol className="space-y-5">
           {(en

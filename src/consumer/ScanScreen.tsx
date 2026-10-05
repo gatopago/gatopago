@@ -1,27 +1,51 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { BackHeader, Field, Panel } from './Primitives';
-import { NavigationLink } from './NavigationLink';
-import { parseConsumerQr, qrReviewPath, type QrDestination } from './qr';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { QRCodeSVG } from 'qrcode.react';
+import { walletNetwork } from '@gatopago/shared/networks';
+import type { ClientSettings } from '../lib/settings';
+import { networkName } from '../wallet/account';
+import { useProfile } from '../wallet/useProfile';
+import type { Session } from '../wallet/session';
+import { AddressQRCard } from './AddressQRCard';
+import { BackIcon } from './Icons';
+import { BackHeader, MoneyPanel, NoticeCard, SectionLabel, TransactionActions } from './Primitives';
+import { parseConsumerQr, qrReviewPath } from './qr';
 import { localizedPath } from './routes';
+import { NavigationLink } from './NavigationLink';
+import { PixelRail } from './PixelRail';
+import { SelectMenu } from './SelectMenu';
+import { MeliSprite } from '../marketing/MeliSprite';
 
-export default function ScanScreen({ english: en }: { english: boolean }) {
-  const [text, setText] = useState(''),
-    [result, setResult] = useState<QrDestination | null>(null);
+type Scanned = { address: string; chain: string | null };
+
+export default function ScanScreen({
+  english: en,
+  settings,
+  session,
+}: {
+  english: boolean;
+  settings: ClientSettings;
+  session: Session;
+}) {
+  const router = useRouter();
+  const [view, setView] = useState<'scan' | 'myqr'>('scan');
+  const [scanned, setScanned] = useState<Scanned | null>(null);
   const [error, setError] = useState(''),
     [camera, setCamera] = useState(false),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(true);
   const video = useRef<HTMLVideoElement>(null),
     stream = useRef<MediaStream | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const generation = useRef(0),
     timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  function stop() {
+  const stop = useCallback(() => {
     generation.current++;
     if (timer.current) clearTimeout(timer.current);
     stream.current?.getTracks().forEach((track) => track.stop());
     stream.current = null;
-  }
+  }, []);
   useEffect(() => {
     const hide = () => {
       if (document.hidden) {
@@ -35,38 +59,42 @@ export default function ScanScreen({ english: en }: { english: boolean }) {
       stop();
       document.removeEventListener('visibilitychange', hide);
     };
-  }, []);
-  function parse(raw: string) {
-    const parsed = parseConsumerQr(raw, window.location.origin);
-    setResult(parsed);
-    setError(
-      parsed
-        ? ''
-        : en
-          ? 'Unsupported QR. Use a GatoPago /@username profile or an EVM address.'
-          : 'QR no compatible. Usa un perfil /@usuario de GatoPago o una dirección EVM.',
-    );
-    return !!parsed;
-  }
-  async function decode(source: CanvasImageSource, width: number, height: number, max: number) {
-    if (!width || !height || width * height > 40_000_000) throw new Error('Image too large');
-    const scale = Math.min(1, max / Math.max(width, height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(width * scale));
-    canvas.height = Math.max(1, Math.round(height * scale));
-    const context = canvas.getContext('2d', { willReadFrequently: true });
-    if (!context) throw new Error('Canvas unavailable');
-    context.drawImage(source, 0, 0, canvas.width, canvas.height);
-    const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-    const { default: jsQR } = await import('jsqr');
-    return jsQR(pixels.data, pixels.width, pixels.height)?.data ?? null;
-  }
-  async function start() {
+  }, [stop]);
+  const parse = useCallback(
+    (raw: string) => {
+      const parsed = parseConsumerQr(raw, window.location.origin);
+      setError(
+        parsed
+          ? ''
+          : en
+            ? "This QR doesn't contain a supported EVM address or GatoPago link."
+            : 'Este QR no contiene una dirección EVM o un enlace de GatoPago compatible.',
+      );
+      if (parsed?.kind === 'address') setScanned(parsed);
+      else if (parsed) router.push(localizedPath(qrReviewPath(parsed), en));
+      return !!parsed;
+    },
+    [en, router],
+  );
+  const decode = useCallback(
+    async (source: CanvasImageSource, width: number, height: number, max: number) => {
+      if (!width || !height || width * height > 40_000_000) throw new Error('Image too large');
+      const scale = Math.min(1, max / Math.max(width, height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) throw new Error('Canvas unavailable');
+      context.drawImage(source, 0, 0, canvas.width, canvas.height);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+      const { default: jsQR } = await import('jsqr');
+      return jsQR(pixels.data, pixels.width, pixels.height)?.data ?? null;
+    },
+    [],
+  );
+  const start = useCallback(async () => {
     stop();
     const current = generation.current;
-    setBusy(true);
-    setError('');
-    setResult(null);
     timer.current = setTimeout(() => {
       if (current === generation.current) {
         stop();
@@ -131,14 +159,25 @@ export default function ScanScreen({ english: en }: { english: boolean }) {
         );
       }
     }
-  }
+  }, [en, stop, parse, decode]);
+  const scanning = view === 'scan' && !scanned;
+  useEffect(() => {
+    if (!scanning) return;
+    // Paint the preview before the browser opens its camera permission prompt.
+    const frame = requestAnimationFrame(() => {
+      void start();
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      stop();
+    };
+  }, [start, stop, scanning]);
   async function image(file?: File) {
     if (!file) return;
     stop();
     const current = generation.current;
     setCamera(false);
     setBusy(true);
-    setResult(null);
     setError('');
     let bitmap: ImageBitmap | undefined;
     try {
@@ -162,106 +201,290 @@ export default function ScanScreen({ english: en }: { english: boolean }) {
       if (generation.current === current) setBusy(false);
     }
   }
+  if (scanned)
+    return (
+      <Review
+        scanned={scanned}
+        settings={settings}
+        english={en}
+        onRestart={() => setScanned(null)}
+      />
+    );
   return (
     <>
       <BackHeader title={en ? 'Scan QR' : 'Escanear QR'} english={en} />
-      <Panel>
-        <video
-          ref={video}
-          muted
-          playsInline
-          aria-label={en ? 'Camera preview' : 'Vista de cámara'}
-          className={`${camera ? 'block' : 'hidden'} mb-4 aspect-square w-full bg-black object-cover`}
-        />
+      <div className="seg-track seg-track-block mb-5">
+        {(['scan', 'myqr'] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            className="seg-item"
+            aria-pressed={view === tab}
+            data-active={view === tab}
+            onClick={() => {
+              if (tab === 'scan' && view !== 'scan') setError('');
+              setView(tab);
+            }}
+          >
+            {tab === 'scan' ? (en ? 'Scan' : 'Escanear') : en ? 'My QR' : 'Mi QR'}
+          </button>
+        ))}
+      </div>
+      {view === 'myqr' ? (
+        <MyQr settings={settings} session={session} english={en} />
+      ) : (
+        <div className="mx-auto flex w-full max-w-[340px] flex-1 flex-col items-center">
+          <div
+            className={`relative mb-6 aspect-square w-full overflow-hidden border-2 ${error && !camera ? 'border-danger bg-surface shadow-[6px_6px_0_var(--color-danger)]' : 'border-text bg-black shadow-[7px_7px_0_var(--color-cat-700)]'}`}
+          >
+            <video
+              ref={video}
+              muted
+              playsInline
+              aria-label={en ? 'Camera preview' : 'Vista de cámara'}
+              className={`${camera ? 'block' : 'hidden'} h-full w-full object-cover`}
+            />
+            {camera ? (
+              <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+                <span className="absolute top-4 left-4 h-7 w-7 border-t-2 border-l-2 border-cat-500" />
+                <span className="absolute top-4 right-4 h-7 w-7 border-t-2 border-r-2 border-cat-500" />
+                <span className="absolute bottom-4 left-4 h-7 w-7 border-b-2 border-l-2 border-cat-500" />
+                <span className="absolute right-4 bottom-4 h-7 w-7 border-r-2 border-b-2 border-cat-500" />
+                {!busy ? (
+                  <div className="absolute inset-x-5 top-4 bottom-4 overflow-hidden">
+                    {/* Moves on the compositor, so it stays smooth while jsQR decodes. */}
+                    <div
+                      className="scan-line animate-qr-scan h-full w-full"
+                      style={{ willChange: 'transform' }}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 px-6 text-center">
+                {error ? (
+                  <p role="alert" className="text-[15px] text-danger">
+                    {error}
+                  </p>
+                ) : (
+                  <>
+                    <MeliSprite variant="body-qr" className="w-20" loading="eager" />
+                    <PixelRail state={busy ? 'active' : 'idle'} className="max-w-[180px]" />
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          <p
+            className={`min-h-10 text-center text-[14px] ${error ? 'text-danger' : 'text-text-muted'}`}
+          >
+            {error && camera
+              ? error
+              : en
+                ? 'Point at a GatoPago QR or any EVM wallet QR'
+                : 'Apunta a un QR de GatoPago o de cualquier billetera EVM'}
+          </p>
+          {!busy && !camera ? (
+            <button
+              type="button"
+              className="mt-1 text-[14px] font-semibold text-cat-300"
+              onClick={() => {
+                setBusy(true);
+                setError('');
+                void start();
+              }}
+            >
+              {en ? 'Retry camera' : 'Reintentar cámara'}
+            </button>
+          ) : null}
+          <div className="mt-7 flex w-full flex-col gap-3">
+            <button
+              type="button"
+              className="btn btn-primary btn-block"
+              disabled={busy && camera}
+              onClick={() => fileInput.current?.click()}
+            >
+              {busy && !camera
+                ? en
+                  ? 'Analyzing…'
+                  : 'Analizando…'
+                : en
+                  ? 'Import QR from an image'
+                  : 'Importar QR desde una imagen'}
+            </button>
+            <NavigationLink href={localizedPath('/send', en)} className="btn btn-ghost btn-block">
+              {en ? 'Enter details manually' : 'Ingresar datos manualmente'}
+            </NavigationLink>
+          </div>
+          <input
+            ref={fileInput}
+            type="file"
+            aria-label={en ? 'Read from a photo' : 'Leer desde una foto'}
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(event) => {
+              void image(event.target.files?.[0]);
+              event.target.value = '';
+            }}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Your QR to get paid: your @username page, or your address before you choose one. */
+function MyQr({
+  settings,
+  session,
+  english: en,
+}: {
+  settings: ClientSettings;
+  session: Session;
+  english: boolean;
+}) {
+  const { profile } = useProfile();
+  return (
+    <div className="flex flex-1 flex-col items-center">
+      <MoneyPanel className="w-full max-w-[340px] p-6">
+        {profile?.username ? (
+          <>
+            <div className="mb-4 flex justify-center">
+              <div className="border-2 border-text bg-white p-3 shadow-[6px_6px_0_var(--color-cat-700)]">
+                <QRCodeSVG
+                  value={`${settings.webOrigin}/@${profile.username}`}
+                  size={200}
+                  bgColor="#ffffff"
+                  fgColor="#0A0A0B"
+                  level="M"
+                />
+              </div>
+            </div>
+            <p className="mb-1 text-center font-display text-[18px]">@{profile.username}</p>
+            <p className="text-center text-[12px] leading-relaxed text-text-muted">
+              {en
+                ? 'Anyone can pay you by scanning this code with GatoPago or their phone camera.'
+                : 'Te pueden pagar escaneando este código con GatoPago o con la cámara del teléfono.'}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="mb-4 text-center text-[13px] text-text-muted">
+              {en ? 'Your address to receive USDC' : 'Tu dirección para recibir USDC'}
+            </p>
+            <AddressQRCard
+              address={session.wallet.address}
+              chainId={walletNetwork(settings.homeNetwork).chain.id}
+              qrSize={200}
+              english={en}
+            />
+          </>
+        )}
+      </MoneyPanel>
+    </div>
+  );
+}
+
+/** V2's review of a scanned address: the network to send on, then the transfer. */
+function Review({
+  scanned,
+  settings,
+  english: en,
+  onRestart,
+}: {
+  scanned: Scanned;
+  settings: ClientSettings;
+  english: boolean;
+  onRestart: () => void;
+}) {
+  const requested = scanned.chain ? `eip155:${scanned.chain}` : null;
+  const supported = !requested || settings.networks.includes(requested);
+  const [networkId, setNetworkId] = useState(
+    requested && supported ? requested : settings.homeNetwork,
+  );
+  const transfer = new URLSearchParams({
+    recipient: scanned.address,
+    chain: String(walletNetwork(networkId).chain.id),
+  });
+  return (
+    <>
+      <header className="mb-7 flex items-center gap-4">
         <button
           type="button"
-          className="btn btn-primary btn-block"
-          disabled={busy}
-          onClick={() => (camera ? (stop(), setCamera(false)) : void start())}
+          onClick={onRestart}
+          aria-label={en ? 'Back' : 'Volver'}
+          className="meli-square-action flex h-12 w-12 shrink-0 items-center justify-center"
         >
-          {camera ? (en ? 'Stop camera' : 'Detener cámara') : en ? 'Open camera' : 'Abrir cámara'}
+          <BackIcon />
         </button>
-        <Field label={en ? 'Read from a photo' : 'Leer desde una foto'}>
-          {(id) => (
-            <input
-              id={id}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              disabled={busy}
-              className="mt-4 max-w-full text-sm"
-              onChange={(event) => {
-                void image(event.target.files?.[0]);
-                event.target.value = '';
-              }}
-            />
-          )}
-        </Field>
-      </Panel>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          stop();
-          setCamera(false);
-          parse(text);
-        }}
-      >
-        <Panel>
-          <Field
-            label={
-              en ? 'Or paste a profile link or address' : 'O pega un enlace de perfil o dirección'
-            }
-          >
-            {(id) => (
-              <input
-                id={id}
-                value={text}
-                maxLength={2048}
-                onChange={(event) => {
-                  setText(event.target.value);
-                  setResult(null);
-                  setError('');
-                }}
-                autoComplete="off"
-                spellCheck={false}
-                className="meli-field h-12 w-full px-3"
-              />
-            )}
-          </Field>
-          <button className="btn btn-ghost btn-block" type="submit" disabled={busy || !text.trim()}>
-            {en ? 'Review destination' : 'Revisar destino'}
-          </button>
-        </Panel>
-      </form>
-      {busy ? <p role="status">{en ? 'Reading…' : 'Leyendo…'}</p> : null}
-      {error ? (
-        <p role="alert" className="mb-4 text-sm text-danger">
-          {error}
+        <h1 className="font-display text-[28px] leading-tight">
+          {en ? 'Review recipient' : 'Revisar destinatario'}
+        </h1>
+      </header>
+      <MoneyPanel className="mb-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <span className="meli-chip border-border bg-surface-2 text-[10px] text-text-muted">
+            {en ? 'EVM address' : 'Dirección EVM'}
+          </span>
+          <span className="text-[11px] text-text-faint">
+            {scanned.chain ? 'CAIP-10' : en ? 'EVM address' : 'Dirección EVM'}
+          </span>
+        </div>
+        <p className="break-all font-mono text-[13px] leading-relaxed text-text-muted">
+          {scanned.address}
         </p>
+      </MoneyPanel>
+      <SectionLabel>
+        {en ? 'Which network do you want to use?' : '¿En qué red quieres enviar?'}
+      </SectionLabel>
+      <p className="mb-3 text-[12px] leading-relaxed text-text-muted">
+        {en
+          ? 'The same address can exist on several networks. Confirm the network before continuing.'
+          : 'Una misma dirección puede existir en varias redes. Confirma la red antes de continuar.'}
+      </p>
+      <SelectMenu
+        label={en ? 'Choose network' : 'Elegir red'}
+        showLabel={false}
+        value={networkId}
+        options={settings.networks.map((id) => ({
+          value: id,
+          label: networkName(id),
+          tone: 'info' as const,
+        }))}
+        onChange={setNetworkId}
+        english={en}
+        className="mb-5"
+      />
+      {!supported ? (
+        <NoticeCard
+          tone="warning"
+          className="mb-4"
+          title={en ? 'Unsupported network' : 'Red no admitida'}
+        >
+          {en
+            ? `The QR requests network ${scanned.chain}, which GatoPago does not support yet. Choose an available network.`
+            : `El QR solicita la red ${scanned.chain}, que GatoPago todavía no admite. Elige una red disponible.`}
+        </NoticeCard>
       ) : null}
-      {result ? (
-        <Panel>
-          <h2 className="mb-3 font-display text-lg">
-            {en ? 'Review before continuing' : 'Revisa antes de continuar'}
-          </h2>
-          <p className="break-all font-mono text-xs">
-            {result.kind === 'address' ? result.address : result.path}
-          </p>
-          {result.kind === 'address' && result.chain ? (
-            <p className="mt-2 text-sm">Chain ID: {result.chain}</p>
-          ) : null}
-          <p className="my-4 text-sm text-text-muted">
-            {en
-              ? 'Scanning does not send funds. Amounts and execution instructions from the QR are ignored.'
-              : 'Escanear no envía fondos. Los montos e instrucciones de ejecución del QR se ignoran.'}
-          </p>
-          <NavigationLink
-            href={localizedPath(qrReviewPath(result), en)}
-            className="btn btn-primary btn-block"
-          >
-            {en ? 'Continue' : 'Continuar'}
-          </NavigationLink>
-        </Panel>
-      ) : null}
+      <NoticeCard
+        className="mb-6"
+        title={en ? 'Which network do you want to use?' : '¿En qué red quieres enviar?'}
+      >
+        {en
+          ? `This will be a direct transfer on ${networkName(networkId)}.`
+          : `El envío será directo en ${networkName(networkId)}.`}
+      </NoticeCard>
+      <TransactionActions>
+        <NavigationLink
+          href={localizedPath(`/send?${transfer}`, en)}
+          className="btn btn-primary btn-block"
+        >
+          {en ? 'Continue to transfer' : 'Continuar al envío'}
+        </NavigationLink>
+        <button type="button" onClick={onRestart} className="btn btn-ghost btn-block mt-3">
+          {en ? 'Scan another QR' : 'Escanear otro QR'}
+        </button>
+      </TransactionActions>
     </>
   );
 }

@@ -14,8 +14,8 @@ export async function signIn(
   wallet: Wallet,
   signUp?: { invite: string; turnstile: string },
 ): Promise<Session> {
-  const networkId = settings.networks[0];
-  const account = await gatopagoAccount(wallet, networkId);
+  const networkId = settings.homeNetwork;
+  const account = await gatopagoAccount(settings, wallet, networkId);
   const { nonce } = await api<{ nonce: string }>(settings.apiOrigin, 'auth/nonce', {
     method: 'POST',
   });

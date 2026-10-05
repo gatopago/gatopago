@@ -46,15 +46,7 @@ describe('Next migration inventory', () => {
     expect(localizedPath('/move?flow=receive&lang=es', true)).toBe('/move?flow=receive&lang=en');
     expect(localizedPath('/move?flow=receive&lang=en', false)).toBe('/move?flow=receive');
   });
-  it.each([
-    '/charge',
-    '/swap',
-    '/crosschain',
-    '/earn',
-    '/contacts',
-    '/test-funds',
-    '/pay/[linkId]',
-  ])('removes the disconnected page %s rather than presenting an empty product', (path) => {
+  it.each(['/pay/[linkId]'])('does not revive the retired payment link API for %s', (path) => {
     expect(existsSync(resolve(`src/app/(es)${path}/page.tsx`))).toBe(false);
     expect(consumerRoutes).not.toHaveProperty(path);
     expect(readFileSync('src/app/[...missing]/route.ts', 'utf8')).toContain('status: 404');
@@ -64,10 +56,11 @@ describe('Next migration inventory', () => {
     expect(consumerRoutes).not.toHaveProperty('/pay/demo-cafe-norte');
     expect(parseConsumerQr('/pay/demo-cafe-norte', 'https://gatopago.com')).toBeNull();
   });
-  it('does not advertise unavailable payment actions as links in Move', () => {
+  it('offers the three V2 Move choices', () => {
     const html = renderToStaticMarkup(createElement(MoveMenu, { english: false }));
-    expect(html).not.toContain('Aún no disponible');
-    expect(html).not.toMatch(/href="\/(charge|swap|crosschain)(\?|"|\/)/);
+    for (const path of ['/move?flow=receive', '/send', '/swap'])
+      expect(html).toContain(`href="${path.replace('&', '&amp;')}"`);
+    expect(html.match(/meli-path-card-app/g)).toHaveLength(3);
   });
   it('explains permanent loss of access without presenting a recovery form', () => {
     for (const english of [true, false]) {

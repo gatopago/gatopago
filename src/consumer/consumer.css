@@ -1,4 +1,172 @@
 @reference "../app/base.css";
+.consumer-ui .meli-menu-sheet {
+  position: fixed;
+  inset: auto 0 max(1.25rem, env(safe-area-inset-bottom));
+  width: min(calc(100% - 40px), 384px);
+  max-height: min(88dvh, 720px);
+  margin: 0 auto;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 2px solid var(--color-text);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 12px 12px 0 var(--color-cat-700);
+  color-scheme: light;
+  animation: sheet-up 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.consumer-ui .meli-menu-sheet::backdrop {
+  background: rgb(11 11 15 / 0.76);
+  backdrop-filter: blur(8px);
+}
+.consumer-ui .meli-menu-sheet__body {
+  padding: 24px;
+}
+.consumer-ui .meli-menu-sheet[data-variant='menu'] .meli-menu-sheet__body {
+  padding: 12px;
+}
+.consumer-ui .meli-menu-sheet[data-variant='selector'] {
+  width: min(calc(100% - 32px), 430px);
+  max-height: 78dvh;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+}
+.consumer-ui .meli-menu-sheet[data-variant='selector'] .meli-menu-sheet__body {
+  padding: 16px;
+}
+.consumer-ui .meli-menu-sheet[data-variant='receipt'] {
+  inset: 0;
+  margin: auto;
+  width: min(calc(100% - 40px), 384px);
+  max-height: calc(100dvh - 40px);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.consumer-ui .meli-menu-sheet[data-variant='receipt'] .meli-menu-sheet__body {
+  padding: 0 12px 12px 0;
+}
+.consumer-ui .meli-menu-sheet[data-variant='stage'] {
+  inset: 0;
+  margin: 0;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  border: 0;
+  background: rgb(255 248 240 / 0.94);
+  backdrop-filter: blur(4px);
+  box-shadow: none;
+  animation: fade-in 180ms ease-out both;
+}
+.consumer-ui .meli-menu-sheet[data-variant='stage'] .meli-menu-sheet__body {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 28px;
+}
+.consumer-ui .sheet-handle {
+  width: 56px;
+  height: 8px;
+  margin-inline: auto;
+  background: var(--color-cat-500);
+  box-shadow: 14px 0 0 var(--color-cat-700);
+}
+.consumer-ui .meli-menu-profile {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  border: 2px solid var(--color-text);
+  background: var(--color-surface);
+  box-shadow: 4px 4px 0 var(--color-border);
+}
+.consumer-ui .meli-menu-row {
+  display: grid;
+  min-height: 62px;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  font-size: 15px;
+  border-bottom: 1px solid var(--color-border);
+}
+.consumer-ui .meli-menu-row__icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  background: var(--color-surface-2);
+  border: 1px solid currentColor;
+}
+.consumer-ui .meli-menu-row__icon[data-tone='growth'] {
+  background: rgb(40 123 85 / 0.12);
+  color: var(--color-growth);
+}
+.consumer-ui .meli-menu-row__icon[data-tone='brand'] {
+  background: rgb(248 82 57 / 0.12);
+  color: var(--color-cat-300);
+}
+.consumer-ui .meli-menu-row__icon[data-tone='info'] {
+  background: rgb(37 106 168 / 0.12);
+  color: var(--color-info);
+}
+.consumer-ui .meli-menu-row__icon[data-tone='pending'] {
+  background: rgb(138 98 0 / 0.12);
+  color: var(--color-pending);
+}
+.consumer-ui .meli-menu-row:hover {
+  background: var(--color-cat-50);
+}
+.consumer-ui .meli-growth-card {
+  display: grid;
+  min-height: 154px;
+  grid-template-columns: minmax(0, 1fr) 88px;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+  padding: 20px;
+}
+.consumer-ui .meli-growth-card .meli-sprite {
+  width: 96px;
+  max-width: none;
+  transform: translateY(12px);
+}
+.consumer-ui .meli-segments {
+  display: flex;
+  border: 1px solid var(--color-border);
+  background: var(--color-paper-2);
+  padding: 4px;
+  gap: 2px;
+}
+.consumer-ui .meli-segments button {
+  min-height: 44px;
+  flex: 1;
+  font-size: 13px;
+  font-weight: 580;
+}
+.consumer-ui .meli-segments button[aria-pressed='true'] {
+  background: var(--color-cat-500);
+  font-weight: 700;
+  box-shadow: inset 0 -3px 0 var(--color-cat-700);
+}
+.consumer-ui .meli-qr-card {
+  width: fit-content;
+  margin: 24px auto;
+  padding: 12px;
+  border: 2px solid var(--color-text);
+  background: #fff;
+  box-shadow: 6px 6px 0 var(--color-cat-700);
+}
+.consumer-ui .meli-qr-card svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
 .consumer-ui .money-panel {
   display: grid;
   gap: 16px;
@@ -185,6 +353,12 @@
   position: relative;
   z-index: 1;
 }
+.consumer-ui .auth-content:not(.auth-content--login) {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
 
 @media (min-width: 640px) {
   .consumer-ui .app-frame {
@@ -201,12 +375,8 @@
   .consumer-ui h3 {
     margin: 0;
     font-family: var(--font-display);
-    font-variation-settings:
-      'MONO' 0,
-      'CASL' 0.18,
-      'slnt' -4,
-      'CRSV' 0.5;
-    font-weight: 760;
+    font-variation-settings: var(--recursive-casual);
+    font-weight: 720;
     letter-spacing: -0.035em;
     line-height: 1.06;
   }
@@ -368,11 +538,12 @@
   width: 100%;
 }
 
-.consumer-ui .btn-primary {
+.consumer-ui .btn-primary,
+.consumer-ui .btn-money {
   border-color: var(--color-cat-500);
   background: var(--color-cat-500);
   color: var(--color-on-cat);
-  box-shadow: 4px 4px 0 var(--color-cat-300);
+  box-shadow: 4px 4px 0 var(--color-cat-700);
 }
 
 .consumer-ui .btn-ghost {
@@ -397,7 +568,7 @@
 @media (hover: hover) and (pointer: fine) {
   .consumer-ui .btn-primary:not(:disabled):hover {
     transform: translate(-2px, -2px);
-    box-shadow: 6px 6px 0 var(--color-cat-300);
+    box-shadow: 6px 6px 0 var(--color-cat-700);
   }
   .consumer-ui .btn-ghost:not(:disabled):hover {
     border-color: var(--color-text);
@@ -456,7 +627,7 @@
   place-items: center;
   overflow: hidden;
   border: 1px solid var(--color-text);
-  background: var(--color-surface);
+  background: var(--color-cat-500);
   color: var(--color-on-cat);
 }
 
@@ -566,11 +737,17 @@
   border: 2px solid var(--color-text);
   box-shadow: 6px 6px 0 var(--color-border);
 }
+.consumer-ui .meli-ink-card {
+  border: 2px solid var(--color-text);
+  background: #0b0b0f;
+  color: #fff8f0;
+  box-shadow: 6px 6px 0 var(--color-cat-700);
+}
 
 .consumer-ui .meli-path-card-app {
   position: relative;
   display: grid;
-  min-height: 112px;
+  min-height: 88px;
   grid-template-columns: 48px minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
@@ -705,6 +882,379 @@
   }
 }
 
+.consumer-ui .finance-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 2px solid var(--color-text);
+  border-radius: 0;
+  padding: 20px;
+  background: var(--color-surface);
+  box-shadow: 6px 6px 0 var(--color-cat-700);
+}
+.consumer-ui .finance-panel::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  right: 18px;
+  width: 42px;
+  height: 8px;
+  background: var(--color-cat-500);
+  box-shadow: -12px 0 0 var(--color-cat-700);
+}
+.consumer-ui .finance-section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--color-cat-700);
+  font-family: var(--font-mono);
+  font-variation-settings: var(--recursive-mono);
+  font-size: 11px;
+  font-weight: 680;
+  letter-spacing: 0.1em;
+}
+.consumer-ui .finance-section-label::before {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  background: currentColor;
+  box-shadow: 3px 3px 0 rgb(11 11 15 / 0.12);
+  content: '';
+}
+.consumer-ui .finance-inset {
+  border: 1px solid var(--color-border);
+  padding: 14px 16px;
+  background: var(--color-paper-2);
+}
+.consumer-ui .meli-growth-rail {
+  height: 10px;
+  background: rgb(255 248 240 / 0.12);
+}
+.consumer-ui .meli-growth-rail > span {
+  display: block;
+  width: 6%;
+  height: 100%;
+  background: #71d5a1;
+  box-shadow:
+    4px 0 0 #0b0b0f,
+    8px 0 0 var(--color-cat-500);
+}
+.consumer-ui .meli-balance-card-app .select-menu-trigger {
+  border-color: rgb(255 248 240 / 0.16);
+  background: rgb(255 248 240 / 0.08);
+  color: #fff8f0;
+}
+.consumer-ui .meli-menu-sheet .select-menu-option__detail {
+  color: var(--color-text-muted);
+}
+.consumer-ui .meli-balance-card-app .skeleton {
+  border-color: rgb(255 248 240 / 0.14);
+  background: rgb(255 248 240 / 0.1);
+}
+.consumer-ui .skeleton {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgb(11 11 15 / 0.16);
+  background: linear-gradient(90deg, var(--color-surface-2), var(--color-surface-3));
+  box-shadow: inset 3px 0 0 rgb(248 82 57 / 0.16);
+}
+.consumer-ui .skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 38%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 253 249 / 0.76),
+    rgb(248 82 57 / 0.12),
+    transparent
+  );
+  transform: translate3d(-120%, 0, 0);
+  animation: skeleton-sweep 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.consumer-ui .skeleton.skeleton-accent {
+  border-color: var(--color-cat-700);
+  background: var(--color-cat-500);
+  box-shadow: 4px 4px 0 var(--color-cat-700);
+}
+.consumer-ui .skeleton.skeleton-ink {
+  border-color: var(--color-text);
+  background: var(--color-text);
+  box-shadow: 4px 4px 0 var(--color-cat-700);
+}
+.consumer-ui .pixel-rail {
+  --packet-size: 10px;
+  position: relative;
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  height: 16px;
+  container-type: inline-size;
+}
+.consumer-ui .pixel-rail::before {
+  content: '';
+  position: absolute;
+  inset: 6px 0 auto;
+  height: 4px;
+  background: repeating-linear-gradient(90deg, var(--color-text) 0 8px, transparent 8px 12px);
+}
+.consumer-ui .pixel-rail > span {
+  position: absolute;
+  left: 0;
+  top: 3px;
+  width: var(--packet-size);
+  height: var(--packet-size);
+  background: var(--color-cat-500);
+  box-shadow:
+    -12px 0 0 rgb(248 82 57 / 0.34),
+    -24px 0 0 rgb(248 82 57 / 0.12);
+}
+.consumer-ui .pixel-rail-active > span {
+  animation: packet 1850ms steps(22, end) infinite;
+}
+.consumer-ui .pixel-rail-done::before {
+  background: var(--color-growth);
+}
+.consumer-ui .pixel-rail-done > span {
+  left: calc(100% - var(--packet-size));
+  background: var(--color-growth);
+  box-shadow: -12px 0 0 rgb(40 123 85 / 0.28);
+}
+.consumer-ui .pixel-rail-future::before {
+  opacity: 0.48;
+}
+.consumer-ui .meli-motion-idle {
+  animation: meli-idle 5.2s ease-in-out infinite;
+}
+.consumer-ui .meli-motion-deliver {
+  animation: meli-deliver 1.7s ease-in-out infinite;
+}
+.consumer-ui .meli-motion-peek {
+  animation: meli-peek 3.8s ease-in-out infinite;
+}
+.consumer-ui .meli-motion-purr {
+  animation: purr 680ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.consumer-ui .receipt-paper {
+  position: relative;
+  color-scheme: light;
+  color: var(--color-paper-text);
+  background: var(--color-paper);
+  border: 2px solid var(--color-paper-border);
+  box-shadow: 8px 8px 0 var(--color-cat-700);
+}
+.consumer-ui .receipt-rail {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-cat-500) 0 16px,
+    var(--color-cat-700) 16px 24px,
+    var(--color-cat-300) 24px 32px
+  );
+}
+@keyframes skeleton-sweep {
+  to {
+    transform: translate3d(360%, 0, 0);
+  }
+}
+@keyframes meli-peek {
+  0%,
+  42%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0);
+  }
+  48%,
+  62% {
+    transform: translate3d(4px, 0, 0) rotate(1deg);
+  }
+}
+@keyframes meli-deliver {
+  0%,
+  100% {
+    transform: translate3d(-2px, 0, 0);
+  }
+  50% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
+/* V2 primitives (parmelia-links client, d57fa62). */
+.consumer-ui .type-linear {
+  font-variation-settings: var(--recursive-linear);
+}
+.consumer-ui .type-casual {
+  font-variation-settings: var(--recursive-casual);
+}
+.consumer-ui .type-mono,
+.consumer-ui .tabular {
+  font-variation-settings: var(--recursive-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+.consumer-ui .pixel-art,
+.consumer-ui .meli-sprite {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.consumer-ui .interactive-surface,
+.consumer-ui .select-menu-option {
+  transition:
+    transform 160ms var(--ease-press),
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease,
+    box-shadow 160ms var(--ease-press);
+}
+.consumer-ui .finance-summary-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.consumer-ui .finance-summary-row + .finance-summary-row {
+  margin-top: 8px;
+}
+.consumer-ui .pixel-corner {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 8px) 0,
+    calc(100% - 8px) 8px,
+    100% 8px,
+    100% 100%,
+    8px 100%,
+    8px calc(100% - 8px),
+    0 calc(100% - 8px)
+  );
+}
+.consumer-ui .seg-track {
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  background: var(--color-paper-2);
+}
+.consumer-ui .seg-item {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 18px;
+  border-radius: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 580;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    transform 140ms var(--ease-press);
+}
+.consumer-ui .seg-item[data-active='true'] {
+  background: var(--color-cat-500);
+  color: var(--color-on-cat);
+  font-weight: 700;
+  box-shadow: inset 0 -3px 0 var(--color-cat-700);
+}
+.consumer-ui .seg-track-block {
+  display: flex;
+  width: 100%;
+}
+.consumer-ui .seg-track-block .seg-item {
+  flex: 1;
+}
+.consumer-ui .btn-sm {
+  min-height: 42px;
+  height: 42px;
+  padding-inline: 16px;
+  font-size: 13px;
+}
+.consumer-ui .btn-danger {
+  border-color: var(--color-text);
+  background: var(--color-danger);
+  color: white;
+  box-shadow: 4px 4px 0 #78162b;
+}
+.consumer-ui .btn-text {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.consumer-ui .meli-login-stage {
+  position: relative;
+  display: grid;
+  width: 100%;
+  max-width: 350px;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid var(--color-text);
+  background:
+    linear-gradient(90deg, transparent 31px, rgb(11 11 15 / 0.045) 32px),
+    linear-gradient(transparent 31px, rgb(11 11 15 / 0.045) 32px), var(--color-cat-50);
+  background-size: 32px 32px;
+  box-shadow: 8px 8px 0 var(--color-cat-700);
+}
+.consumer-ui .meli-login-stage > span {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 10px;
+  height: 10px;
+  background: var(--color-cat-500);
+  box-shadow: -14px 14px 0 var(--color-pending);
+}
+.consumer-ui .meli-login-stage .meli-sprite {
+  filter: drop-shadow(5px 5px 0 rgb(207 52 51 / 0.2));
+}
+.consumer-ui .meli-chip {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-variation-settings: var(--recursive-mono);
+  font-weight: 680;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.consumer-ui .meli-chip::before {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  background: currentColor;
+  content: '';
+}
+.consumer-ui .token-icon,
+.consumer-ui .keep-round {
+  border-radius: 999px !important;
+}
+
+.consumer-ui .scan-line {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-cat-700),
+    var(--color-cat-300),
+    transparent
+  );
+  background-size: 100% 2px;
+  background-repeat: no-repeat;
+}
 @media (prefers-reduced-motion: reduce) {
   .consumer-ui *,
   .consumer-ui *::before,

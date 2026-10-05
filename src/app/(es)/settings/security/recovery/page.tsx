@@ -10,5 +10,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 export default async function Page({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const { lang } = await searchParams;
-  return <AuthScreen settings={clientSettings} view="recovery" english={lang === 'en'} art={null} />;
+  return (
+    <AuthScreen settings={clientSettings} view="recovery" english={lang === 'en'} art={null} />
+  );
 }

@@ -23,11 +23,20 @@ const random = (size: number) => crypto.getRandomValues(new Uint8Array(size));
  * Creates a passkey for GatoPago. A backup passkey stores its account address as the WebAuthn
  * user handle, so a device that has never seen it can find the account.
  */
-export async function createPasskey(name: string, account?: Address) {
+export async function createPasskey(
+  name: string,
+  account?: Address,
+  /** `cross-platform` asks for a physical security key (USB, NFC, Bluetooth). */
+  attachment?: AuthenticatorAttachment,
+) {
   const credential = await createWebAuthnCredential({
     rp: { id: location.hostname, name: 'GatoPago' },
     user: { id: account ? hexToBytes(account) : random(16), name },
-    authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
+    authenticatorSelection: {
+      residentKey: 'required',
+      userVerification: 'required',
+      authenticatorAttachment: attachment,
+    },
   });
   return { credentialId: credential.id, publicKey: credential.publicKey };
 }
@@ -92,7 +101,7 @@ export function recoverPublicKeys(
 }
 
 async function accountOf(settings: ClientSettings, owners: readonly Hex[]): Promise<Address> {
-  return publicClient(settings.networks[0]).readContract({
+  return publicClient(settings, settings.homeNetwork).readContract({
     address: walletContracts.factory,
     abi: gatopagoAccountFactoryAbi,
     functionName: 'getAddress',

@@ -69,12 +69,12 @@ describe('Complete product landing', () => {
       }
     },
   );
-  it('presents payment links as coming soon, with a preview page', () => {
+  it('links to an example payment request', () => {
     const html = renderToStaticMarkup(createElement(Landing, { lang: 'es' }));
     expect(html).toContain('Así se verán tus links de cobro');
     expect(html).toContain('data-payment-link="/pay/demo-cafe-norte"');
     expect(
       readFileSync('src/app/(es)/pay/demo-cafe-norte/page.tsx', 'utf8').replace(/\s+/g, ' '),
-    ).toContain('Links de cobro, muy pronto');
+    ).toContain('Así ven tus clientes tus cobros');
   });
 });

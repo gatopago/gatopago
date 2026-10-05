@@ -13,6 +13,7 @@ jobs:
       GATOPAGO_API_ORIGIN: https://api.gatopago.com
       GATOPAGO_BUSINESS_ORIGIN: https://business.gatopago.com
       GATOPAGO_WALLET_NETWORKS: eip155:421614,eip155:43113,eip155:10143
+      GATOPAGO_HOME_NETWORK: eip155:421614
       GATOPAGO_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

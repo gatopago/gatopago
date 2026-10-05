@@ -8,7 +8,9 @@ import { NavigationLink } from '../consumer/NavigationLink';
 import type { ConsumerView } from '../consumer/routes';
 import type { ClientSettings } from '../lib/settings';
 import { currentSession, signOut, subscribeSession } from '../wallet/session';
+import { ProfileProvider } from '../wallet/useProfile';
 import { PasskeyAccess } from './PasskeyAccess';
+import { ScreenLoading } from '../consumer/Skeleton';
 
 export function AuthScreen({
   settings,
@@ -35,7 +37,7 @@ export function AuthScreen({
       <ConsumerFrame english={en} presentation="access">
         <AccessContent art={art} english={en}>
           {session === undefined ? (
-            <p role="status">{en ? 'Loading…' : 'Cargando…'}</p>
+            <ScreenLoading kind="form" english={en} />
           ) : session ? (
             <section>
               <NavigationLink
@@ -59,29 +61,30 @@ export function AuthScreen({
       </ConsumerFrame>
     );
 
+  if (!session)
+    return (
+      <ConsumerFrame english={en}>
+        <div className="auth-content">
+          <ScreenLoading
+            kind={view === 'account' ? 'account' : view === 'receive' ? 'detail' : 'form'}
+            english={en}
+          />
+        </div>
+      </ConsumerFrame>
+    );
+
   return (
-    <ConsumerFrame english={en} navigation={!!session}>
-      <div className="auth-content">
-        {session ? (
-          <>
-            <ConsumerContent view={view} english={en} settings={settings} session={session} />
-            {view === 'settings' ? (
-              <button
-                className="auth-secondary btn btn-ghost btn-block"
-                onClick={() => {
-                  signOut();
-                  router.replace(`/login${suffix}`);
-                }}
-              >
-                {en ? 'Sign out' : 'Cerrar sesión'}
-              </button>
-            ) : null}
-          </>
-        ) : (
-          <p role="status">{en ? 'Loading…' : 'Cargando…'}</p>
-        )}
-      </div>
-    </ConsumerFrame>
+    <ProfileProvider settings={settings} session={session} english={en}>
+      <ConsumerFrame
+        english={en}
+        navigation
+        account={{ address: session.wallet.address, networks: settings.networks }}
+      >
+        <div className="auth-content">
+          <ConsumerContent view={view} english={en} settings={settings} session={session} />
+        </div>
+      </ConsumerFrame>
+    </ProfileProvider>
   );
 }
 

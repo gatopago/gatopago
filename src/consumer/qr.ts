@@ -28,7 +28,7 @@ export function parseConsumerQr(raw: string, origin: string): QrDestination | nu
   try {
     const url = new URL(text, origin);
     if (url.origin !== origin || url.username || url.password) return null;
-    if (/^\/@[a-zA-Z][a-zA-Z0-9_]{2,29}$/.test(url.pathname)) {
+    if (/^\/(@[a-zA-Z][a-zA-Z0-9_]{2,29}|pay\/pi_[0-9a-f]{32})$/.test(url.pathname)) {
       return { kind: 'link', path: url.pathname };
     }
   } catch {
@@ -38,7 +38,10 @@ export function parseConsumerQr(raw: string, origin: string): QrDestination | nu
 }
 
 export function qrReviewPath(destination: QrDestination): string {
-  if (destination.kind === 'link') return destination.path;
+  if (destination.kind === 'link')
+    return destination.path.startsWith('/pay/')
+      ? destination.path
+      : `/send?username=${encodeURIComponent(destination.path.slice(2))}`;
   const query = new URLSearchParams({ recipient: destination.address });
   if (destination.chain) query.set('chain', destination.chain);
   return `/send?${query}`;

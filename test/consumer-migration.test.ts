@@ -9,9 +9,11 @@ import { AccountSettings } from '../src/consumer/AccountSettings';
 import { PrimaryNav } from '../src/consumer/PrimaryNav';
 import { MoveMenu } from '../src/consumer/MoveMenu';
 
+let searchParams = new URLSearchParams();
 vi.mock('next/navigation', () => ({
   usePathname: () => '/send',
-  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ replace: () => {} }),
+  useSearchParams: () => searchParams,
 }));
 
 vi.mock('../src/marketing/MeliSprite', () => ({
@@ -19,25 +21,49 @@ vi.mock('../src/marketing/MeliSprite', () => ({
 }));
 
 describe('Consumer presentation migration', () => {
-  it('offers only connected destinations in the main navigation', () => {
+  it('restores the four V2 navigation sections', () => {
     const html = renderToStaticMarkup(createElement(PrimaryNav, { english: true }));
     expect(html).toContain('href="/app?lang=en"');
     expect(html).toContain('href="/move?lang=en"');
-    expect(html).toContain('href="/scan?lang=en"');
-    expect(html).not.toMatch(/href="\/(grow|statement)/);
+    expect(html).toContain('href="/statement?lang=en"');
     expect(html).toContain('aria-current="page"');
-    expect(html).not.toContain('href="/earn?lang=en"');
+    expect(html).toContain('href="/earn?lang=en"');
   });
-  it('keeps unavailable actions out of the interactive Move links', () => {
+  it('opens receiving from Move with a request or the account', () => {
+    searchParams = new URLSearchParams('flow=receive');
     const html = renderToStaticMarkup(createElement(MoveMenu, { english: false }));
-    expect(html).toContain('href="/send"');
+    searchParams = new URLSearchParams();
+    expect(html).toContain('href="/charge"');
     expect(html).toContain('href="/receive"');
-    expect(html).not.toContain('Aún no disponible');
-    expect(html).not.toMatch(/href="\/(charge|swap|crosschain)(\?|"|\/)/);
+    expect(html).toContain('Volver a Mover');
   });
   it('retains deterministic Next settings destinations in both languages', () => {
     for (const english of [false, true]) {
-      const html = renderToStaticMarkup(createElement(AccountSettings, { english }));
+      const html = renderToStaticMarkup(
+        createElement(AccountSettings, {
+          english,
+          settings: {
+            webOrigin: 'https://gatopago.com',
+            apiOrigin: 'https://api.gatopago.com',
+            networks: ['eip155:421614'],
+            homeNetwork: 'eip155:421614',
+            rpcUrls: {},
+            turnstileSiteKey: '1x00000000000000000000AA',
+            push: null,
+          },
+          session: {
+            token: 'session',
+            expiresAt: 4102444800,
+            userId: 'usr_test',
+            wallet: {
+              credentialId: 'credential',
+              publicKey: `0x${'11'.repeat(64)}`,
+              address: '0x75464f762bc50d0A0B127ab5a085504BF102Bb88',
+              initialOwners: [],
+            },
+          },
+        }),
+      );
       const suffix = english ? '?lang=en' : '';
       expect(html).toContain(`href="/app${suffix}"`);
       expect(html).toContain(`href="/settings/security${suffix}"`);

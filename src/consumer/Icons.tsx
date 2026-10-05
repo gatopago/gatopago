@@ -39,6 +39,21 @@ export function ScanIcon() {
     </Icon>
   );
 }
+export function RequestIcon() {
+  return (
+    <Icon size={18}>
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="M12 8v8M8 12h8" />
+    </Icon>
+  );
+}
+export function SwapIcon() {
+  return (
+    <Icon size={18}>
+      <path d="M7 4v16m-4-4 4 4 4-4M17 20V4m-4 4 4-4 4 4" />
+    </Icon>
+  );
+}
 export function MoveIcon() {
   return (
     <Icon>
@@ -86,6 +101,67 @@ export function EyeIcon({ hidden }: { hidden: boolean }) {
           <circle cx="12" cy="12" r="3" />
         </>
       )}
+    </Icon>
+  );
+}
+
+export function GrowIcon() {
+  return (
+    <Icon>
+      <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+    </Icon>
+  );
+}
+
+export function ActivityIcon() {
+  return (
+    <Icon>
+      <path d="M3 3v18h18m-14-6 4-4 3 3 5-6" />
+    </Icon>
+  );
+}
+
+export function ProfileIcon() {
+  return (
+    <Icon>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21v-2a8 8 0 0 1 16 0v2" />
+    </Icon>
+  );
+}
+
+export function SettingsIcon() {
+  return (
+    <Icon>
+      <path d="M4 7h16M4 17h16" />
+      <circle cx="9" cy="7" r="3" />
+      <circle cx="15" cy="17" r="3" />
+    </Icon>
+  );
+}
+
+export function BellIcon() {
+  return (
+    <Icon>
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+    </Icon>
+  );
+}
+
+export function BusinessIcon() {
+  return (
+    <Icon>
+      <rect x="3" y="7" width="18" height="13" rx="2" />
+      <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18" />
+    </Icon>
+  );
+}
+
+export function SupportIcon() {
+  return (
+    <Icon>
+      <path d="M21 11.5a8 8 0 0 1-8 8H5l-4 3V11.5a8 8 0 0 1 8-8h4a8 8 0 0 1 8 8Z" />
+      <path d="M7 11h10" />
     </Icon>
   );
 }

@@ -5,17 +5,48 @@ import type { ClientSettings } from '../lib/settings';
 import { Home } from '../wallet/Home';
 import type { Session } from '../wallet/session';
 import { AccountSettings } from './AccountSettings';
-import { SecurityIcon } from './Icons';
 import { MoveMenu } from './MoveMenu';
-import { ActionCard, BackHeader } from './Primitives';
 import type { ConsumerView } from './routes';
+import { ScreenLoading } from './Skeleton';
 
-const Send = dynamic(() => import('../wallet/Send').then((m) => m.Send));
-const Receive = dynamic(() => import('../wallet/Profile').then((m) => m.Receive));
-const Profile = dynamic(() => import('../wallet/Profile').then((m) => m.ProfileScreen));
-const Security = dynamic(() => import('../wallet/Security').then((m) => m.Security));
-const Recovery = dynamic(() => import('./AccountScreens').then((m) => m.RecoveryScreen));
-const Scan = dynamic(() => import('./ScanScreen'));
+const FormLoading = () => <ScreenLoading kind="form" />;
+const DetailLoading = () => <ScreenLoading kind="detail" />;
+
+const Send = dynamic(() => import('../wallet/Send').then((m) => m.Send), { loading: FormLoading });
+const Receive = dynamic(() => import('../wallet/Receive').then((m) => m.Receive), {
+  loading: DetailLoading,
+});
+const Profile = dynamic(() => import('../wallet/Profile').then((m) => m.ProfileScreen), {
+  loading: FormLoading,
+});
+const Security = dynamic(() => import('../wallet/Security').then((m) => m.Security), {
+  loading: FormLoading,
+});
+const Recovery = dynamic(() => import('./AccountScreens').then((m) => m.RecoveryScreen), {
+  loading: DetailLoading,
+});
+const Scan = dynamic(() => import('./ScanScreen'), { loading: DetailLoading });
+const Earn = dynamic(() => import('./EarnScreen').then((m) => m.EarnScreen), {
+  loading: FormLoading,
+});
+const Swap = dynamic(() => import('./SwapScreen').then((m) => m.SwapScreen), {
+  loading: FormLoading,
+});
+const Activity = dynamic(() => import('./ActivityScreen').then((m) => m.ActivityScreen), {
+  loading: DetailLoading,
+});
+const Charge = dynamic(() => import('./ChargeScreen').then((m) => m.ChargeScreen), {
+  loading: FormLoading,
+});
+const Contacts = dynamic(() => import('./ContactsScreen').then((m) => m.ContactsScreen), {
+  loading: DetailLoading,
+});
+const Business = dynamic(() => import('../business/Business').then((m) => m.Business), {
+  loading: DetailLoading,
+});
+const Crosschain = dynamic(() => import('../wallet/Crosschain').then((m) => m.Crosschain), {
+  loading: FormLoading,
+});
 
 export function ConsumerContent({
   view,
@@ -39,34 +70,28 @@ export function ConsumerContent({
     case 'receive':
       return <Receive {...props} />;
     case 'scan':
-      return <Scan english={en} />;
+      return <Scan {...props} />;
     case 'profile':
       return <Profile {...props} />;
+    case 'earn':
+      return <Earn {...props} />;
+    case 'swap':
+      return <Swap {...props} />;
+    case 'statement':
+      return <Activity {...props} />;
+    case 'charge':
+      return <Charge {...props} />;
+    case 'contacts':
+      return <Contacts {...props} />;
+    case 'business':
+      return <Business {...props} />;
+    case 'crosschain':
+      return <Crosschain {...props} />;
     case 'settings':
-      return <AccountSettings english={en} />;
+      return <AccountSettings {...props} />;
     case 'recovery':
       return <Recovery english={en} />;
     case 'security':
-      return (
-        <>
-          <BackHeader
-            title={en ? 'Your security center' : 'Tu centro de seguridad'}
-            english={en}
-            to="/settings"
-          />
-          <Security {...props} />
-          <ActionCard
-            href="/settings/security/recovery"
-            english={en}
-            icon={<SecurityIcon />}
-            title={en ? 'Access and backups' : 'Acceso y respaldos'}
-            description={
-              en
-                ? 'Understand what happens if you lose your keys.'
-                : 'Conoce qué ocurre si pierdes tus llaves.'
-            }
-          />
-        </>
-      );
+      return <Security {...props} />;
   }
 }

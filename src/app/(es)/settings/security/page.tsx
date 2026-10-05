@@ -18,5 +18,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const { lang } = await searchParams;
-  return <AuthScreen settings={clientSettings} view="security" english={lang === 'en'} art={null} />;
+  return (
+    <AuthScreen settings={clientSettings} view="security" english={lang === 'en'} art={null} />
+  );
 }

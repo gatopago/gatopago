@@ -12,6 +12,8 @@ const defaults = {
   nonce,
   apiOrigin: 'https://api.gatopago.com',
   networks: ['eip155:421614', 'eip155:43113', 'eip155:10143'],
+  rpcUrls: { 'eip155:421614': 'https://arb-sepolia.g.alchemy.com/v2/browser-key' },
+  push: false,
   development: false,
   secure: true,
 };
@@ -51,8 +53,10 @@ describe('Document CSP with per-response nonce', () => {
       "'self'",
       'https://api.gatopago.com',
       'https://sepolia-rollup.arbitrum.io',
+      'https://iris-api-sandbox.circle.com',
       'https://api.avax-test.network',
       'https://testnet-rpc.monad.xyz',
+      'https://arb-sepolia.g.alchemy.com',
     ]);
     expect(policy['frame-src']).toEqual(["'self'", 'https://challenges.cloudflare.com']);
     expect(JSON.stringify(policy)).not.toMatch(/analytics|tagmanager|googleapis/);
@@ -61,6 +65,13 @@ describe('Document CSP with per-response nonce', () => {
     expect(documentCsp(defaults)).not.toContain('*');
     expect(documentSecurityHeaders['Cache-Control']).toContain('no-store');
     expect(documentSecurityHeaders['Cross-Origin-Opener-Policy']).toBe('same-origin');
+  });
+  it('reaches Firebase Cloud Messaging only when notifications are configured', () => {
+    const policy = directives(documentCsp({ ...defaults, push: true }));
+    expect(policy['connect-src'].filter((origin) => origin.includes('googleapis'))).toEqual([
+      'https://firebaseinstallations.googleapis.com',
+      'https://fcmregistrations.googleapis.com',
+    ]);
   });
   it('allows eval and HMR only in development, without HTTPS upgrading loopback', () => {
     const policy = directives(documentCsp({ ...defaults, development: true, secure: false }));

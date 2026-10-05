@@ -2,12 +2,13 @@
 
 import { NavigationLink as Link } from './NavigationLink';
 import { usePathname } from 'next/navigation';
-import { HomeIcon, MoveIcon, ScanIcon } from './Icons';
+import { ActivityIcon, GrowIcon, HomeIcon, MoveIcon } from './Icons';
 
 const destinations = [
   { href: '/app', es: 'Inicio', en: 'Home', icon: HomeIcon },
   { href: '/move', es: 'Mover', en: 'Move', icon: MoveIcon },
-  { href: '/scan', es: 'Escanear', en: 'Scan', icon: ScanIcon },
+  { href: '/earn', es: 'Crecer', en: 'Grow', icon: GrowIcon },
+  { href: '/statement', es: 'Actividad', en: 'Activity', icon: ActivityIcon },
 ] as const;
 
 export function PrimaryNav({ english: en }: { english: boolean }) {
@@ -17,11 +18,11 @@ export function PrimaryNav({ english: en }: { english: boolean }) {
       aria-label={en ? 'Main navigation' : 'Navegación principal'}
       className="primary-nav fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[480px] px-2 pt-2 pb-[max(0.65rem,env(safe-area-inset-bottom))]"
     >
-      <div className="grid grid-cols-3 gap-1">
+      <div className="grid grid-cols-4 gap-1">
         {destinations.map((item) => {
           const active =
             pathname === item.href ||
-            (item.href === '/move' && ['/send', '/receive'].includes(pathname));
+            (item.href === '/move' && ['/send', '/receive', '/scan'].includes(pathname));
           const className = `primary-nav__item relative flex min-h-13 flex-col items-center justify-center gap-1 text-[10px] font-semibold ${active ? 'is-active' : ''}`;
           const content = (
             <>
