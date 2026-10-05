@@ -4,7 +4,6 @@ import Script from 'next/script';
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { createChallengeLifecycle, type ChallengeState } from './turnstile-lifecycle';
 import { useCspNonce } from '../security/NonceProvider';
-import { AccessError } from './passkey-client';
 
 type TurnstileApi = {
   render(
@@ -67,8 +66,7 @@ export function Turnstile({
         signal.throwIfAborted();
         const token = controller.current?.take();
         if (token) return Promise.resolve(token);
-        if (pending.current)
-          return Promise.reject(new AccessError('auth/security-check-unavailable'));
+        if (pending.current) return Promise.reject(new Error('TURNSTILE_UNAVAILABLE'));
         return new Promise<string>((resolve, reject) => {
           const abort = () => finish(signal.reason);
           pending.current = {
@@ -83,7 +81,7 @@ export function Turnstile({
     }),
     [finish],
   );
-  useEffect(() => () => finish(new AccessError('auth/security-check-unavailable')), [finish]);
+  useEffect(() => () => finish(new Error('TURNSTILE_UNAVAILABLE')), [finish]);
   useEffect(() => {
     let widget: string | undefined;
     let active = true;
@@ -93,7 +91,7 @@ export function Turnstile({
       setState(value);
       if (value.status === 'error' || value.status === 'expired') {
         window.clearTimeout(timer);
-        finish(new AccessError('auth/security-check-unavailable'));
+        finish(new Error('TURNSTILE_UNAVAILABLE'));
       }
     };
     let lifecycle = createChallengeLifecycle(publish);

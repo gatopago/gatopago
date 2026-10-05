@@ -2,7 +2,7 @@
 
 import { MeliSprite } from '../marketing/MeliSprite';
 import { ActionCard } from './Primitives';
-import { ReceiveIcon, SendIcon, GrowIcon } from './Icons';
+import { ReceiveIcon, SendIcon } from './Icons';
 
 export function MoveMenu({ english: en }: { english: boolean }) {
   return (
@@ -33,20 +33,11 @@ export function MoveMenu({ english: en }: { english: boolean }) {
           href="/send"
           english={en}
           icon={<SendIcon />}
-          title={en ? 'Send or withdraw' : 'Enviar o retirar'}
+          title={en ? 'Send' : 'Enviar'}
           description={
             en
               ? 'Review the amount and destination before confirming.'
               : 'Revisa el monto y destino antes de confirmar.'
-          }
-        />
-        <ActionCard
-          href="/grow"
-          english={en}
-          icon={<GrowIcon />}
-          title={en ? 'Grow' : 'Crecer'}
-          description={
-            en ? 'Manage your USDC position in Aave.' : 'Gestiona tu posición USDC en Aave.'
           }
         />
       </div>

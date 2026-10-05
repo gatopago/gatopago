@@ -44,7 +44,7 @@ const intent = await response.json();`;
             <Link className="meli-brand" href={isSpanish ? '/' : '/en/'} aria-label={t.nav.home}>
               <CatGlyph className="meli-brand__glyph" decorative />
               <span className="meli-brand__word">GatoPago</span>
-              <span className="meli-brand__alpha">V3 preview</span>
+              <span className="meli-brand__alpha">Beta</span>
             </Link>
 
             <div className="meli-nav__links" data-nav-menu>
@@ -316,7 +316,7 @@ const intent = await response.json();`;
                 </ul>
                 <Link
                   className="meli-button meli-button--brand mt-8"
-                  href={localizedPath('/onboarding', !isSpanish)}
+                  href={localizedPath('/login', !isSpanish)}
                 >
                   {t.account.action}
                   <span aria-hidden="true">↗</span>

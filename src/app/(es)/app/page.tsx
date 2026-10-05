@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { AuthScreen } from '../../../auth/AuthScreen';
-import { webAuthConfig } from '../../../auth/server-config';
+import { clientSettings } from '../../../lib/settings';
 import { MeliSprite } from '../../../marketing/MeliSprite';
 
 export async function generateMetadata({
@@ -21,7 +21,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
   const { lang } = await searchParams;
   return (
     <AuthScreen
-      config={webAuthConfig()}
+      settings={clientSettings}
       view="account"
       english={lang === 'en'}
       art={<MeliSprite variant="body-sitting" loading="eager" />}

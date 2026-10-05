@@ -19,19 +19,17 @@
   "dependencies": {
     "@fontsource-variable/recursive": "5.3.0",
     "@gatopago/brand": "file:vendor/gatopago-brand-3.1.0.tgz",
-    "@gatopago/environment": "file:vendor/gatopago-environment-3.2.3.tgz",
-    "@gatopago/shared": "file:vendor/gatopago-shared-3.2.3.tgz",
-    "firebase": "12.18.0",
+    "@gatopago/shared": "file:vendor/gatopago-shared-4.1.0.tgz",
     "jsqr": "1.4.0",
     "next": "16.3.6",
+    "ox": "0.14.34",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "viem": "2.55.19"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@gatopago/test-fixtures": "file:vendor/gatopago-test-fixtures-3.2.3.tgz",
     "@next/eslint-plugin-next": "16.3.6",
-    "@simplewebauthn/server": "13.3.2",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
@@ -45,7 +43,6 @@
     "tailwindcss": "4.3.3",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.70.1",
-    "viem": "2.55.19",
     "vitest": "4.1.11"
   }
 }

@@ -4,7 +4,7 @@ import './base.css';
 import '../consumer/consumer.css';
 import '../auth/auth.css';
 import { PwaBootstrap } from '../pwa/PwaBootstrap';
-import { environment } from '../lib/brand';
+import { settings } from '../lib/settings';
 import { headers } from 'next/headers';
 import { NONCE_HEADER, validNonce } from '../security/nonce';
 import { NonceProvider } from '../security/NonceProvider';
@@ -17,7 +17,7 @@ export async function Document({ lang, children }: { lang: 'es' | 'en'; children
       <body>
         <NonceProvider nonce={nonce}>
           <PwaBootstrap
-            canonicalOrigin={environment.web_origin}
+            canonicalOrigin={settings.webOrigin}
             release={process.env.NODE_ENV === 'production'}
           />
           {children}

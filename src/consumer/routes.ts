@@ -1,11 +1,8 @@
 export const consumerRoutes = {
   '/app': 'account',
-  '/onboarding': 'onboarding',
   '/move': 'move',
   '/send': 'send',
   '/scan': 'scan',
-  '/statement': 'activity',
-  '/grow': 'grow',
   '/receive': 'receive',
   '/profile': 'profile',
   '/settings': 'settings',

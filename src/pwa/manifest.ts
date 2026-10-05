@@ -32,7 +32,7 @@ export function pwaManifest(): MetadataRoute.Manifest {
     scope: '/',
     name: 'GatoPago',
     short_name: 'GatoPago',
-    description: 'GatoPago V3. Versión de pruebas; no envíes fondos reales.',
+    description: 'Tus dólares digitales, bajo tu control.',
     display: 'standalone',
     background_color: '#fff8f0',
     theme_color: '#0b0b0f',

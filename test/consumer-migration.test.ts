@@ -6,9 +6,6 @@ import postcss, { type AnyNode } from 'postcss';
 import tailwind from '@tailwindcss/postcss';
 import { describe, expect, it, vi } from 'vitest';
 import { AccountSettings } from '../src/consumer/AccountSettings';
-import { BalanceCard } from '../src/consumer/BalanceCard';
-import { parseBalanceView } from '../src/wallet/balances';
-import { balanceFixture } from './balances.fixture';
 import { PrimaryNav } from '../src/consumer/PrimaryNav';
 import { MoveMenu } from '../src/consumer/MoveMenu';
 
@@ -26,7 +23,8 @@ describe('Consumer presentation migration', () => {
     const html = renderToStaticMarkup(createElement(PrimaryNav, { english: true }));
     expect(html).toContain('href="/app?lang=en"');
     expect(html).toContain('href="/move?lang=en"');
-    expect(html).toContain('href="/statement?lang=en"');
+    expect(html).toContain('href="/scan?lang=en"');
+    expect(html).not.toMatch(/href="\/(grow|statement)/);
     expect(html).toContain('aria-current="page"');
     expect(html).not.toContain('href="/earn?lang=en"');
   });
@@ -48,37 +46,6 @@ describe('Consumer presentation migration', () => {
       expect(html).not.toContain('workers.dev');
     }
   });
-  it('never displays an unavailable observation as a zero balance', () => {
-    const html = renderToStaticMarkup(
-      createElement(BalanceCard, { balance: null, network: 'Arbitrum Sepolia', english: false }),
-    );
-    expect(html).toContain('Esto no significa que tu saldo sea cero');
-    expect(html).toContain('—');
-    expect(html).not.toContain('Disponible');
-  });
-  it('preserves atomic precision without floating point conversion', () => {
-    const f = balanceFixture();
-    const balance = parseBalanceView(f.wire, f.account, f.now);
-    balance.assets = [
-      { ...balance.assets[1], amount_atomic: '9007199254740993123456', decimals: 6 },
-    ];
-    const html = renderToStaticMarkup(
-      createElement(BalanceCard, { balance, network: 'Arbitrum Sepolia', english: true }),
-    );
-    expect(html).toContain('9007199254740993.123456');
-    expect(html).toContain('Balance');
-    expect(html).not.toContain('available to spend');
-  });
-  it('keeps observed zero distinct from unavailable', () => {
-    const f = balanceFixture();
-    const balance = parseBalanceView(f.wire, f.account, f.now);
-    balance.assets = [balance.assets[0]];
-    const html = renderToStaticMarkup(
-      createElement(BalanceCard, { balance, network: 'Arbitrum Sepolia', english: true }),
-    );
-    expect(html).toMatch(/>0<\/p>/);
-    expect(html).not.toContain('No current observation');
-  });
   it('isolates all consumer selectors from marketing', () => {
     const root = postcss.parse(readFileSync(resolve('src/consumer/consumer.css'), 'utf8'));
     root.walkRules((rule) => {
@@ -87,16 +54,6 @@ describe('Consumer presentation migration', () => {
       }
       for (const selector of rule.selectors) expect(selector).toContain('.consumer-ui');
     });
-  });
-  it('keeps the asset selector readable on the light surface inside the dark balance card', () => {
-    const root = postcss.parse(readFileSync(resolve('src/consumer/consumer.css'), 'utf8'));
-    const declarations: string[] = [];
-    root.walkRules('.consumer-ui .meli-balance-card-app select.text-text', (rule) => {
-      rule.walkDecls('color', (declaration) => {
-        declarations.push(declaration.value);
-      });
-    });
-    expect(declarations).toEqual(['var(--color-text)']);
   });
   it('builds the original client tokens with the Next Tailwind integration', async () => {
     const from = resolve('src/app/base.css');

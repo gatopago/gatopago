@@ -1,28 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import type { BrowserAuth } from '../auth/browser';
-import { ProfileEditor } from './ProfileEditor';
 import { BackHeader, Panel } from './Primitives';
 import { NavigationLink } from './NavigationLink';
 import { localizedPath } from './routes';
-
-export function ProfileScreen({
-  english: en,
-  runtime,
-  uid,
-}: {
-  english: boolean;
-  runtime: BrowserAuth;
-  uid: string;
-}) {
-  return (
-    <>
-      <BackHeader title={en ? 'My profile' : 'Mi perfil'} english={en} to="/settings" />
-      <ProfileEditor key={uid} runtime={runtime} uid={uid} english={en} />
-    </>
-  );
-}
 
 export function RecoveryScreen({ english: en }: { english: boolean }) {
   const [details, setDetails] = useState(false);
@@ -87,8 +68,8 @@ export function RecoveryScreen({ english: en }: { english: boolean }) {
         <Panel className="mt-5">
           <p className="text-sm">
             {en
-              ? 'Access without GatoPago is not available in this app yet. Your access key stays in your device or password manager and cannot be exported here.'
-              : 'El acceso sin GatoPago aún no está disponible en esta app. Tu llave permanece en tu dispositivo o gestor de contraseñas y no se puede exportar aquí.'}
+              ? 'Your account and your funds are on the blockchain, not in GatoPago. Your key keeps signing, and any ERC-4337 service can send your operations, paying their network fee.'
+              : 'Tu cuenta y tus fondos están en la blockchain, no en GatoPago. Tu llave sigue firmando, y cualquier servicio ERC-4337 puede enviar tus operaciones, pagando su comisión de red.'}
           </p>
         </Panel>
       ) : null}

@@ -18,23 +18,20 @@ describe('Complete product landing', () => {
       expect(html).toContain('src="/Logo_gatopago.svg"');
       expect(html).toContain('data-meli-variant="head-neutral"');
       expect(html).toContain('data-meli-variant="body-sitting"');
-      expect(html).toContain('Arbitrum Sepolia');
-      expect(html).toContain(lang === 'es' ? 'Sólo fondos de prueba' : 'Test funds only');
+      expect(html).toContain(lang === 'es' ? 'Con fondos de prueba' : 'With test funds');
       expect(html).toContain(
-        lang === 'es' ? 'Una llave autorizada basta' : 'One authorized key is sufficient',
+        lang === 'es' ? 'GatoPago no puede mover tus fondos' : 'GatoPago cannot move your funds',
       );
-      expect(html).toContain(
-        lang === 'es' ? 'no tiene patrocinio configurado' : 'Sponsorship is not configured',
-      );
+      expect(html).toContain(lang === 'es' ? 'GatoPago paga el gas' : 'GatoPago pays the gas');
       for (const id of ['account', 'receive', 'grow', 'move', 'control', 'card', 'api'])
         expect(html).toContain(`id="${id}"`);
       expect(html).toContain('Aave V3');
       expect(html).toContain('/v1/payment_intents');
-      expect(html).toContain(
-        lang === 'es' ? 'Concepto visual · datos de ejemplo' : 'Visual concept · example data',
+      expect(html).toContain(lang === 'es' ? 'Próximamente' : 'Coming soon');
+      // Commercial copy: no self-deprecating disclaimers or stale claims.
+      expect(html).not.toMatch(
+        /ETH de prueba|test ETH|patrocinio configurado|Sponsorship is not|no cobrable|not payable|no prometemos|not promising|Preguntas honestas|Honest questions|pierdes el acceso|access to your funds is lost|V3 preview|Vista previa V3/,
       );
-      expect(html).toContain(lang === 'es' ? 'Concepto futuro' : 'Future concept');
-      expect(html).not.toMatch(/LIVE PATH|quorum|72 horas|72 hours|Google or email to sign in/);
     },
   );
   it.each(['es', 'en'] as const)(
@@ -60,24 +57,24 @@ describe('Complete product landing', () => {
               '/en/terms',
               '/en/privacy',
               '/docs',
+              '/login',
             ]).toContain(path);
-            if (path === '/docs')
+            if (path === '/docs' || path === '/login')
               expect(url.searchParams.get('lang')).toBe(lang === 'en' ? 'en' : null);
           }
         }
       }
-      for (const href of ['/app', '/onboarding', '/docs']) {
+      for (const href of ['/app', '/login', '/docs']) {
         expect(links).toContain(`${href}${lang === 'en' ? '?lang=en' : ''}`);
       }
     },
   );
-  it('identifies illustrations as examples and provides a dedicated sample receipt', () => {
+  it('presents payment links as coming soon, with a preview page', () => {
     const html = renderToStaticMarkup(createElement(Landing, { lang: 'es' }));
-    expect(html).toContain('El enlace no cobra ni permite enviar fondos');
-    expect(html).toContain('Nada se enviará desde esta demostración');
+    expect(html).toContain('Así se verán tus links de cobro');
     expect(html).toContain('data-payment-link="/pay/demo-cafe-norte"');
     expect(
       readFileSync('src/app/(es)/pay/demo-cafe-norte/page.tsx', 'utf8').replace(/\s+/g, ' '),
-    ).toContain('no corresponden a una solicitud de pago');
+    ).toContain('Links de cobro, muy pronto');
   });
 });

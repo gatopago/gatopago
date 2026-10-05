@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { PublicUsername } from '../../../consumer/PublicUsername';
-import { environment } from '../../../lib/brand';
+import { clientSettings } from '../../../lib/settings';
 export const metadata: Metadata = {
   title: 'Perfil público — GatoPago',
   robots: { index: false, follow: false },
@@ -15,13 +15,15 @@ export default async function Page({
   params: Promise<{ username: string }>;
   searchParams: Promise<{ lang?: string }>;
 }) {
-  const [{ username }, { lang }] = await Promise.all([params, searchParams]);
+  const [{ username: segment }, { lang }] = await Promise.all([params, searchParams]);
+  // The segment arrives percent-encoded: `/@ana` is `%40ana`.
+  const username = decodeURIComponent(segment);
   if (!/^@[a-zA-Z][a-zA-Z0-9_]{2,29}$/.test(username)) notFound();
   return (
     <PublicUsername
       key={username}
       username={username.slice(1).toLowerCase()}
-      environment={environment}
+      settings={clientSettings}
       english={lang === 'en'}
     />
   );

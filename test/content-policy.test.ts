@@ -2,20 +2,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 import { unstable_doesMiddlewareMatch as unstable_doesProxyMatch } from 'next/experimental/testing/server';
-import environments from '@gatopago/environment/environments.json';
-import { environmentFromVariables, parseEnvironment } from '@gatopago/environment';
 import { documentCsp, documentSecurityHeaders } from '../src/security/content-policy';
 import { NONCE_HEADER, validNonce } from '../src/security/nonce';
 import { proxy, config } from '../src/proxy';
 import { GET as missingPage } from '../src/app/[...missing]/route';
 
-vi.mock('../src/auth/server-config', () => ({ webAuthConfig: () => ({ mode: 'disabled' }) }));
-const environment = parseEnvironment(environments.production);
 const nonce = Buffer.alloc(32, 7).toString('base64');
 const defaults = {
   nonce,
-  environment,
-  auth: { mode: 'disabled' as const },
+  apiOrigin: 'https://api.gatopago.com',
+  networks: ['eip155:421614', 'eip155:43113', 'eip155:10143'],
   development: false,
   secure: true,
 };
@@ -51,81 +47,26 @@ describe('Document CSP with per-response nonce', () => {
     expect(policy['base-uri']).toEqual(["'none'"]);
     expect(policy['frame-ancestors']).toEqual(["'none'"]);
     expect(policy['worker-src']).toEqual(["'self'"]);
-    expect(policy['connect-src']).toEqual(["'self'", environment.api_origin]);
+    expect(policy['connect-src']).toEqual([
+      "'self'",
+      'https://api.gatopago.com',
+      'https://sepolia-rollup.arbitrum.io',
+      'https://api.avax-test.network',
+      'https://testnet-rpc.monad.xyz',
+    ]);
+    expect(policy['frame-src']).toEqual(["'self'", 'https://challenges.cloudflare.com']);
+    expect(JSON.stringify(policy)).not.toMatch(/analytics|tagmanager|googleapis/);
     expect(policy['style-src']).toEqual(["'self'", `'nonce-${nonce}'`]);
     expect(policy['style-src-attr']).toEqual(["'unsafe-inline'"]);
     expect(documentCsp(defaults)).not.toContain('*');
     expect(documentSecurityHeaders['Cache-Control']).toContain('no-store');
     expect(documentSecurityHeaders['Cross-Origin-Opener-Policy']).toBe('same-origin');
   });
-  it('allows only the provisioned identity connections and Turnstile frame, never analytics', () => {
-    const policy = directives(
-      documentCsp({
-        ...defaults,
-        auth: {
-          deployment: environment,
-          mode: 'firebase',
-          environment: 'production',
-          webOrigin: environment.web_origin,
-          firebase: {
-            apiKey: 'public-fixture',
-            appId: 'fixture',
-            projectId: 'fixture',
-            authDomain: 'gatopago.com',
-          },
-          apiOrigin: environment.api_origin + '',
-          turnstileSiteKey: 'fixture',
-        },
-      }),
-    );
-    expect(policy['connect-src']).toEqual([
-      "'self'",
-      environment.api_origin,
-      'https://identitytoolkit.googleapis.com',
-      'https://securetoken.googleapis.com',
-    ]);
-    expect(policy['frame-src']).toEqual(["'self'", 'https://challenges.cloudflare.com']);
-    expect(policy['script-src']).not.toContain("'unsafe-inline'");
-    expect(JSON.stringify(policy)).not.toMatch(/analytics|tagmanager|walletconnect|reown/);
-  });
-  it('restricts eval/HMR and the emulator to development, without HTTPS upgrading loopback', () => {
-    const localEnvironment = environmentFromVariables({
-      GATOPAGO_ENVIRONMENT: 'production',
-      GATOPAGO_WEB_ORIGIN: 'http://localhost:3000',
-      GATOPAGO_API_ORIGIN: 'http://localhost:8787',
-      GATOPAGO_BUSINESS_ORIGIN: 'http://localhost:3000',
-      GATOPAGO_WALLET_NETWORKS: 'eip155:421614',
-      FIREBASE_PROJECT_ID: 'demo-fixture',
-    });
-    const auth = {
-      deployment: localEnvironment,
-      mode: 'emulator' as const,
-      environment: 'production' as const,
-      webOrigin: 'http://localhost:3000',
-      firebase: {
-        apiKey: 'fake',
-        appId: 'fixture',
-        projectId: 'demo-fixture',
-        authDomain: 'localhost',
-      },
-      apiOrigin: null,
-      turnstileSiteKey: null,
-    };
-    expect(() => documentCsp({ ...defaults, auth })).toThrow('release');
-    expect(() => documentCsp({ ...defaults, auth, development: true, secure: false })).toThrow();
-    const policy = directives(
-      documentCsp({
-        ...defaults,
-        environment: localEnvironment,
-        auth,
-        development: true,
-        secure: false,
-      }),
-    );
+  it('allows eval and HMR only in development, without HTTPS upgrading loopback', () => {
+    const policy = directives(documentCsp({ ...defaults, development: true, secure: false }));
     expect(policy['script-src']).toContain("'unsafe-eval'");
     expect(policy['script-src']).not.toContain("'unsafe-inline'");
     expect(policy['style-src']).toEqual(["'self'", "'unsafe-inline'"]);
-    expect(policy['connect-src']).toContain('http://127.0.0.1:9099');
     expect(policy['connect-src']).toContain('ws://localhost:3000');
     expect(policy['upgrade-insecure-requests']).toBeUndefined();
   });
@@ -133,7 +74,7 @@ describe('Document CSP with per-response nonce', () => {
     vi.stubEnv('NODE_ENV', 'production');
     const nonces = new Set<string>();
     for (let index = 0; index < 24; index++) {
-      const request = new NextRequest(environment.web_origin + '/login', {
+      const request = new NextRequest('https://gatopago.com/login', {
         headers: {
           [NONCE_HEADER]: nonce,
           'Content-Security-Policy': "script-src * 'unsafe-inline'",

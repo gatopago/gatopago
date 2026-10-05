@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { pwaManifest } from '../src/pwa/manifest';
 
@@ -8,35 +7,26 @@ afterEach(() => {
 });
 
 describe('production Web configuration', () => {
-  it('uses one product manifest while retaining the testnet funds warning', () => {
+  it('uses one product manifest', () => {
     expect(pwaManifest()).toMatchObject({
       name: 'GatoPago',
       short_name: 'GatoPago',
       id: '/app',
       scope: '/',
     });
-    expect(pwaManifest().description).toContain('no envíes fondos reales');
   });
-  it('uses the production protocol namespace even for isolated local development', () => {
-    const example = readFileSync(new URL('../.env.example', import.meta.url), 'utf8');
-    expect(example).toContain('GATOPAGO_ENVIRONMENT=production');
+  it('reads origins and wallet networks', async () => {
+    const { settings } = await import('../src/lib/settings');
+    expect(settings.apiOrigin).toBe('https://api.gatopago.com');
+    expect(settings.networks).toEqual(['eip155:421614', 'eip155:43113', 'eip155:10143']);
   });
-  it('uses the production namespace with synthetic credentials in CI', () => {
-    const ci = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
-    expect(ci).toContain('GATOPAGO_ENVIRONMENT: production');
-    expect(ci).toContain('FIREBASE_PROJECT_ID: v3-build-test');
-  });
-  it('accepts the production namespace without deriving URLs from a legacy manifest', async () => {
-    vi.resetModules();
-    const { environment } = await import('../src/lib/brand');
-    expect(environment.environment).toBe('production');
-    expect(environment.web_origin).toBe('https://gatopago.com');
-    expect(environment.api_origin).toBe('https://api.gatopago.com');
-    expect(environment.blockchain_tiers).toEqual(['testnet']);
-  }, 15000);
-  it('rejects the removed deployment namespace before initializing Web', async () => {
-    vi.resetModules();
-    vi.stubEnv('GATOPAGO_ENVIRONMENT', 'unsupported');
-    await expect(import('../src/lib/brand')).rejects.toThrow('only the production');
+  it.each([
+    ['GATOPAGO_API_ORIGIN', ''],
+    ['GATOPAGO_API_ORIGIN', 'https://api.gatopago.com/app'],
+    ['GATOPAGO_WALLET_NETWORKS', 'eip155:1'],
+    ['GATOPAGO_TURNSTILE_SITE_KEY', ''],
+  ])('refuses to start with %s=%j', async (name, value) => {
+    vi.stubEnv(name, value);
+    await expect(import('../src/lib/settings')).rejects.toThrow();
   });
 });

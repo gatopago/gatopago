@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { environment } from '../../../lib/brand';
+import { settings } from '../../../lib/settings';
 
 export const metadata: Metadata = { title: 'GatoPago — Developers' };
 export default async function Page({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const en = (await searchParams).lang === 'en';
-  const example = `POST ${environment.api_origin}/v1/payment_intents
+  const example = `POST ${settings.apiOrigin}/v1/payment_intents
 Authorization: Bearer <API_KEY>
 Content-Type: application/json
 Idempotency-Key: cafe-norte-order-001
@@ -66,7 +66,7 @@ Idempotency-Key: cafe-norte-order-001
           ? 'Reuse the same idempotency key when recovering the same request after a lost response. Consult the payment state before creating a replacement.'
           : 'Conserva la misma clave de idempotencia al recuperar una solicitud cuya respuesta se perdió. Consulta el estado del pago antes de crear otro para reemplazarlo.'}
       </p>
-      <a href={environment.business_origin}>
+      <a href={settings.businessOrigin}>
         {en ? 'Open the merchant dashboard' : 'Abrir el panel de comercios'}
       </a>
     </main>

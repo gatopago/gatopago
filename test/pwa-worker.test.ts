@@ -326,7 +326,6 @@ describe('PWA public metadata', () => {
     });
     expect(manifest.name).toBe('GatoPago');
     expect(manifest.short_name).toBe('GatoPago');
-    expect(manifest.description).toContain('no envíes fondos reales');
     for (const [file, size] of [
       [PWA_ICONS.small, 192],
       [PWA_ICONS.large, 512],

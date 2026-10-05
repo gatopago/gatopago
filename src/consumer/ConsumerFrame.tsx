@@ -61,12 +61,13 @@ export function ConsumerFrame({
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                   aria-hidden="true"
                 >
-                  <path d="M4 6h16M4 12h16M4 18h16" />
-                  <circle cx="9" cy="6" r="2" />
-                  <circle cx="15" cy="12" r="2" />
-                  <circle cx="9" cy="18" r="2" />
+                  <circle cx="12" cy="5" r="1" />
+                  <circle cx="12" cy="12" r="1" />
+                  <circle cx="12" cy="19" r="1" />
                 </svg>
               </Link>
             </div>

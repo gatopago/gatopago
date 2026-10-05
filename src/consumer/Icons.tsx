@@ -46,20 +46,6 @@ export function MoveIcon() {
     </Icon>
   );
 }
-export function GrowIcon() {
-  return (
-    <Icon>
-      <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
-    </Icon>
-  );
-}
-export function ActivityIcon() {
-  return (
-    <Icon>
-      <path d="M3 3v18h18m-14-6 4-4 3 3 5-6" />
-    </Icon>
-  );
-}
 export function HomeIcon() {
   return (
     <Icon>

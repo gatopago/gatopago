@@ -1,39 +1,24 @@
-import { isLocalEnvironment, type Environment } from '@gatopago/environment';
-import type { WebAuthConfig } from '../auth/config';
-import { LOCAL_AUTH_ORIGIN, LOCAL_WEB_ORIGIN } from '../auth/config';
+import { walletNetwork } from '@gatopago/shared/networks';
 import { validNonce } from './nonce';
+
+/** RPC endpoints the browser reads balances and account state from. */
+function rpcOrigins(networks: readonly string[]): string[] {
+  return networks.flatMap((id) =>
+    walletNetwork(id).chain.rpcUrls.default.http.map((url) => new URL(url).origin),
+  );
+}
 
 export function documentCsp(input: {
   nonce: string;
-  environment: Environment;
-  auth: WebAuthConfig;
+  apiOrigin: string;
+  networks: readonly string[];
   development: boolean;
   secure: boolean;
 }): string {
   if (!validNonce(input.nonce)) throw new Error('Invalid CSP nonce');
-  const { auth, development } = input;
-  if (
-    auth.mode === 'emulator' &&
-    (!development ||
-      !isLocalEnvironment(input.environment) ||
-      input.environment.web_origin !== LOCAL_WEB_ORIGIN)
-  ) {
-    throw new Error('Emulator CSP cannot enter a release');
-  }
-  const connections = ["'self'", input.environment.api_origin];
-  const frames = ["'self'"];
-  if (auth.mode === 'firebase') {
-    connections.push(
-      'https://identitytoolkit.googleapis.com',
-      'https://securetoken.googleapis.com',
-    );
-    frames.push('https://challenges.cloudflare.com');
-  }
-  if (auth.mode === 'emulator') {
-    connections.push(LOCAL_AUTH_ORIGIN);
-    frames.push(LOCAL_AUTH_ORIGIN);
-  }
-  if (development) connections.push(LOCAL_WEB_ORIGIN.replace('http:', 'ws:'));
+  const { development } = input;
+  const connections = ["'self'", input.apiOrigin, ...rpcOrigins(input.networks)];
+  if (development) connections.push('ws://localhost:3000');
   return [
     "default-src 'none'",
     `script-src 'nonce-${input.nonce}' 'strict-dynamic'${development ? " 'unsafe-eval'" : ''}`,
@@ -42,7 +27,7 @@ export function documentCsp(input: {
 
     "style-src-attr 'unsafe-inline'",
     `connect-src ${connections.join(' ')}`,
-    `frame-src ${frames.join(' ')}`,
+    "frame-src 'self' https://challenges.cloudflare.com",
     "img-src 'self' data: blob:",
     "font-src 'self'",
     "manifest-src 'self'",

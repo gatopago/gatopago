@@ -1,30 +1,55 @@
 import type { NextConfig } from 'next';
-import { webAuthConfig } from './src/auth/server-config';
-import { authHeaders } from './src/auth/config';
+import { settings } from './src/lib/settings';
 import { pwaHeaders } from './src/pwa/manifest';
 
-// Evaluate at build/start: emulated release configuration must fail early.
-webAuthConfig();
+// Read at build: a missing or invalid setting fails it.
+void settings;
+
+/** Pages that show an account are never cached. */
+const privateHeaders = ['/login', '/app', '/settings/:path*'].map((source) => ({
+  source,
+  headers: [
+    { key: 'Cache-Control', value: 'private, no-store, max-age=0' },
+    { key: 'CDN-Cache-Control', value: 'no-store' },
+    { key: 'Vercel-CDN-Cache-Control', value: 'no-store' },
+    { key: 'Referrer-Policy', value: 'no-referrer' },
+  ],
+}));
 
 const config: NextConfig = {
   agentRules: false,
-  // Invitation codes belong neither in request logs nor forwarded browser logs.
-  // Hosted access-log redaction is a separate release gate, not controlled here.
-  logging: {
-    incomingRequests: { ignore: [/^\/login(?:[?/]|$)/] },
-    browserToTerminal: false,
-    serverFunctions: false,
-  },
+  logging: { browserToTerminal: false, serverFunctions: false },
   poweredByHeader: false,
   async headers() {
-    return [{ source: '/:path*', headers: [
-      { key: 'X-Content-Type-Options', value: 'nosniff' },
-      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-      { key: 'X-Frame-Options', value: 'DENY' },
-    ] }, ...authHeaders(), ...pwaHeaders(),
-    ...['/brand/:path*', '/pwa/:path*', '/favicon.svg', '/favicon.ico', '/og.png', '/Logo_gatopago.svg', '/apple-touch-icon.png'].map((source) => ({
-      source, headers: [{ key: 'Content-Security-Policy', value: "default-src 'none'; base-uri 'none'; frame-ancestors 'none'" }],
-    }))];
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+        ],
+      },
+      ...privateHeaders,
+      ...pwaHeaders(),
+      ...[
+        '/brand/:path*',
+        '/pwa/:path*',
+        '/favicon.svg',
+        '/favicon.ico',
+        '/og.png',
+        '/Logo_gatopago.svg',
+        '/apple-touch-icon.png',
+      ].map((source) => ({
+        source,
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+          },
+        ],
+      })),
+    ];
   },
 };
 export default config;

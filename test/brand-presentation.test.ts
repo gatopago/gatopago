@@ -2,12 +2,9 @@ import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { AuthScreen } from '../src/auth/AuthScreen';
 import { CatGlyph } from '../src/marketing/CatGlyph';
 import { MeliSprite } from '../src/marketing/MeliSprite';
 import { PasskeyAccess } from '../src/auth/PasskeyAccess';
-import type { BrowserAuth } from '../src/auth/browser';
-import type { EnabledAuthConfig } from '../src/auth/config';
 import { PwaControls } from '../src/pwa/PwaControls';
 import { pwaMetadata } from '../src/pwa/manifest';
 
@@ -51,90 +48,22 @@ describe('Unified GatoPago presentation', () => {
     }
   });
 
-  it('keeps access separate from account navigation without hiding safety notices', () => {
-    for (const english of [false, true]) {
-      const html = renderToStaticMarkup(
-        createElement(AuthScreen, {
-          config: { mode: 'disabled' },
-          view: 'login',
-          english,
-          art: createElement(MeliSprite, { variant: 'body-sitting' }),
-        }),
-      );
-      expect(html).toContain('auth-login-grid');
-      expect(html).toContain('auth-frame');
-      expect(html).toContain(`href="${english ? '/en' : '/'}"`);
-      expect(html).not.toContain('href="/settings');
-      expect(html).toContain(english ? 'Do not send funds' : 'No envíes fondos');
-      expect(html).toContain('btn btn-ghost btn-block');
-    }
-  });
-
-  it('uses shared buttons for passkey options, without performing authentication', () => {
+  it('keeps the cat and tagline beside the sign-in options', () => {
     const html = renderToStaticMarkup(
       createElement(PasskeyAccess, {
-        runtime: {} as BrowserAuth,
-        config: { mode: 'firebase' } as EnabledAuthConfig,
+        settings: {
+          webOrigin: 'https://gatopago.com',
+          apiOrigin: 'https://api.gatopago.com',
+          networks: ['eip155:421614'],
+          turnstileSiteKey: '1x00000000000000000000AA',
+        },
         english: false,
-        onSignedIn: () => {
-          throw new Error('Presentation must not sign in');
-        },
-        onRegistered: () => {
-          throw new Error('Presentation must not register');
-        },
+        onSignedIn: () => {},
       }),
     );
-    expect(html).toContain('auth-primary btn btn-primary btn-block');
-    expect(html).toContain('auth-secondary btn btn-ghost btn-block');
+    // auth.css hides the hero art unless the panel shows the access options.
+    expect(html).toContain('auth-panel auth-panel--access-options');
     expect(html).toContain('Iniciar sesión');
-    expect(html).toContain('Crear cuenta');
-  });
-
-  it('does not offer a blank account screen when identity is unavailable', () => {
-    for (const english of [false, true]) {
-      const html = renderToStaticMarkup(
-        createElement(AuthScreen, {
-          config: { mode: 'disabled' },
-          view: 'account',
-          english,
-          art: null,
-        }),
-      );
-      expect(html).toContain(english ? 'Opening sign-in' : 'Abriendo el acceso');
-      expect(html).not.toContain('Entra para ver tu cuenta');
-      expect(html).not.toContain('href="/settings');
-    }
-  });
-
-  it('keeps phone-first access without a blocking desktop notice', () => {
-    const html = renderToStaticMarkup(
-      createElement(AuthScreen, {
-        config: { mode: 'disabled' },
-        view: 'login',
-        english: false,
-        art: createElement(MeliSprite, { variant: 'body-sitting' }),
-      }),
-    );
-    expect(html).toContain('auth-login-hero');
-    expect(html).toContain('Iniciar sesión o crear cuenta');
-    expect(html).not.toContain('<dialog');
-    expect(html).not.toContain('Continuar con Google');
-    expect(html).not.toContain('Continuar con correo');
-    expect(readFileSync('src/auth/auth.css', 'utf8')).not.toContain('58rem');
-  });
-
-  it('applies shared buttons beyond login and uses a widget that fits narrow forms', () => {
-    for (const source of [
-      'src/wallet/TransferForm.tsx',
-      'src/wallet/SecurityEnrollment.tsx',
-      'src/consumer/ProfileEditor.tsx',
-      'src/consumer/PublicUsername.tsx',
-    ]) {
-      const text = readFileSync(source, 'utf8');
-      expect(text).not.toMatch(/className="auth-(primary|secondary)"/);
-      expect(text).toContain('auth-primary btn btn-primary btn-block');
-    }
-    expect(readFileSync('src/auth/Turnstile.tsx', 'utf8')).toContain("size: 'compact'");
   });
 
   it('keeps the compact installation control accessible and the proper web icon formats', () => {

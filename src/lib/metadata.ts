@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { brand, environment } from './brand';
+import { brand } from './brand';
 import { pwaMetadata } from '../pwa/manifest';
 
 export function publicMetadata(lang: 'es' | 'en'): Metadata {
@@ -8,9 +8,8 @@ export function publicMetadata(lang: 'es' | 'en'): Metadata {
     ? 'GatoPago — Tus dólares ya saben moverse'
     : 'GatoPago — Your dollars already know how to move';
   const description = es
-    ? 'Una cuenta de dólares digitales que tú controlas. V3 está en desarrollo y pruebas: no envíes fondos reales.'
-    : 'A digital-dollar account you control. V3 is in development and testing: do not send real funds.';
-  const index = environment.environment === 'production' && environment.status === 'provisioned';
+    ? 'Recibe, envía y paga dólares digitales desde una cuenta que solo tú controlas. Sin frases semilla y sin comisiones de red.'
+    : 'Receive, send, and pay digital dollars from an account only you control. No seed phrases and no network fees.';
   return {
     metadataBase: new URL(brand.siteUrl),
     title,
@@ -19,7 +18,7 @@ export function publicMetadata(lang: 'es' | 'en'): Metadata {
       canonical: es ? '/' : '/en',
       languages: { es: '/', en: '/en', 'x-default': '/' },
     },
-    robots: { index, follow: index },
+    robots: { index: true, follow: true },
     openGraph: {
       title,
       description,

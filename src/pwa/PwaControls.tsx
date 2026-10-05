@@ -53,7 +53,13 @@ export function PwaControls({
         type="button"
         className="pwa-button"
         aria-label={label}
-        title={label}
+        title={
+          guarded
+            ? en
+              ? 'Available after confirmation'
+              : 'Disponible después de confirmar'
+            : label
+        }
         disabled={!pwa.ready || guarded || prompting}
         onClick={
           pwa.installed
@@ -65,37 +71,40 @@ export function PwaControls({
               }
         }
       >
-        <span aria-hidden="true">{pwa.installed ? '↻' : '↓'}</span>
+        <svg
+          width="21"
+          height="21"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="square"
+          strokeLinejoin="miter"
+          aria-hidden="true"
+        >
+          {pwa.installed ? (
+            <>
+              <path d="M20 11a8 8 0 1 0-2.34 5.66" />
+              <path d="M20 4v7h-7" />
+            </>
+          ) : (
+            <>
+              <path d="M12 3v11" />
+              <path d="m8 10 4 4 4-4" />
+              <path d="M5 14v5h14v-5" />
+            </>
+          )}
+        </svg>
         <span className="pwa-button__label">{label}</span>
       </button>
-      {guarded || pwa.waiting || pwa.workerError || notice ? (
+      {notice ? (
         <div className="pwa-notices">
-          {guarded ? (
-            <p className="pwa-note" role="status">
-              {en
-                ? 'Finish the current operation before reloading or installing.'
-                : 'Termina la operación actual antes de recargar o instalar.'}
-            </p>
-          ) : null}
-          {pwa.waiting ? (
-            <p className="pwa-note" role="status">
-              {en
-                ? 'An update is ready. Finish your operations, close all GatoPago windows and reopen the app to apply it. Reloading this page alone will not apply it.'
-                : 'Hay una actualización lista. Termina tus operaciones, cierra todas las ventanas de GatoPago y vuelve a abrir la app para aplicarla. Recargar sólo esta página no la aplicará.'}
-            </p>
-          ) : null}
-          {pwa.workerError ? (
-            <p className="pwa-note" role="status">
-              {en
-                ? 'Offline support could not start. You can keep using the app online.'
-                : 'No se pudo preparar el modo offline. Puedes seguir usando la app con conexión.'}
-            </p>
-          ) : null}
-          {notice ? (
-            <p className="pwa-note" role="status">
-              {notice}
-            </p>
-          ) : null}
+          <p className="pwa-note" role="status">
+            {notice}
+          </p>
+          <button type="button" className="pwa-button" onClick={() => setNotice('')}>
+            {en ? 'Close' : 'Cerrar'}
+          </button>
         </div>
       ) : null}
       <dialog ref={dialog} className="pwa-dialog" aria-labelledby={titleId}>

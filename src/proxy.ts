@@ -1,17 +1,15 @@
 import { randomBytes } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
-import { webAuthConfig } from './auth/server-config';
-import { environment } from './lib/brand';
+import { settings } from './lib/settings';
 import { documentCsp, documentSecurityHeaders } from './security/content-policy';
 import { NONCE_HEADER } from './security/nonce';
 
 export function proxy(request: NextRequest) {
-  const auth = webAuthConfig();
   const nonce = randomBytes(32).toString('base64');
   const csp = documentCsp({
     nonce,
-    environment,
-    auth,
+    apiOrigin: settings.apiOrigin,
+    networks: settings.networks,
     development: process.env.NODE_ENV === 'development',
     secure: request.nextUrl.protocol === 'https:',
   });
