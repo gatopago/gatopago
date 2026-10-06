@@ -15,8 +15,8 @@ importers:
         specifier: file:vendor/gatopago-brand-3.1.0.tgz
         version: file:vendor/gatopago-brand-3.1.0.tgz
       '@gatopago/shared':
-        specifier: file:vendor/gatopago-shared-5.5.0.tgz
-        version: file:vendor/gatopago-shared-5.5.0.tgz(typescript@6.0.3)(zod@4.5.4)
+        specifier: file:vendor/gatopago-shared-6.0.0.tgz
+        version: file:vendor/gatopago-shared-6.0.0.tgz(typescript@6.0.3)(zod@4.5.4)
       firebase:
         specifier: ^12.19.0
         version: 12.19.0
@@ -615,9 +615,9 @@ packages:
     resolution: {integrity: sha512-slMH/YA3BhS8igsCZvikHeH5dhm5belvOE9EteIuWvtWsbmIRDhJsr50H6JQ3P1785BVpYt4h3zFjejJ5F8krw==, tarball: file:vendor/gatopago-brand-3.1.0.tgz}
     version: 3.1.0
 
-  '@gatopago/shared@file:vendor/gatopago-shared-5.5.0.tgz':
-    resolution: {integrity: sha512-NDVZ70RgG0jWkwMMV5RtKcgHqXu4QkWK4JyCkYW6J6h6NYYneyxEDgPrdHujmmatL8Fn/nJnwm5pUH/mq4OI6w==, tarball: file:vendor/gatopago-shared-5.5.0.tgz}
-    version: 5.5.0
+  '@gatopago/shared@file:vendor/gatopago-shared-6.0.0.tgz':
+    resolution: {integrity: sha512-mUrFEhJt/6MszNxDtc80VBOYRIkT2f66hXle/m2q8wHRd9DZoIWtotbzMhv30AndvX94++LlvGMBdzr9/2Bang==, tarball: file:vendor/gatopago-shared-6.0.0.tgz}
+    version: 6.0.0
     engines: {node: '>=24'}
 
   '@grpc/grpc-js@1.9.16':
@@ -2833,7 +2833,7 @@ snapshots:
 
   '@gatopago/brand@file:vendor/gatopago-brand-3.1.0.tgz': {}
 
-  '@gatopago/shared@file:vendor/gatopago-shared-5.5.0.tgz(typescript@6.0.3)(zod@4.5.4)':
+  '@gatopago/shared@file:vendor/gatopago-shared-6.0.0.tgz(typescript@6.0.3)(zod@4.5.4)':
     dependencies:
       viem: 2.55.19(typescript@6.0.3)(zod@4.5.4)
     transitivePeerDependencies:

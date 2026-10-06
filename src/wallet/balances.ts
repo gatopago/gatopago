@@ -40,6 +40,7 @@ class Balances {
   private snapshot = EMPTY;
   private readAt = 0;
   private reading: Promise<void> | null = null;
+  private reread = false;
   private readonly listeners = new Set<() => void>();
   private stopMovements: (() => void) | null = null;
 
@@ -76,19 +77,30 @@ class Balances {
 
   /** Reads again, unless a read is running or, when not `force`d, the last one is fresh. */
   refresh(force = false): Promise<void> {
-    if (this.reading) return this.reading;
+    if (this.reading) {
+      if (force) this.reread = true;
+      return this.reading;
+    }
     if (!force && Date.now() - this.readAt < FRESH_MS) return Promise.resolve();
     this.set({ ...this.snapshot, refreshing: true });
-    this.reading = this.read().finally(() => {
+    this.reading = this.readUntilFresh().finally(() => {
       this.reading = null;
+      this.set({ ...this.snapshot, refreshing: false });
     });
     return this.reading;
   }
 
+  private async readUntilFresh() {
+    do {
+      this.reread = false;
+      await this.read();
+    } while (this.reread);
+  }
+
   private async read() {
     const { networks } = this.settings;
-    const results = await Promise.allSettled(
-      networks.map((id) => {
+    await Promise.all(
+      networks.map(async (id) => {
         const { chain, usdc, aave } = walletNetwork(id);
         const balanceOf = (token: Address) =>
           ({
@@ -107,24 +119,30 @@ class Balances {
           },
           ...(aave ? [balanceOf(aave.aToken)] : []),
         ];
-        return publicClient(this.settings, id).multicall({ allowFailure: false, contracts });
+        let values: (bigint | null)[] = [null, null, null];
+        try {
+          const results = await publicClient(this.settings, id).multicall({ contracts });
+          values = results.map((result) =>
+            result.status === 'success' && typeof result.result === 'bigint' ? result.result : null,
+          );
+        } catch {
+          // A failed network is unknown, never a zero balance.
+        }
+        if (
+          this.snapshot.usdc[id] === values[0] &&
+          this.snapshot.native[id] === values[1] &&
+          (!aave || this.snapshot.saved[id] === values[2])
+        )
+          return;
+        this.set({
+          ...this.snapshot,
+          usdc: { ...this.snapshot.usdc, [id]: values[0] },
+          native: { ...this.snapshot.native, [id]: values[1] },
+          saved: aave ? { ...this.snapshot.saved, [id]: values[2] } : this.snapshot.saved,
+        });
       }),
     );
     this.readAt = Date.now();
-    const value = (i: number, index: number) => {
-      const result = results[i];
-      return result.status === 'fulfilled' ? (result.value[index] as bigint) : null;
-    };
-    this.set({
-      usdc: Object.fromEntries(networks.map((id, i) => [id, value(i, 0)])),
-      native: Object.fromEntries(networks.map((id, i) => [id, value(i, 1)])),
-      saved: Object.fromEntries(
-        networks
-          .filter((id) => walletNetwork(id).aave)
-          .map((id) => [id, value(networks.indexOf(id), 2)]),
-      ),
-      refreshing: false,
-    });
   }
 }
 
@@ -157,6 +175,20 @@ export function useBalances(settings: ClientSettings, session: Session) {
     refreshing: snapshot.refreshing,
     refresh: () => void store.refresh(true),
   };
+}
+
+/** A total is shown only when every configured network has a known balance. */
+export function totalUsdc(
+  balances: Readonly<Record<string, bigint | null>>,
+  networks: readonly string[],
+): bigint | null | undefined {
+  let total = 0n;
+  for (const id of networks) {
+    const value = balances[id];
+    if (value == null) return value;
+    total += value;
+  }
+  return total;
 }
 
 export const formatUsdc = (amount: bigint) =>

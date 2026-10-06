@@ -31,7 +31,7 @@ import {
   type Intent,
   type Plan,
 } from './flow';
-import { formatUsdc, useBalances } from './balances';
+import { formatUsdc, totalUsdc, useBalances } from './balances';
 import { failureMessage } from './messages';
 import { currentSession, subscribeSession, type Session } from './session';
 
@@ -305,8 +305,8 @@ function Balance({
   english: boolean;
 }) {
   const { balances } = useBalances(settings, session);
-  if (Object.keys(balances).length === 0) return null;
-  const total = Object.values(balances).reduce<bigint>((sum, value) => sum + (value ?? 0n), 0n);
+  const total = totalUsdc(balances, settings.networks);
+  if (typeof total !== 'bigint') return null;
   return (
     <p className="mt-3 text-[12px] text-text-faint">
       {en ? 'Your balance' : 'Tu saldo'}: {formatUsdc(total)} USDC

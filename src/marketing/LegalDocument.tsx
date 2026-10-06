@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { privacy, terms } from './legal-copy';
 
-const privacyEmail = 'privacy@parmelia.me';
+const privacyEmail = 'privacy@gatopago.com';
 
 function Paragraph({ text }: { text: string }) {
   const [before, after] = text.split('{{privacyEmail}}');

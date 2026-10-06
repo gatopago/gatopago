@@ -458,6 +458,26 @@ function ReceiptCard({
 const downloadFailed = (en: boolean) =>
   en ? "Couldn't download the receipt" : 'No se pudo descargar el comprobante';
 
+function useReceiptExport(en: boolean) {
+  const pending = useRef(false);
+  const [state, setState] = useState({ busy: false, error: '' });
+  async function perform(action: () => Promise<unknown>) {
+    if (pending.current) return;
+    pending.current = true;
+    setState({ busy: true, error: '' });
+    let error = '';
+    try {
+      await action();
+    } catch {
+      error = downloadFailed(en);
+    } finally {
+      pending.current = false;
+      setState({ busy: false, error });
+    }
+  }
+  return { ...state, perform };
+}
+
 /** The receipt of a movement, opened from the account (Home, Activity). */
 export function Receipt({
   receipt,
@@ -470,7 +490,7 @@ export function Receipt({
 }) {
   const card = useRef<HTMLDivElement>(null);
   const [hidden] = useState(balanceHidden);
-  const [error, setError] = useState('');
+  const { busy, error, perform } = useReceiptExport(en);
   return (
     <Sheet titleId="receipt-title" onClose={onClose} variant="receipt">
       <ReceiptCard ref={card} receipt={receipt} english={en} hidden={hidden} />
@@ -478,11 +498,9 @@ export function Receipt({
         <button
           type="button"
           className="btn btn-primary min-w-0 flex-1"
-          onClick={() =>
-            void downloadCard(card.current, receiptFile(receipt)).catch(() =>
-              setError(downloadFailed(en)),
-            )
-          }
+          disabled={busy}
+          aria-busy={busy}
+          onClick={() => void perform(() => downloadCard(card.current, receiptFile(receipt)))}
         >
           {en ? 'Download receipt' : 'Descargar comprobante'}
         </button>
@@ -513,7 +531,7 @@ export function ReceiptScreen({
   children?: ReactNode;
 }) {
   const card = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState('');
+  const { busy, error, perform } = useReceiptExport(en);
   const url =
     receipt.hash && receipt.networkId ? explorerUrl(receipt.networkId, receipt.hash) : null;
   return (
@@ -523,18 +541,19 @@ export function ReceiptScreen({
         <button
           type="button"
           className="btn btn-primary min-w-0 flex-1"
+          disabled={busy}
+          aria-busy={busy}
           onClick={() =>
-            void shareCard(card.current, {
-              filename: receiptFile(receipt),
-              text: en
-                ? `I paid ${receiptAmount(receipt, en)} ${receipt.currency} with GatoPago`
-                : `Pagué ${receiptAmount(receipt, en)} ${receipt.currency} con GatoPago`,
-              url: url ?? undefined,
+            void perform(async () => {
+              const result = await shareCard(card.current, {
+                filename: receiptFile(receipt),
+                text: en
+                  ? `I paid ${receiptAmount(receipt, en)} ${receipt.currency} with GatoPago`
+                  : `Pagué ${receiptAmount(receipt, en)} ${receipt.currency} con GatoPago`,
+                url: url ?? undefined,
+              });
+              if (result === 'unsupported') await downloadCard(card.current, receiptFile(receipt));
             })
-              .then((shared) =>
-                shared ? undefined : downloadCard(card.current, receiptFile(receipt)),
-              )
-              .catch(() => setError(downloadFailed(en)))
           }
         >
           {en ? 'Share' : 'Compartir'}
@@ -542,11 +561,9 @@ export function ReceiptScreen({
         <button
           type="button"
           className="btn btn-ghost shrink-0"
-          onClick={() =>
-            void downloadCard(card.current, receiptFile(receipt)).catch(() =>
-              setError(downloadFailed(en)),
-            )
-          }
+          disabled={busy}
+          aria-busy={busy}
+          onClick={() => void perform(() => downloadCard(card.current, receiptFile(receipt)))}
         >
           {en ? 'Download' : 'Descargar'}
         </button>

@@ -127,7 +127,17 @@ export async function payWithBrowserWallet(
   });
   const plan = await authorize(settings, intent.id, payer, network);
   const client = publicClient(settings, network);
+  // Wallets may cap the fee right at the current base fee and fail as soon as it rises; this
+  // allows it to double before inclusion (EIP-1559: only the actual fee is paid).
+  const fees = async () => {
+    const [block, tip] = await Promise.all([
+      client.getBlock(),
+      client.estimateMaxPriorityFeePerGas(),
+    ]);
+    return { maxFeePerGas: (block.baseFeePerGas ?? 0n) * 2n + tip, maxPriorityFeePerGas: tip };
+  };
   const approval = await wallet.writeContract({
+    ...(await fees()),
     account: payer,
     address: usdc,
     abi: erc20Abi,
@@ -136,6 +146,7 @@ export async function payWithBrowserWallet(
   });
   await client.waitForTransactionReceipt({ hash: approval });
   const hash = await wallet.writeContract({
+    ...(await fees()),
     account: payer,
     address: walletNetwork(network).paymentRouter,
     abi: paymentRouterAbi,

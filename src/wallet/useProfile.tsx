@@ -1,6 +1,14 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import type { ClientSettings } from '../lib/settings';
 import { api, type Profile } from './api';
 import { failureMessage } from './messages';
@@ -50,14 +58,14 @@ export function ProfileProvider({
       rememberedProfile(session.wallet.address),
     ),
     [error, setError] = useState('');
-  const setProfile = (value: Profile) => {
+  const setProfile = useCallback((value: Profile) => {
     setStoredProfile(value);
     try {
       localStorage.setItem(PROFILE_KEY, JSON.stringify(value));
     } catch {
       // Private mode: the header waits for the profile next time.
     }
-  };
+  }, []);
   useEffect(() => {
     const controller = new AbortController();
     api<Profile>(settings.apiOrigin, 'profile', { token: session.token, signal: controller.signal })
@@ -66,12 +74,13 @@ export function ProfileProvider({
         if (!controller.signal.aborted) setError(failureMessage(failure, en));
       });
     return () => controller.abort();
-  }, [settings, session, en]);
+  }, [settings.apiOrigin, session.token, en, setProfile]);
   // FCM rotates tokens: a device with notifications on confirms its token on every visit.
   useEffect(() => {
     void renewPush(settings, session, en).catch(() => undefined);
   }, [settings, session, en]);
-  return <ProfileContext value={{ profile, setProfile, error }}>{children}</ProfileContext>;
+  const value = useMemo(() => ({ profile, setProfile, error }), [profile, setProfile, error]);
+  return <ProfileContext value={value}>{children}</ProfileContext>;
 }
 
 /** The member's profile; `null` outside a signed-in screen or while it loads. */

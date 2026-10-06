@@ -17,7 +17,7 @@ import type { ClientSettings } from '../lib/settings';
 import { networkName, USDC_DECIMALS } from './account';
 import { send } from './operations';
 import { api, type Recipient } from './api';
-import { formatUsdc, useBalances } from './balances';
+import { formatUsdc, totalUsdc, useBalances } from './balances';
 import { failureMessage } from './messages';
 import { reviewedRecipient } from '../consumer/qr';
 import {
@@ -48,7 +48,7 @@ export function Send({
 }) {
   const params = useSearchParams();
   const { balances, refresh } = useBalances(settings, session);
-  const total = Object.values(balances).reduce<bigint>((sum, value) => sum + (value ?? 0n), 0n);
+  const total = totalUsdc(balances, settings.networks);
   const requestedNetwork = params.get('chain') ? `eip155:${params.get('chain')}` : null;
   const initialNetwork =
     requestedNetwork && settings.networks.includes(requestedNetwork)
@@ -198,7 +198,7 @@ export function Send({
             </div>
             <p className="mt-3 text-[12px] text-text-faint">
               {en ? 'Your balance' : 'Tu saldo'}:{' '}
-              {Object.keys(balances).length ? formatUsdc(total) : '—'} USDC
+              {typeof total === 'bigint' ? formatUsdc(total) : '—'} USDC
             </p>
           </MoneyPanel>
           <SelectMenu

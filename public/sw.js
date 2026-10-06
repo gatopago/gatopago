@@ -165,7 +165,7 @@ self.addEventListener('fetch', (event) => {
 // Payment notifications: FCM delivers a Web Push with `data` only (title, body, link); this worker
 // shows it and tells open windows to read balances and activity again. No Firebase code runs here.
 self.addEventListener('push', (event) => {
-  let data = {};
+  let data;
   try {
     data = event.data?.json().data ?? {};
   } catch {

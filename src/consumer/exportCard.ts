@@ -75,7 +75,6 @@ async function renderCardToBlob(node: HTMLElement): Promise<Blob> {
     cardUrl = await toPng(node, {
       pixelRatio: scale,
       backgroundColor: PAPER,
-      cacheBust: true,
       style: {
         animation: 'none',
         boxShadow: 'none',
@@ -134,27 +133,30 @@ export async function downloadCard(node: HTMLElement | null, filename: string): 
 }
 
 /**
- * Share the card image plus an optional link/text. Returns true if the native
- * share sheet handled it, false if the caller should fall back (e.g. copy link).
+ * Share the card image plus an optional link/text. Cancellation is not a request
+ * to download or copy anything; only unsupported sharing needs a fallback.
  */
 export async function shareCard(
   node: HTMLElement | null,
   opts: { filename: string; text?: string; url?: string },
-): Promise<boolean> {
-  if (!node) return false;
+): Promise<'shared' | 'cancelled' | 'unsupported'> {
+  if (!node || !navigator.share) return 'unsupported';
   try {
-    const blob = await renderCardToBlob(node);
-    const file = new File([blob], opts.filename, { type: 'image/png' });
-    if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], text: opts.text });
-      return true;
+    if (navigator.canShare) {
+      const blob = await renderCardToBlob(node);
+      const file = new File([blob], opts.filename, { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text: opts.text });
+        return 'shared';
+      }
     }
-    if (navigator.share && (opts.url || opts.text)) {
+    if (opts.url || opts.text) {
       await navigator.share({ text: opts.text, url: opts.url });
-      return true;
+      return 'shared';
     }
-  } catch {
-    // user cancelled or share unsupported - caller falls back
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') return 'cancelled';
+    throw error;
   }
-  return false;
+  return 'unsupported';
 }

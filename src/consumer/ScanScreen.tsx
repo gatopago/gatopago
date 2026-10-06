@@ -38,6 +38,7 @@ export default function ScanScreen({
   const video = useRef<HTMLVideoElement>(null),
     stream = useRef<MediaStream | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const scanCanvas = useRef<HTMLCanvasElement | null>(null);
   const generation = useRef(0),
     timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stop = useCallback(() => {
@@ -80,9 +81,11 @@ export default function ScanScreen({
     async (source: CanvasImageSource, width: number, height: number, max: number) => {
       if (!width || !height || width * height > 40_000_000) throw new Error('Image too large');
       const scale = Math.min(1, max / Math.max(width, height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(width * scale));
-      canvas.height = Math.max(1, Math.round(height * scale));
+      const canvas = (scanCanvas.current ??= document.createElement('canvas'));
+      const scaledWidth = Math.max(1, Math.round(width * scale));
+      const scaledHeight = Math.max(1, Math.round(height * scale));
+      if (canvas.width !== scaledWidth) canvas.width = scaledWidth;
+      if (canvas.height !== scaledHeight) canvas.height = scaledHeight;
       const context = canvas.getContext('2d', { willReadFrequently: true });
       if (!context) throw new Error('Canvas unavailable');
       context.drawImage(source, 0, 0, canvas.width, canvas.height);

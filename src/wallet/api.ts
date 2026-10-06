@@ -41,6 +41,7 @@ export async function api<T>(
   init: { method?: string; body?: unknown; token?: string; signal?: AbortSignal } = {},
 ): Promise<T> {
   let response: Response;
+  const timeout = AbortSignal.timeout(20_000);
   try {
     response = await fetch(
       path.startsWith('/') ? `${apiOrigin}${path}` : `${apiOrigin}/app/v1/${path}`,
@@ -54,7 +55,7 @@ export async function api<T>(
         body: init.body === undefined ? undefined : JSON.stringify(init.body),
         credentials: 'omit',
         cache: 'no-store',
-        signal: init.signal ?? AbortSignal.timeout(20_000),
+        signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
       },
     );
   } catch (error) {

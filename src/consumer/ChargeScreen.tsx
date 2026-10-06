@@ -98,6 +98,19 @@ export function ChargeScreen({
     });
   }
 
+  async function exportLink(action: () => Promise<unknown>) {
+    if (busy) return;
+    setBusy(true);
+    setNotice('');
+    try {
+      await action();
+    } catch {
+      setNotice(en ? "Couldn't export" : 'No se pudo exportar');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (link)
     return (
       <>
@@ -160,14 +173,17 @@ export function ChargeScreen({
           <button
             type="button"
             className="btn btn-primary btn-block"
+            disabled={busy}
+            aria-busy={busy}
             onClick={() =>
-              void shareCard(card.current, {
-                filename: 'gatopago-cobro.png',
-                text: shareText(link.url),
-                url: link.url,
-              }).then((shared) => {
-                if (shared) return;
-                void navigator.clipboard.writeText(link.url);
+              void exportLink(async () => {
+                const result = await shareCard(card.current, {
+                  filename: 'gatopago-cobro.png',
+                  text: shareText(link.url),
+                  url: link.url,
+                });
+                if (result !== 'unsupported') return;
+                await navigator.clipboard.writeText(link.url);
                 setNotice(en ? 'Link copied' : 'Link copiado');
               })
             }
@@ -178,11 +194,15 @@ export function ChargeScreen({
             <button
               type="button"
               className="btn btn-ghost flex-1"
+              disabled={busy}
+              aria-busy={busy}
               onClick={() =>
-                void downloadCard(
-                  card.current,
-                  `gatopago-cobro-${link.amount ? formatUsdc(link.amount) : 'abierto'}-USDC.png`,
-                ).catch(() => setNotice(en ? "Couldn't download" : 'No se pudo descargar'))
+                void exportLink(() =>
+                  downloadCard(
+                    card.current,
+                    `gatopago-cobro-${link.amount ? formatUsdc(link.amount) : 'abierto'}-USDC.png`,
+                  ),
+                )
               }
             >
               {en ? 'Download QR' : 'Descargar QR'}

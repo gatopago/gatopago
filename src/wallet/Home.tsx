@@ -14,7 +14,7 @@ import { NavigationLink } from '../consumer/NavigationLink';
 import { localizedPath } from '../consumer/routes';
 import type { ClientSettings } from '../lib/settings';
 import { networkName } from './account';
-import { formatUsdc, useBalances } from './balances';
+import { formatUsdc, totalUsdc, useBalances } from './balances';
 import type { Session } from './session';
 
 const CardInterestSheet = dynamic(() =>
@@ -32,7 +32,9 @@ export function Home({
 }) {
   const { balances, natives, saved, refreshing, refresh } = useBalances(settings, session);
   const [hidden, setHidden] = useState(balanceHidden);
-  const savedValues = Object.values(saved);
+  const savedValues = settings.networks
+    .filter((id) => walletNetwork(id).aave)
+    .map((id) => saved[id]);
   // What grows in Aave, across the networks with a market; `null` until read.
   const growing =
     savedValues.length > 0 && savedValues.every((value) => typeof value === 'bigint')
@@ -44,24 +46,20 @@ export function Home({
     [cardSaved, setCardSaved] = useState(false);
   const [selectedNetwork, symbol] = currency.split('/');
   const native = symbol !== 'USDC';
-  const loaded = Object.keys(balances).length > 0;
-  const total = Object.values(balances).reduce<bigint>((sum, value) => sum + (value ?? 0n), 0n);
+  const loaded = settings.networks.every((id) => balances[id] !== undefined);
+  const total = totalUsdc(balances, settings.networks);
   const failed = Object.values(balances).some((value) => value === null);
   const shownBalance = native
     ? natives[selectedNetwork]
-    : !loaded
-      ? undefined
-      : selectedNetwork === 'all'
-        ? failed
-          ? null
-          : total
-        : balances[selectedNetwork];
+    : selectedNetwork === 'all'
+      ? total
+      : balances[selectedNetwork];
   const tokens = [
     {
       value: 'all/USDC',
       symbol: 'USDC',
       label: en ? 'All networks' : 'Todas las redes',
-      balance: hidden ? '••••' : loaded && !failed ? formatUsdc(total) : '—',
+      balance: hidden ? '••••' : typeof total === 'bigint' ? formatUsdc(total) : '—',
     },
     ...settings.networks.flatMap((id) => [
       {
