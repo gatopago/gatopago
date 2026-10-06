@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react';
 import '@fontsource-variable/recursive/full.css';
 import './base.css';
-import '../consumer/consumer.css';
-import '../auth/auth.css';
 import { PwaBootstrap } from '../pwa/PwaBootstrap';
 import { settings } from '../lib/settings';
 import { headers } from 'next/headers';

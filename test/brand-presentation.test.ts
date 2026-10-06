@@ -48,6 +48,23 @@ describe('Unified GatoPago presentation', () => {
     }
   });
 
+  it('keeps shared landing selectors scoped so they cannot override the app after navigation', () => {
+    const css = readFileSync('src/marketing/landing.css', 'utf8');
+    expect(css).toContain(':where(.meli-landing, .meli-dialog) .meli-sprite,');
+    expect(css).not.toMatch(
+      /(?:^|[},])\s*\.meli-(?:sprite(?:__image)?|kicker(?:--\w+)?|avatar)(?:\s|[,{])/,
+    );
+  });
+
+  it('loads app styles with the app frame, not the shared document', () => {
+    const document = readFileSync('src/app/Document.tsx', 'utf8');
+    const frame = readFileSync('src/consumer/ConsumerFrame.tsx', 'utf8');
+    for (const sheet of ['consumer.css', 'auth.css']) {
+      expect(document).not.toContain(sheet);
+      expect(frame).toContain(sheet);
+    }
+  });
+
   it('keeps the cat and tagline beside the sign-in options', () => {
     const html = renderToStaticMarkup(
       createElement(PasskeyAccess, {

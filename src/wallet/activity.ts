@@ -27,38 +27,90 @@ export interface Movement {
   counterparty_display_name: string | null;
 }
 
+interface ActivityPage {
+  activity: Movement[];
+  next_cursor: string | null;
+}
+
+const FRESH_MS = 30_000;
+const recent = new Map<string, { movements: Movement[]; cursor: string | null; readAt: number }>();
+const reading = new Map<string, Promise<ActivityPage>>();
+
+/** A completed operation or movement notification makes the next read fresh. */
+export function invalidateActivity(token: string) {
+  recent.delete(token);
+  reading.delete(token);
+}
+
+/** Reuse a recent first page, or share its pending read across mounted screens. */
+function firstPage(apiOrigin: string, token: string): Promise<ActivityPage> {
+  const cached = recent.get(token);
+  if (cached && Date.now() - cached.readAt < FRESH_MS)
+    return Promise.resolve({ activity: cached.movements, next_cursor: cached.cursor });
+  const pending = reading.get(token);
+  if (pending) return pending;
+  const request: Promise<ActivityPage> = api<ActivityPage>(apiOrigin, 'activity', { token })
+    .then((page) => {
+      if (reading.get(token) === request)
+        recent.set(token, {
+          movements: page.activity,
+          cursor: page.next_cursor,
+          readAt: Date.now(),
+        });
+      return page;
+    })
+    .finally(() => {
+      if (reading.get(token) === request) reading.delete(token);
+    });
+  reading.set(token, request);
+  return request;
+}
+
 /** The account's movements, newest first, a page at a time. */
 export function useActivity(settings: ClientSettings, session: Session, en: boolean) {
-  const [movements, setMovements] = useState<Movement[] | null>(null);
-  const [cursor, setCursor] = useState<string | null>(null);
+  const cached = recent.get(session.token);
+  const [movements, setMovements] = useState<Movement[] | null>(cached?.movements ?? null);
+  const [cursor, setCursor] = useState<string | null>(cached?.cursor ?? null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
   // A movement notification reads the first page again.
   const [revision, setRevision] = useState(0);
-  useEffect(() => onMovement(() => setRevision((value) => value + 1)), []);
+  useEffect(
+    () =>
+      onMovement(() => {
+        invalidateActivity(session.token);
+        setRevision((value) => value + 1);
+      }),
+    [session.token],
+  );
 
   const page = useCallback(
     (before: string | null, signal?: AbortSignal) =>
-      api<{ activity: Movement[]; next_cursor: string | null }>(
+      api<ActivityPage>(
         settings.apiOrigin,
         before ? `activity?before=${encodeURIComponent(before)}` : 'activity',
         { token: session.token, signal },
       ),
-    [settings, session],
+    [settings.apiOrigin, session.token],
   );
 
   useEffect(() => {
-    const controller = new AbortController();
-    page(null, controller.signal)
+    let active = true;
+    firstPage(settings.apiOrigin, session.token)
       .then(({ activity, next_cursor }) => {
+        if (!active) return;
         setMovements(activity);
         setCursor(next_cursor);
+        setError('');
       })
       .catch((failure: unknown) => {
-        if (!controller.signal.aborted) setError(failureMessage(failure, en));
+        if (active) setError(failureMessage(failure, en));
       });
-    return () => controller.abort();
-  }, [page, en, revision]);
+    // The shared GET may finish for the next screen; the API still bounds it to 20 seconds.
+    return () => {
+      active = false;
+    };
+  }, [settings.apiOrigin, en, revision, session.token]);
 
   function loadMore() {
     if (!cursor || loadingMore) return;

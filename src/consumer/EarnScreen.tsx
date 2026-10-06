@@ -6,7 +6,8 @@ import { aavePoolAbi, depositCalls, supplyApy, withdrawCalls } from '@gatopago/s
 import { walletNetwork } from '@gatopago/shared/networks';
 import type { ClientSettings } from '../lib/settings';
 import { MeliSprite } from '../marketing/MeliSprite';
-import { networkName, publicClient, send, USDC_DECIMALS } from '../wallet/account';
+import { networkName, publicClient, USDC_DECIMALS } from '../wallet/account';
+import { send } from '../wallet/operations';
 import { formatUsdc, useBalances } from '../wallet/balances';
 import { failureMessage } from '../wallet/messages';
 import type { Session } from '../wallet/session';

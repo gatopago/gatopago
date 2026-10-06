@@ -1,10 +1,9 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { lazy } from 'react';
 import type { ClientSettings } from '../lib/settings';
-import { Home } from '../wallet/Home';
 import type { Session } from '../wallet/session';
-import { AccountSettings } from './AccountSettings';
 import { MoveMenu } from './MoveMenu';
 import type { ConsumerView } from './routes';
 import { ScreenLoading } from './Skeleton';
@@ -12,6 +11,11 @@ import { ScreenLoading } from './Skeleton';
 const FormLoading = () => <ScreenLoading kind="form" />;
 const DetailLoading = () => <ScreenLoading kind="detail" />;
 
+// AccountShell's Suspense keeps the existing loading screen and its language.
+const Home = lazy(() => import('../wallet/Home').then((m) => ({ default: m.Home })));
+const AccountSettings = lazy(() =>
+  import('./AccountSettings').then((m) => ({ default: m.AccountSettings })),
+);
 const Send = dynamic(() => import('../wallet/Send').then((m) => m.Send), { loading: FormLoading });
 const Receive = dynamic(() => import('../wallet/Receive').then((m) => m.Receive), {
   loading: DetailLoading,

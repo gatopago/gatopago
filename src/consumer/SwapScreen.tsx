@@ -12,7 +12,8 @@ import {
 } from '@gatopago/shared/swap';
 import type { ClientSettings } from '../lib/settings';
 import { CatGlyph } from '../marketing/CatGlyph';
-import { explorerUrl, networkName, publicClient, send, USDC_DECIMALS } from '../wallet/account';
+import { explorerUrl, networkName, publicClient, USDC_DECIMALS } from '../wallet/account';
+import { send } from '../wallet/operations';
 import { useBalances } from '../wallet/balances';
 import { failureMessage } from '../wallet/messages';
 import type { Session } from '../wallet/session';

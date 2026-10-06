@@ -1,5 +1,7 @@
 'use client';
 
+import './consumer.css';
+import '../auth/auth.css';
 import { useState, type ReactNode } from 'react';
 import { NavigationLink as Link } from './NavigationLink';
 import Screen from './Screen';

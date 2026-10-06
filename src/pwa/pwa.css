@@ -60,10 +60,6 @@
   opacity: 0.65;
   cursor: not-allowed;
 }
-.pwa-button:focus-visible {
-  outline: 3px solid var(--color-cat-500);
-  outline-offset: 4px;
-}
 .pwa-note {
   max-width: 24rem;
   font-size: 0.85rem;

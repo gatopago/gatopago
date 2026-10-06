@@ -17,13 +17,8 @@ import { ScreenLoading } from '../consumer/Skeleton';
 import { StageOverlay } from '../consumer/StageOverlay';
 import type { ClientSettings } from '../lib/settings';
 import { MeliSprite } from '../marketing/MeliSprite';
-import {
-  applyApprovals,
-  appliedApprovals,
-  gatopagoAccount,
-  networkName,
-  publicClient,
-} from './account';
+import { gatopagoAccount, networkName, publicClient } from './account';
+import { applyApprovals, appliedApprovals } from './operations';
 import { api, type Approvals } from './api';
 import { failureMessage } from './messages';
 import { createPasskey } from './passkey';

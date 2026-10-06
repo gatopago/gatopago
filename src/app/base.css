@@ -25,6 +25,9 @@
   textarea {
     font: inherit;
   }
+  :focus {
+    outline: none;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   *,

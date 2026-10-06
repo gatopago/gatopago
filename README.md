@@ -48,6 +48,25 @@ pnpm dev
 ```
 
 Checks, also run by CI: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`.
+
+## Configuration
+
+Every variable is public: it reaches the browser or the page's security policy. Set them in Vercel
+(*Settings → Environment Variables*) and redeploy; a missing required one fails the build.
+
+| Name | Required | What it is | How to get it |
+|---|---|---|---|
+| `GATOPAGO_WEB_ORIGIN` | yes | This site's origin; payment and profile links use it | `https://gatopago.com` |
+| `GATOPAGO_API_ORIGIN` | yes | Wallet Core and Flow, the only API the pages may call | `https://api.gatopago.com` |
+| `GATOPAGO_WALLET_NETWORKS` | yes | CAIP-2 ids of the networks the wallet shows | The same as Wallet Core's `WALLET_NETWORKS` |
+| `GATOPAGO_HOME_NETWORK` | yes | Where balances live, Grow and Swap run, and charges settle | One of the networks; Flow's `HOME_NETWORK` |
+| `GATOPAGO_TURNSTILE_SITE_KEY` | yes | Sign-up challenge widget | Cloudflare → Turnstile → the widget's site key (Wallet Core holds its secret) |
+| `GATOPAGO_WALLET_RPC_URLS` | no | `{"<network>": "<url>"}`: RPC for the browser's reads; each falls back to the public one | Alchemy app *GatoPago-web*, with every network enabled and its allowlist limited to `gatopago.com` (the browser exposes the key) |
+| `GATOPAGO_FIREBASE_CONFIG` | no | `{"apiKey","projectId","messagingSenderId","appId"}` of the Firebase web app | Firebase → Project settings → General → Your apps → the web app's `firebaseConfig` |
+| `GATOPAGO_FIREBASE_VAPID_KEY` | no | Public key for Web Push | Firebase → Project settings → Cloud Messaging → Web push certificates |
+
+Notifications appear in Settings only with both Firebase variables, and work only with Wallet
+Core's `FIREBASE_SERVICE_ACCOUNT` from the same project.
 `@gatopago/shared` and `@gatopago/brand` come from `vendor/`.
 
 Pages are served with a per-request CSP nonce that allows connections only to Wallet Core and Flow,

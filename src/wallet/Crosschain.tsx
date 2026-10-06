@@ -13,7 +13,8 @@ import { TxResult } from '../consumer/TxResult';
 import { localizedPath } from '../consumer/routes';
 import type { ClientSettings } from '../lib/settings';
 import { MeliSprite } from '../marketing/MeliSprite';
-import { networkName, send, USDC_DECIMALS } from './account';
+import { networkName, USDC_DECIMALS } from './account';
+import { send } from './operations';
 import { formatUsdc, useBalances } from './balances';
 import { failureMessage } from './messages';
 import type { Session } from './session';
@@ -142,7 +143,7 @@ export function Crosschain({
                   required
                   inputMode="decimal"
                   pattern="[0-9]+([.,][0-9]{1,6})?"
-                  className="w-full border-0 bg-transparent py-2 font-mono text-[40px] font-semibold text-text outline-none placeholder:text-text-faint/40 focus-visible:ring-2 focus-visible:ring-cat-500"
+                  className="w-full border-0 bg-transparent py-2 font-mono text-[40px] font-semibold text-text outline-none placeholder:text-text-faint/40"
                   placeholder="0.00"
                   value={amount}
                   disabled={busy || review !== null}

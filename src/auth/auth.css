@@ -242,10 +242,6 @@
   color: #645d58;
   box-shadow: none;
 }
-.auth-content :focus-visible {
-  outline: 3px solid var(--color-cat-500);
-  outline-offset: 4px;
-}
 .auth-error {
   padding: 1rem;
   border: 2px solid #ad293e;

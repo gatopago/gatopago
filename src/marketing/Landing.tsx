@@ -69,6 +69,7 @@ const intent = await response.json();`;
               <Link
                 className="meli-button meli-button--brand meli-nav__cta"
                 href={appHref}
+                prefetch={false}
                 data-cta="nav"
               >
                 {t.nav.open}
@@ -98,7 +99,12 @@ const intent = await response.json();`;
             <a href="#grow">{t.nav.grow}</a>
             <a href="#card">{t.nav.card}</a>
             <a href="#api">{t.nav.developers}</a>
-            <Link className="meli-button meli-button--brand" href={appHref} data-cta="mobile-nav">
+            <Link
+              className="meli-button meli-button--brand"
+              href={appHref}
+              prefetch={false}
+              data-cta="mobile-nav"
+            >
               {t.nav.open} <span aria-hidden="true">↗</span>
             </Link>
           </div>
@@ -124,6 +130,7 @@ const intent = await response.json();`;
                   <Link
                     className="meli-button meli-button--brand meli-button--large"
                     href={appHref}
+                    prefetch={false}
                     data-cta="hero"
                   >
                     {t.hero.primary}
@@ -317,6 +324,7 @@ const intent = await response.json();`;
                 <Link
                   className="meli-button meli-button--brand mt-8"
                   href={localizedPath('/login', !isSpanish)}
+                  prefetch={false}
                 >
                   {t.account.action}
                   <span aria-hidden="true">↗</span>
@@ -812,6 +820,7 @@ const intent = await response.json();`;
                 <Link
                   className="meli-button meli-button--ink meli-button--large"
                   href={appHref}
+                  prefetch={false}
                   data-cta="final"
                 >
                   {t.final.primary}

@@ -10,7 +10,8 @@ import {
 import { walletNetwork } from '@gatopago/shared/networks';
 import { paymentCalls, paymentRouterAbi, type Payment } from '@gatopago/shared/payments';
 import type { ClientSettings } from '../lib/settings';
-import { publicClient, send } from './account';
+import { publicClient } from './account';
+import { send } from './operations';
 import { api } from './api';
 import type { Session } from './session';
 

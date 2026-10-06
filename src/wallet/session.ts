@@ -64,6 +64,8 @@ export function saveSession(session: Session) {
 
 export function signOut() {
   write(SESSION, null);
+  // The profile cached for the header (useProfile) goes with the session.
+  write('gatopago:profile', null);
 }
 
 export function knownWallet(): Wallet | null {

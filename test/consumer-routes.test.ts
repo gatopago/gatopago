@@ -22,7 +22,8 @@ describe('Next migration inventory', () => {
   it.each(Object.entries(consumerRoutes))(
     '%s has its own App Router entry for %s',
     (path, view) => {
-      const file = resolve(`src/app/(es)${path}/page.tsx`);
+      // The signed-in screens share the (account) layout; the URL is the same.
+      const file = resolve(`src/app/(es)/(account)${path}/page.tsx`);
       expect(existsSync(file)).toBe(true);
       expect(readFileSync(file, 'utf8')).toContain(`view="${view}"`);
     },

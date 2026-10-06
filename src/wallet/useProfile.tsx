@@ -19,6 +19,18 @@ const ProfileContext = createContext<ProfileState>({
   error: '',
 });
 
+const PROFILE_KEY = 'gatopago:profile';
+
+/** The profile this browser last saw for `address`: shown at once, then read again. */
+function rememberedProfile(address: string): Profile | null {
+  try {
+    const profile = JSON.parse(localStorage.getItem(PROFILE_KEY) ?? 'null') as Profile | null;
+    return profile?.address.toLowerCase() === address.toLowerCase() ? profile : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Loads the signed-in member's profile once for the header, the menu and every screen, and keeps
  * this device's notification registration current.
@@ -34,8 +46,18 @@ export function ProfileProvider({
   english: boolean;
   children: ReactNode;
 }) {
-  const [profile, setProfile] = useState<Profile | null>(null),
+  const [profile, setStoredProfile] = useState<Profile | null>(() =>
+      rememberedProfile(session.wallet.address),
+    ),
     [error, setError] = useState('');
+  const setProfile = (value: Profile) => {
+    setStoredProfile(value);
+    try {
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(value));
+    } catch {
+      // Private mode: the header waits for the profile next time.
+    }
+  };
   useEffect(() => {
     const controller = new AbortController();
     api<Profile>(settings.apiOrigin, 'profile', { token: session.token, signal: controller.signal })
