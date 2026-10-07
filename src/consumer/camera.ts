@@ -1,34 +1,36 @@
 /**
  * The camera for scanning QR codes. `facingMode: 'environment'` alone may open any back lens: on
  * phones with several (the Galaxy S23, for one) Chrome can pick the ultra-wide, which has fixed
- * focus and blurs a QR held close. This opens the main lens in 1080p and remembers it.
+ * focus and blurs a QR held close. Android names its cameras `camera2 <n>, facing back`, and the
+ * lowest number is the main lens: that one opens, once. Elsewhere (iPhone, computers) the browser's
+ * own choice is already the main lens.
  */
 
-const STORAGE_KEY = 'gatopago.camera';
-const QUALITY = { width: { ideal: 1920 }, height: { ideal: 1080 } };
-/** A little zoom reads small QR codes without bringing the phone closer than it can focus. */
-const ZOOM = 1.5;
-
-type Capabilities = MediaTrackCapabilities & {
-  focusMode?: string[];
-  zoom?: { min: number; max: number };
-};
+// The first version chose by reported focus, which an ultra-wide can pass: its choice is ignored.
+const STORAGE_KEY = 'gatopago.camera.v2';
+// The sensor's own 4:3. A 16:9 frame turned upright is tall and narrow, and the square preview
+// cropped almost half of it: the scan looked zoomed in.
+const QUALITY = { width: { ideal: 1440 }, height: { ideal: 1080 } };
 
 const open = (video: MediaTrackConstraints) =>
   navigator.mediaDevices.getUserMedia({ video: { ...video, ...QUALITY }, audio: false });
 
-const release = (stream: MediaStream) => stream.getTracks().forEach((track) => track.stop());
+const androidIndex = (device: Pick<MediaDeviceInfo, 'label'>) =>
+  Number(/camera2 (\d+)/.exec(device.label)?.[1]);
 
-const capabilities = (stream: MediaStream): Capabilities =>
-  (stream.getVideoTracks()[0]?.getCapabilities?.() ?? {}) as Capabilities;
-
-/** Whether the lens can focus up close; unknown when the browser does not say. */
-const focusesClose = (stream: MediaStream) =>
-  capabilities(stream).focusMode?.includes('continuous');
-
-/** Android names its cameras `camera2 <n>, facing back`; 0 is the main one. */
-const androidIndex = (device: MediaDeviceInfo) =>
-  Number(/camera2 (\d+)/.exec(device.label)?.[1] ?? Number.MAX_SAFE_INTEGER);
+/** Android's main back lens, by name; none where cameras are not named that way. */
+export function mainBackCamera<T extends Pick<MediaDeviceInfo, 'kind' | 'label' | 'deviceId'>>(
+  devices: readonly T[],
+): T | undefined {
+  return devices
+    .filter(
+      (device) =>
+        device.kind === 'videoinput' &&
+        /facing back/i.test(device.label) &&
+        Number.isInteger(androidIndex(device)),
+    )
+    .sort((a, b) => androidIndex(a) - androidIndex(b))[0];
+}
 
 function remembered() {
   try {
@@ -38,7 +40,7 @@ function remembered() {
   }
 }
 
-function remember(deviceId: string | null | undefined) {
+function remember(deviceId: string | null) {
   try {
     if (deviceId) localStorage.setItem(STORAGE_KEY, deviceId);
     else localStorage.removeItem(STORAGE_KEY);
@@ -47,7 +49,8 @@ function remember(deviceId: string | null | undefined) {
   }
 }
 
-async function choose(): Promise<MediaStream> {
+/** Opens the main back camera, 4:3 in up to 1440×1080. */
+export async function openScanCamera(): Promise<MediaStream> {
   const saved = remembered();
   if (saved) {
     try {
@@ -56,51 +59,33 @@ async function choose(): Promise<MediaStream> {
       remember(null);
     }
   }
-  const stream = await open({ facingMode: { ideal: 'environment' } });
-  const current = stream.getVideoTracks()[0]?.getSettings().deviceId;
-  const verdict = focusesClose(stream);
-  if (verdict) {
-    remember(current);
-    return stream;
-  }
-  // Labels are readable once the permission is granted.
-  const backs = (await navigator.mediaDevices.enumerateDevices())
-    .filter((device) => device.kind === 'videoinput' && /back|rear|environment/i.test(device.label))
-    .sort((a, b) => androidIndex(a) - androidIndex(b));
-  // Focus unknown: trust the main Android camera, if this is not it already.
-  const candidates =
-    verdict === undefined ? backs.filter((device) => androidIndex(device) === 0) : backs;
-  if (!candidates.some((device) => device.deviceId !== current)) return stream;
-
-  // Android cannot keep two cameras open: release this one before trying the next.
-  release(stream);
-  for (const device of candidates) {
-    if (device.deviceId === current) continue;
+  // With the permission already given, names are readable before opening anything.
+  const known = mainBackCamera(await navigator.mediaDevices.enumerateDevices());
+  if (known) {
     try {
-      const next = await open({ deviceId: { exact: device.deviceId } });
-      if (focusesClose(next) !== false) {
-        remember(device.deviceId);
-        return next;
-      }
-      release(next);
+      const stream = await open({ deviceId: { exact: known.deviceId } });
+      remember(known.deviceId);
+      return stream;
     } catch {
-      /* Busy or gone: the next one. */
+      /* Busy or gone: the browser's choice below. */
     }
   }
-  return open({ facingMode: { ideal: 'environment' } });
-}
-
-/** Opens the main back camera with continuous focus and a little zoom, where the phone allows. */
-export async function openScanCamera(): Promise<MediaStream> {
-  const stream = await choose();
-  const track = stream.getVideoTracks()[0];
-  const { focusMode, zoom } = capabilities(stream);
-  const advanced: Record<string, unknown>[] = [];
-  if (focusMode?.includes('continuous')) advanced.push({ focusMode: 'continuous' });
-  if (zoom && zoom.max >= ZOOM) advanced.push({ zoom: Math.max(zoom.min, ZOOM) });
-  if (track && advanced.length)
-    await track.applyConstraints({ advanced } as MediaTrackConstraints).catch(() => undefined);
-  return stream;
+  const stream = await open({ facingMode: { ideal: 'environment' } });
+  const main = mainBackCamera(await navigator.mediaDevices.enumerateDevices());
+  const current = stream.getVideoTracks()[0]?.getSettings().deviceId;
+  if (!main || main.deviceId === current) {
+    if (main) remember(main.deviceId);
+    return stream;
+  }
+  // Android cannot keep two cameras open: release this one before opening the main lens.
+  stream.getTracks().forEach((track) => track.stop());
+  try {
+    const next = await open({ deviceId: { exact: main.deviceId } });
+    remember(main.deviceId);
+    return next;
+  } catch {
+    return open({ facingMode: { ideal: 'environment' } });
+  }
 }
 
 type Detector = { detect(source: CanvasImageSource): Promise<{ rawValue: string }[]> };

@@ -12,7 +12,6 @@ import {
 import { NavigationLink } from './NavigationLink';
 import { localizedPath } from './routes';
 import { Sheet } from './Sheet';
-import { useProfile } from '../wallet/useProfile';
 
 export function MenuSheet({
   english: en,
@@ -24,8 +23,6 @@ export function MenuSheet({
   businessOrigin: string;
   onClose: () => void;
 }) {
-  const { profile } = useProfile();
-  const initial = (profile?.username ?? profile?.display_name ?? '')[0];
   const items = [
     {
       href: '/settings/security',
@@ -69,33 +66,6 @@ export function MenuSheet({
           </svg>
         </button>
       </header>
-      <NavigationLink
-        href={localizedPath('/profile', en)}
-        onClick={onClose}
-        className="meli-menu-profile"
-      >
-        <span className="meli-avatar">
-          {initial ? (
-            <span className="font-display text-[15px] uppercase text-cat-300">{initial}</span>
-          ) : (
-            <CatGlyph className="w-8" decorative />
-          )}
-        </span>
-        <span className="min-w-0">
-          <strong className="block truncate text-[15px] font-normal">
-            {profile?.display_name ||
-              (profile?.username ? `@${profile.username}` : en ? 'My profile' : 'Mi perfil')}
-          </strong>
-          <span className="block truncate text-[12px] text-text-faint">
-            {profile?.username
-              ? `@${profile.username}`
-              : en
-                ? 'Choose your username'
-                : 'Elige tu usuario'}
-          </span>
-        </span>
-        <ChevronIcon />
-      </NavigationLink>
       <nav aria-label={en ? 'Account menu' : 'Menú de cuenta'}>
         {items.map((item) => (
           <NavigationLink

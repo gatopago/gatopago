@@ -73,6 +73,7 @@ export function AccountShell({
           english={en}
           navigation
           account={{
+            address: session.wallet.address,
             networks: settings.networks,
             businessOrigin: settings.businessOrigin,
           }}

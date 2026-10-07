@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { AccountView } from '../../../../../../auth/AccountShell';
 
 export const metadata: Metadata = {
-  title: 'Recuperación · GatoPago',
+  title: 'Cómo funcionan las llaves · GatoPago',
   robots: { index: false, follow: false },
   referrer: 'no-referrer',
 };

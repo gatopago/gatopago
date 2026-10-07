@@ -83,9 +83,16 @@ export function Home({
           maximumFractionDigits: 6,
         });
   };
-  // USDC always; other coins only when there is some, or while chosen (no empty test tokens).
-  const shows = (item: (typeof assets)[number], value: bigint | null | undefined) =>
-    item.symbol === 'USDC' || item.symbol === symbol || (typeof value === 'bigint' && value > 0n);
+  // Every coin GatoPago supports: the ones the account holds first, then the empty ones, quieter.
+  // CTK is Agora's test token, not a coin to keep.
+  const listed = (item: (typeof assets)[number]) => item.symbol !== 'CTK';
+  const empty = (value: bigint | null | undefined) => value === 0n;
+  const heldFirst = <T extends { muted: boolean; symbol: string }>(items: T[]) =>
+    [...items].sort(
+      (a, b) =>
+        Number(a.symbol !== 'USDC') - Number(b.symbol !== 'USDC') ||
+        Number(a.muted) - Number(b.muted),
+    );
   // Simple view: each coin once. Advanced view: USDC in total, then every coin on each network.
   const tokens = [
     ...(advanced
@@ -97,24 +104,27 @@ export function Home({
             balance: format(assets[0], total),
           },
         ]
-      : assets
-          .filter((item) => shows(item, coinBalance(item)))
-          .map((item) => ({
+      : heldFirst(
+          assets.filter(listed).map((item) => ({
             value: `all/${item.symbol}`,
             symbol: item.symbol,
             label: item.name,
             balance: format(item, coinBalance(item)),
-          }))),
+            muted: empty(coinBalance(item)),
+          })),
+        )),
     ...(advanced
-      ? assets.flatMap((item) =>
-          item.holdings
-            .filter((held) => shows(item, holding(held)))
-            .map((held) => ({
+      ? heldFirst(
+          assets.filter(listed).flatMap((item) =>
+            item.holdings.map((held) => ({
               value: `${held.networkId}/${item.symbol}`,
               symbol: item.symbol,
               label: networkName(held.networkId),
+              trigger: `${item.symbol} · ${networkName(held.networkId)}`,
               balance: format(item, holding(held)),
+              muted: empty(holding(held)),
             })),
+          ),
         )
       : []),
     ...(advanced && stellarId
@@ -123,6 +133,7 @@ export function Home({
             value: `${stellarId}/USDC`,
             symbol: 'USDC',
             label: networkName(stellarId),
+            trigger: `USDC · ${networkName(stellarId)}`,
             balance: format(assets[0], stellarUsdc),
           },
         ]
@@ -149,7 +160,7 @@ export function Home({
           >
             {en ? 'Available' : 'Disponible'}
           </h2>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex min-w-0 items-center gap-1">
             <TokenSelect value={currency} options={tokens} onChange={setCurrency} english={en} />
             <button
               type="button"
@@ -196,30 +207,17 @@ export function Home({
           </p>
         )}
         <div className="mt-3 flex items-center justify-between gap-3 text-[12px] text-text-faint">
+          {/* The selector already says the coin and, in the advanced view, the network. Only a coin
+              that is not your dollar balance needs a word. */}
           <span className="min-w-0 truncate">
-            {!advanced
-              ? native
-                ? `${asset.name} · ${
-                    asset.holdings.some(({ token }) => token !== null)
-                      ? en
-                        ? 'kept apart from your USDC'
-                        : 'aparte de tus USDC'
-                      : en
-                        ? 'not counted in dollars'
-                        : 'no se suma en dólares'
-                  }`
-                : en
-                  ? 'Digital dollars (USDC)'
-                  : 'Dólares digitales (USDC)'
-              : selectedNetwork === 'all'
+            {native
+              ? asset.holdings.some(({ token }) => token !== null)
                 ? en
-                  ? 'Across all your networks'
-                  : 'En todas tus redes'
-                : `${en ? 'On' : 'En'} ${networkName(selectedNetwork)}`}
-            {advanced && native
-              ? en
-                ? ' · not counted in dollars'
-                : ' · no se suma en dólares'
+                  ? 'Kept apart from your USDC'
+                  : 'Aparte de tus USDC'
+                : en
+                  ? 'Not counted in your dollar balance'
+                  : 'No se suma a tu saldo en dólares'
               : null}
           </span>
           <button

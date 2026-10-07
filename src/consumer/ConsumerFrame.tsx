@@ -9,9 +9,14 @@ import { PrimaryNav } from './PrimaryNav';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { PwaControls } from '../pwa/PwaControls';
 import { MenuSheet } from './MenuSheet';
+import dynamic from 'next/dynamic';
 import { walletNetwork } from '@gatopago/shared/networks';
 import { useProfile } from '../wallet/useProfile';
 import { useTopLevel } from './history';
+
+const AccountDetails = dynamic(() =>
+  import('./AccountDetailsSheet').then((m) => m.AccountDetailsSheet),
+);
 
 /**
  * The page around every screen. The account's header and tab bar belong to its four main tabs;
@@ -23,7 +28,7 @@ type FrameProps = {
   english: boolean;
   navigation?: boolean;
   presentation?: 'account' | 'access' | 'public';
-  account?: { networks: readonly string[]; businessOrigin: string };
+  account?: { address: string; networks: readonly string[]; businessOrigin: string };
 };
 
 export function ConsumerFrame(props: FrameProps) {
@@ -49,6 +54,7 @@ function Frame({
   top,
 }: FrameProps & { top: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const { profile } = useProfile();
   const access = presentation === 'access';
   const accountHeader = presentation === 'account' && top;
@@ -90,10 +96,10 @@ function Frame({
               <button
                 type="button"
                 className="meli-identity interactive-surface"
-                onClick={() => setMenuOpen(true)}
-                aria-label={en ? 'Open menu' : 'Abrir menú'}
+                onClick={() => setDetailsOpen(true)}
+                aria-label={en ? 'My account' : 'Mi cuenta'}
                 aria-haspopup="dialog"
-                aria-expanded={menuOpen}
+                aria-expanded={detailsOpen}
               >
                 {identity}
                 <svg
@@ -111,7 +117,32 @@ function Frame({
             ) : (
               <span className="meli-identity">{identity}</span>
             )}
-            <PwaControls english={en} compact />
+            <div className="flex items-center gap-2">
+              <PwaControls english={en} compact />
+              {account ? (
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(true)}
+                  className="meli-avatar"
+                  aria-label={en ? 'Open menu' : 'Abrir menú'}
+                  aria-haspopup="dialog"
+                  aria-expanded={menuOpen}
+                >
+                  <svg
+                    aria-hidden="true"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="square"
+                  >
+                    <path d="M4 7h16M4 12h16M4 17h16" />
+                  </svg>
+                </button>
+              ) : null}
+            </div>
           </header>
         ) : null}
         {children}
@@ -122,6 +153,13 @@ function Frame({
           english={en}
           businessOrigin={account.businessOrigin}
           onClose={() => setMenuOpen(false)}
+        />
+      ) : null}
+      {detailsOpen && account ? (
+        <AccountDetails
+          address={account.address}
+          english={en}
+          onClose={() => setDetailsOpen(false)}
         />
       ) : null}
     </div>

@@ -9,6 +9,10 @@ export interface TokenOption {
   symbol: string;
   label: string;
   balance?: string;
+  /** Listed but empty: shown quieter, below the coins the account holds. */
+  muted?: boolean;
+  /** What the closed selector shows, when the symbol alone is not enough ("USDC · Arbitrum"). */
+  trigger?: string;
 }
 
 export function TokenSelect({
@@ -36,13 +40,13 @@ export function TokenSelect({
         type="button"
         disabled={disabled}
         onClick={() => setOpen(true)}
-        className="select-menu-trigger interactive-surface inline-flex h-10 min-w-[104px] items-center justify-between gap-3 border border-border bg-surface px-2.5 text-left text-[13px]"
+        className="select-menu-trigger interactive-surface inline-flex h-10 min-w-[104px] max-w-full items-center justify-between gap-3 border border-border bg-surface px-2.5 text-left text-[13px]"
         aria-label={label ?? (en ? 'Choose currency' : 'Elegir moneda')}
         aria-haspopup="dialog"
         aria-expanded={open}
       >
         <TokenIcon symbol={selected.symbol} />
-        <span className="truncate">{selected.symbol}</span>
+        <span className="min-w-0 truncate">{selected.trigger ?? selected.symbol}</span>
         <svg
           aria-hidden="true"
           width="14"
@@ -104,7 +108,7 @@ export function TokenSelect({
                 }}
               >
                 <TokenIcon symbol={item.symbol} size={28} />
-                <span className="min-w-0 flex-1 text-left">
+                <span className={`min-w-0 flex-1 text-left ${item.muted ? 'opacity-55' : ''}`}>
                   <span className="block truncate text-[14px]">{item.symbol}</span>
                   <span className="select-menu-option__detail mt-0.5 block text-[12px] leading-relaxed">
                     {item.label}

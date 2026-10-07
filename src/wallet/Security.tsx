@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { encodeFunctionData, type Hex } from 'viem';
 import { walletContracts } from '@gatopago/shared/networks';
 import {
@@ -17,7 +17,6 @@ import { Sheet } from '../consumer/Sheet';
 import { ScreenLoading } from '../consumer/Skeleton';
 import { StageOverlay } from '../consumer/StageOverlay';
 import type { ClientSettings } from '../lib/settings';
-import { MeliSprite } from '../marketing/MeliSprite';
 import { gatopagoAccount, networkName, publicClient } from './account';
 import { applyApprovals, appliedApprovals } from './operations';
 import { api, type Approvals } from './api';
@@ -134,9 +133,18 @@ export function Security({
       );
     });
 
-  const keyCount = state?.owners.length ?? null;
-  const backedUp = (keyCount ?? 0) > 1;
+  const keyCount = state?.owners.length ?? 0;
+  const backedUp = keyCount > 1;
   const removing = dialog && typeof dialog === 'object' ? dialog.remove : null;
+  // Where a key change is still to be applied: networks behind the latest approval, and Stellar.
+  const behind = state
+    ? settings.networks.filter((id) => {
+        const applied = state.applied[id];
+        return applied !== null && applied < state.total;
+      })
+    : [];
+  const stellarBehind =
+    state && settings.stellar && typeof state.stellar === 'number' && state.stellar > 0;
   return (
     <>
       <BackHeader title={en ? 'Security' : 'Seguridad'} english={en} to="/settings" />
@@ -154,40 +162,6 @@ export function Security({
         <ScreenLoading kind="form" english={en} />
       ) : (
         <div>
-          <section
-            className="meli-ink-card relative mb-6 overflow-hidden p-5"
-            aria-labelledby="security-hero-title"
-          >
-            <div className="relative z-1 pr-24">
-              <h2
-                id="security-hero-title"
-                className="font-display text-[22px] leading-[1.05] text-[#fff8f0]"
-              >
-                {en ? 'Only your keys move your money.' : 'Solo tus llaves mueven tu dinero.'}
-              </h2>
-              <p className="mt-2.5 text-[12px] leading-relaxed text-[rgb(255_248_240/.68)]">
-                {en
-                  ? 'Your device or password manager keeps them, and you unlock them with your fingerprint, face or PIN. GatoPago never sees them.'
-                  : 'Las guarda tu dispositivo o tu gestor de contraseñas, y las abres con tu huella, tu rostro o tu PIN. GatoPago nunca las ve.'}
-              </p>
-              <span className="mt-4 inline-flex items-center gap-2 border border-[rgb(255_248_240/.3)] px-3 py-2 font-mono text-[9px] uppercase tracking-[0.08em] text-[#fff8f0]">
-                <i className={`h-2 w-2 ${state ? 'bg-growth' : 'bg-pending'}`} aria-hidden="true" />
-                {state
-                  ? en
-                    ? 'Protection active'
-                    : 'Protección activa'
-                  : en
-                    ? 'Status not verified'
-                    : 'Estado no verificado'}
-              </span>
-            </div>
-            <MeliSprite
-              variant="head-focused"
-              motion="idle"
-              className="pointer-events-none absolute -right-3 -bottom-2 w-24 opacity-95"
-            />
-          </section>
-
           {error ? (
             <div className="mb-6 border-2 border-pending bg-pending/10 p-4" role="alert">
               <p className="font-display text-[15px] text-pending">{error}</p>
@@ -209,340 +183,141 @@ export function Security({
           {state ? (
             <>
               <section
-                className="meli-paper-card meli-paper-card--strong mb-6 overflow-hidden"
-                aria-labelledby="security-keys-title"
+                className="meli-paper-card meli-paper-card--strong mb-6 p-5"
+                aria-labelledby="security-status"
               >
-                <div className="flex items-start gap-3 border-b-2 border-text p-5">
-                  <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center border-2 border-text bg-cat-500 text-text shadow-[3px_3px_0_var(--color-cat-700)]">
-                    <svg
-                      aria-hidden="true"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M12 1a4 4 0 0 0-4 4v2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2V5a4 4 0 0 0-4-4Z" />
-                      <circle cx="12" cy="14" r="1.5" fill="currentColor" stroke="none" />
-                    </svg>
-                  </div>
-                  <div className="min-w-0">
-                    <h3 id="security-keys-title" className="font-display text-[18px] leading-tight">
-                      {en ? 'Your keys' : 'Tus llaves'}
-                    </h3>
-                    <p className="mt-1 text-[13px] leading-relaxed text-text-muted">
-                      {backedUp
-                        ? en
-                          ? 'You have a backup: if you lose this device, you sign in with another key.'
-                          : 'Tienes respaldo: si pierdes este dispositivo, entras con otra llave.'
-                        : en
-                          ? 'You have a single key. Add a backup so you do not lose access if you lose this device.'
-                          : 'Tienes una sola llave. Agrega una de respaldo para no perder el acceso si pierdes este dispositivo.'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 border-b border-text">
-                  <div className="border-r border-text bg-surface-2 px-4 py-4">
-                    <p className="type-mono text-[25px] font-bold leading-none text-growth">
-                      {keyCount}
-                    </p>
-                    <p className="mt-2 text-[11px] leading-tight text-text-muted">
-                      {keyCount === 1
-                        ? en
-                          ? 'Active key'
-                          : 'Llave activa'
-                        : en
-                          ? 'Active keys'
-                          : 'Llaves activas'}
-                    </p>
-                  </div>
-                  <div className="bg-surface-2 px-4 py-4">
-                    <p className="font-display text-[25px] leading-none text-pending">
-                      {backedUp ? (en ? 'Yes' : 'Sí') : '—'}
-                    </p>
-                    <p className="mt-2 text-[11px] leading-tight text-text-muted">
-                      {en ? 'Backup' : 'Respaldo'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-5">
-                  <button
-                    type="button"
-                    onClick={() => addKey()}
-                    disabled={busy}
-                    aria-describedby="add-passkey-help"
-                    className="btn btn-primary btn-block"
+                <h2
+                  id="security-status"
+                  className={`flex items-center gap-2.5 font-display text-[19px] ${backedUp ? 'text-growth' : 'text-pending'}`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center text-[15px] font-bold ${backedUp ? 'bg-growth/15' : 'bg-pending/15'}`}
                   >
-                    {busy
+                    {backedUp ? '✓' : '!'}
+                  </span>
+                  {en
+                    ? `${keyCount} ${keyCount === 1 ? 'key' : 'keys'} · ${backedUp ? 'backed up' : 'no backup'}`
+                    : `${keyCount} ${keyCount === 1 ? 'llave' : 'llaves'} · ${backedUp ? 'con respaldo' : 'sin respaldo'}`}
+                </h2>
+                <p className="mt-2 text-[14px] leading-relaxed text-text-muted">
+                  {backedUp
+                    ? en
+                      ? 'You can sign in with any of them.'
+                      : 'Puedes entrar con cualquiera de ellas.'
+                    : en
+                      ? 'If you lose this device without another key, you lose the account.'
+                      : 'Si pierdes este dispositivo sin otra llave, pierdes la cuenta.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => addKey()}
+                  disabled={busy}
+                  className={`btn ${backedUp ? 'btn-ghost' : 'btn-primary'} btn-block mt-5`}
+                >
+                  {busy
+                    ? en
+                      ? 'Adding…'
+                      : 'Agregando…'
+                    : backedUp
                       ? en
-                        ? 'Adding…'
-                        : 'Agregando…'
+                        ? 'Add another key'
+                        : 'Agregar otra llave'
                       : en
                         ? 'Add a backup key'
                         : 'Agregar llave de respaldo'}
-                  </button>
-                  <p
-                    id="add-passkey-help"
-                    className="mt-3 px-0.5 text-[12px] leading-relaxed text-text-faint"
-                  >
-                    {en
-                      ? 'Save it in another password manager, or on another device. Each key has full control of the account, so keep it safe.'
-                      : 'Guárdala en otro gestor de contraseñas o en otro dispositivo. Cada llave tiene control total de la cuenta: cuídala.'}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => addKey('cross-platform')}
-                    disabled={busy}
-                    className="btn-text mt-1 min-h-11 w-full text-[13px] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {en
-                      ? 'Use a physical key (USB, NFC or Bluetooth)'
-                      : 'Usar una llave física (USB, NFC o Bluetooth)'}
-                  </button>
-                </div>
-
-                <div className="border-t border-border">
-                  <div className="px-5 pt-5 pb-2">
-                    <h4 className="font-display text-[16px]">
-                      {en ? 'Registered keys' : 'Llaves registradas'}
-                    </h4>
-                    <p className="mt-1 text-[11px] leading-relaxed text-text-muted">
-                      {en
-                        ? 'You can remove one without affecting the others.'
-                        : 'Puedes retirar una sin afectar las demás.'}
-                    </p>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {state.owners.map((owner, index) => {
-                      const mine = owner.toLowerCase() === current;
-                      return (
-                        <div key={owner} className="px-5 py-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="truncate text-[14px] font-semibold text-text">
-                                {mine
-                                  ? en
-                                    ? 'This device'
-                                    : 'Este dispositivo'
-                                  : en
-                                    ? `Key ${index + 1}`
-                                    : `Llave ${index + 1}`}
-                              </p>
-                              <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.06em] text-text-faint">
-                                …{owner.slice(-8)}
-                                {mine ? (en ? ' · in use' : ' · en uso') : ''}
-                              </p>
-                            </div>
-                            {!mine ? (
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => setDialog({ remove: owner })}
-                                className="min-h-11 px-1 text-[12px] text-danger underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
-                              >
-                                {en ? 'Remove' : 'Quitar'}
-                              </button>
-                            ) : null}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addKey('cross-platform')}
+                  disabled={busy}
+                  className="btn-text mt-1 min-h-11 w-full text-[13px] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {en ? 'Use a physical key' : 'Usar una llave física'}
+                </button>
               </section>
 
-              {state.total > 0 ? (
-                <section
-                  className="meli-paper-card meli-paper-card--strong mb-6 overflow-hidden"
-                  aria-labelledby="chain-security-title"
-                >
-                  <div className="border-b-2 border-text p-5">
-                    <p className="meli-kicker mb-2">
-                      {en ? 'Multi-network protection' : 'Protección multired'}
-                    </p>
-                    <h3 id="chain-security-title" className="font-display text-[18px]">
-                      {en
-                        ? 'The same keys, authorized per network'
-                        : 'Las mismas llaves, autorizadas por red'}
-                    </h3>
-                    <p className="mt-1 text-[12px] leading-relaxed text-text-muted">
-                      {en
-                        ? 'You sign each key change once. It applies on a network automatically the next time you use it there.'
-                        : 'Cada cambio de llaves se firma una vez. Se aplica en cada red automáticamente la próxima vez que la usas.'}
-                    </p>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {settings.networks.map((id) => {
-                      const applied = state.applied[id];
-                      const synced = applied === null || applied >= state.total;
-                      return (
-                        <div key={id} className="flex items-start justify-between gap-3 p-5">
-                          <div>
-                            <p className="font-display text-[15px]">{networkName(id)}</p>
-                            <p
-                              className={`mt-1 font-mono text-[9px] uppercase tracking-[0.07em] ${synced ? 'text-growth' : 'text-pending'}`}
-                            >
-                              {applied === null
-                                ? en
-                                  ? 'Applied on first use'
-                                  : 'Se aplica al primer uso'
-                                : synced
-                                  ? en
-                                    ? 'Keys synced'
-                                    : 'Llaves sincronizadas'
-                                  : en
-                                    ? 'Needs sync'
-                                    : 'Requiere sincronización'}
-                            </p>
-                          </div>
-                          {!synced ? (
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => perform(() => applyApprovals(settings, session, id))}
-                              className="btn btn-primary min-h-10 px-4 text-[12px]"
-                            >
-                              {en ? 'Sync' : 'Sincronizar'}
-                            </button>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                    {state.stellar !== null && settings.stellar ? (
-                      <div className="flex items-start justify-between gap-3 p-5">
-                        <div>
-                          <p className="font-display text-[15px]">
-                            {networkName(settings.stellar.network)}
-                          </p>
-                          <p
-                            className={`mt-1 font-mono text-[9px] uppercase tracking-[0.07em] ${state.stellar === 0 || state.stellar === 'unused' ? 'text-growth' : 'text-pending'}`}
-                          >
-                            {state.stellar === 'unused'
-                              ? en
-                                ? 'Applied on first use'
-                                : 'Se aplica al primer uso'
-                              : state.stellar === 0
-                                ? en
-                                  ? 'Keys synced'
-                                  : 'Llaves sincronizadas'
-                                : en
-                                  ? 'Needs sync: one confirmation per change'
-                                  : 'Requiere sincronización: una confirmación por cambio'}
-                          </p>
-                        </div>
-                        {typeof state.stellar === 'number' && state.stellar > 0 ? (
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() =>
-                              perform(() => syncStellarSigners(settings, session, state.owners))
-                            }
-                            className="btn btn-primary min-h-10 px-4 text-[12px]"
-                          >
-                            {en ? 'Sync' : 'Sincronizar'}
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                </section>
-              ) : null}
+              <h3 className="meli-kicker mb-3 px-1">{en ? 'Your keys' : 'Tus llaves'}</h3>
+              <div className="meli-paper-card mb-3 divide-y divide-border">
+                {state.owners.map((owner, index) => {
+                  const mine = owner.toLowerCase() === current;
+                  return (
+                    <div
+                      key={owner}
+                      className="flex min-h-14 items-center justify-between gap-3 px-4 py-2"
+                    >
+                      <p className="min-w-0 truncate text-[14px]">
+                        {mine
+                          ? en
+                            ? 'This device'
+                            : 'Este dispositivo'
+                          : en
+                            ? `Key ${index + 1}`
+                            : `Llave ${index + 1}`}
+                        <span className="ml-2 font-mono text-[11px] text-text-faint">
+                          …{owner.slice(-8)}
+                        </span>
+                      </p>
+                      {mine ? (
+                        <span className="shrink-0 text-[12px] text-text-faint">
+                          {en ? 'in use' : 'en uso'}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setDialog({ remove: owner })}
+                          className="min-h-11 shrink-0 px-1 text-[13px] text-danger underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {en ? 'Remove' : 'Quitar'}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {behind.length || stellarBehind ? (
+                <div className="mb-6 divide-y divide-border border border-pending bg-pending/8">
+                  {behind.map((id) => (
+                    <BehindRow
+                      key={id}
+                      network={networkName(id)}
+                      english={en}
+                      busy={busy}
+                      onApply={() => perform(() => applyApprovals(settings, session, id))}
+                    />
+                  ))}
+                  {stellarBehind && settings.stellar ? (
+                    <BehindRow
+                      network={networkName(settings.stellar.network)}
+                      english={en}
+                      busy={busy}
+                      onApply={() =>
+                        perform(() => syncStellarSigners(settings, session, state.owners))
+                      }
+                    />
+                  ) : null}
+                </div>
+              ) : state.total > 0 ? (
+                <p className="mb-6 px-1 text-[13px] text-growth">
+                  ✓ {en ? 'Up to date on all your networks' : 'Al día en todas tus redes'}
+                </p>
+              ) : (
+                <div className="mb-6" />
+              )}
             </>
           ) : null}
 
           <NavigationLink
             href={localizedPath('/settings/security/recovery', en)}
-            className="meli-path-card-app interactive-surface mb-6 min-h-[104px] p-4 text-left"
+            className="interactive-surface flex min-h-12 items-center justify-between border border-border bg-surface px-4 text-[14px]"
           >
-            <span aria-hidden="true">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-                <path d="M3 3v5h5" />
-                <path d="M12 7v5l3 2" />
-              </svg>
-            </span>
-            <span className="min-w-0">
-              <strong className="block font-display text-[17px]">
-                {en ? 'Recovery and access' : 'Recuperación y acceso'}
-              </strong>
-              <small className="mt-1 block text-[11px] leading-relaxed text-text-muted">
-                {en
-                  ? 'What to do if you lose a key, and why a backup matters.'
-                  : 'Qué hacer si pierdes una llave y por qué importa tener respaldo.'}
-              </small>
-              <small className="mt-2 block font-mono text-[9px] uppercase tracking-[0.06em] text-cat-700">
-                {backedUp
-                  ? en
-                    ? 'Backup plan active'
-                    : 'Plan de respaldo activo'
-                  : en
-                    ? 'Set up your backup plan'
-                    : 'Configura tu plan de respaldo'}
-              </small>
-            </span>
-            <span aria-hidden="true" className="font-mono text-[18px] font-bold">
+            {en ? 'How keys work' : 'Cómo funcionan las llaves'}
+            <span aria-hidden="true" className="font-mono text-text-faint">
               →
             </span>
           </NavigationLink>
-
-          <section aria-labelledby="security-learn-title">
-            <p id="security-learn-title" className="meli-kicker mb-3 px-1">
-              {en ? 'Frequent questions' : 'Preguntas frecuentes'}
-            </p>
-            <div className="meli-paper-card meli-paper-card--strong divide-y divide-border px-5 py-2">
-              <Faq question={en ? 'What is your access key?' : '¿Qué es tu llave de acceso?'}>
-                <p>
-                  {en
-                    ? 'It is like your house key, but digital: your device or password manager keeps it, and you open it with your fingerprint, face or PIN. There is no GatoPago password to steal or forget.'
-                    : 'Es como la llave de tu casa, pero digital: la guarda tu dispositivo o tu gestor de contraseñas, y la abres con tu huella, tu rostro o tu PIN. No hay una contraseña de GatoPago que robar ni olvidar.'}
-                </p>
-                <p>
-                  {en
-                    ? 'Each payment is authorized with a signature made by that key. You can have several (phone, computer); adding a backup lowers the risk of losing access.'
-                    : 'Cada pago se autoriza con una firma creada por esa llave. Puedes tener varias (teléfono, computadora); agregar una de respaldo reduce el riesgo de perder el acceso.'}
-                </p>
-              </Faq>
-              <Faq question={en ? 'What if I lose my phone?' : '¿Qué pasa si pierdo mi teléfono?'}>
-                <p>
-                  {en
-                    ? 'If you saved the passkey in Google Password Manager, it can appear on Android, Chrome and iOS when Google is enabled as a manager. If you saved it in iCloud, it syncs across your Apple devices.'
-                    : 'Si guardaste la passkey en Google Password Manager, puede aparecer en Android, Chrome y también en iOS cuando Google está habilitado como gestor. Si la guardaste en iCloud, se sincroniza entre tus dispositivos Apple.'}
-                </p>
-                <p>
-                  {en
-                    ? 'Without any other key, access cannot be recovered: nobody, not even GatoPago, can reset it. That is why a backup key matters.'
-                    : 'Sin otra llave, el acceso no se puede recuperar: nadie, ni siquiera GatoPago, puede restablecerlo. Por eso importa tener una llave de respaldo.'}
-                </p>
-              </Faq>
-              <Faq
-                question={
-                  en
-                    ? 'What can GatoPago do with my account?'
-                    : '¿Qué puede hacer GatoPago con mi cuenta?'
-                }
-              >
-                <p>
-                  {en
-                    ? 'GatoPago does not hold your keys and cannot sign movements. It only pays the network fee of your operations; your account and your money stay on the blockchain even if GatoPago is unavailable.'
-                    : 'GatoPago no posee tus llaves ni puede firmar movimientos. Solo paga la comisión de red de tus operaciones; tu cuenta y tu dinero siguen en la blockchain aunque GatoPago no esté disponible.'}
-                </p>
-              </Faq>
-            </div>
-          </section>
         </div>
       )}
 
@@ -606,30 +381,32 @@ export function Security({
   );
 }
 
-function Faq({ question, children }: { question: string; children: ReactNode }) {
+/** A network where the latest key change is still to be applied, with the way to apply it. */
+function BehindRow({
+  network,
+  english: en,
+  busy,
+  onApply,
+}: {
+  network: string;
+  english: boolean;
+  busy: boolean;
+  onApply: () => void;
+}) {
   return (
-    <details className="group px-0.5">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-2.5 text-[14px] text-text">
-        {question}
-        <svg
-          aria-hidden="true"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="shrink-0 text-text-faint transition-transform group-open:rotate-180"
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
-      </summary>
-      <div className="flex flex-col gap-2 pb-2.5 text-[12px] leading-relaxed text-text-muted">
-        {children}
-      </div>
-    </details>
+    <div className="flex items-center justify-between gap-3 px-4 py-3">
+      <p className="text-[13px] text-pending">
+        {en ? `Still to apply on ${network}` : `Falta aplicar en ${network}`}
+      </p>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={onApply}
+        className="btn btn-primary min-h-10 shrink-0 px-4 text-[12px]"
+      >
+        {en ? 'Apply' : 'Aplicar'}
+      </button>
+    </div>
   );
 }
 
