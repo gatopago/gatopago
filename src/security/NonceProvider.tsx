@@ -5,7 +5,7 @@ import { validNonce } from './nonce';
 
 const NonceContext = createContext<string | null>(null);
 
-export function NonceProvider({ nonce, children }: { nonce: string; children: ReactNode }) {
+export function NonceProvider({ nonce, children }: { nonce: string | null; children: ReactNode }) {
   const [documentNonce] = useState(nonce);
   return <NonceContext.Provider value={documentNonce}>{children}</NonceContext.Provider>;
 }

@@ -6,7 +6,7 @@ import { pwaHeaders } from './src/pwa/manifest';
 void settings;
 
 /** Pages that show an account are never cached. */
-const privateHeaders = ['/login', '/app', '/settings/:path*'].map((source) => ({
+const privateHeaders = ['/login', '/app', '/approve', '/settings/:path*'].map((source) => ({
   source,
   headers: [
     { key: 'Cache-Control', value: 'private, no-store, max-age=0' },
@@ -20,6 +20,15 @@ const config: NextConfig = {
   agentRules: false,
   logging: { browserToTerminal: false, serverFunctions: false },
   poweredByHeader: false,
+  // Static pages have one path per language; links from before used `?lang=en`.
+  async redirects() {
+    return ['/docs', '/pay/demo-cafe-norte'].map((source) => ({
+      source,
+      has: [{ type: 'query' as const, key: 'lang', value: 'en' }],
+      destination: `/en${source}`,
+      permanent: true,
+    }));
+  },
   async headers() {
     return [
       {

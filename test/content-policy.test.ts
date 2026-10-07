@@ -13,6 +13,7 @@ const defaults = {
   apiOrigin: 'https://api.gatopago.com',
   networks: ['eip155:421614', 'eip155:43113', 'eip155:10143'],
   rpcUrls: { 'eip155:421614': 'https://arb-sepolia.g.alchemy.com/v2/browser-key' },
+  stellar: null as { network: string; rpcUrl?: string } | null,
   push: false,
   development: false,
   secure: true,
@@ -65,6 +66,17 @@ describe('Document CSP with per-response nonce', () => {
     expect(documentCsp(defaults)).not.toContain('*');
     expect(documentSecurityHeaders['Cache-Control']).toContain('no-store');
     expect(documentSecurityHeaders['Cross-Origin-Opener-Policy']).toBe('same-origin');
+  });
+  it("reaches Stellar's RPC, public or configured, only when Stellar is on", () => {
+    const connections = (stellar: (typeof defaults)['stellar']) =>
+      directives(documentCsp({ ...defaults, stellar }))['connect-src'];
+    expect(connections({ network: 'stellar:testnet' }).at(-1)).toBe(
+      'https://soroban-testnet.stellar.org',
+    );
+    expect(
+      connections({ network: 'stellar:testnet', rpcUrl: 'https://rpc.example.org/stellar' }).at(-1),
+    ).toBe('https://rpc.example.org');
+    expect(connections(null).join(' ')).not.toContain('stellar');
   });
   it('reaches Firebase Cloud Messaging only when notifications are configured', () => {
     const policy = directives(documentCsp({ ...defaults, push: true }));

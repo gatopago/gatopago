@@ -116,8 +116,8 @@ export function ContactsScreen({
             <p className="text-[13px] leading-relaxed text-text-muted">
               {invites === null
                 ? en
-                  ? 'Share your code and request/pay between friends.'
-                  : 'Comparte tu código y cobra/paga entre amigos.'
+                  ? 'Share your code and send each other money instantly, with no fees.'
+                  : 'Comparte tu código y pásense dinero al instante, sin comisiones.'
                 : invites.invited === 0
                   ? en
                     ? 'No one has joined with your code yet. Share it!'

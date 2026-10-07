@@ -14,7 +14,16 @@ import { localizedPath } from './routes';
 import { Sheet } from './Sheet';
 import { useProfile } from '../wallet/useProfile';
 
-export function MenuSheet({ english: en, onClose }: { english: boolean; onClose: () => void }) {
+export function MenuSheet({
+  english: en,
+  businessOrigin,
+  onClose,
+}: {
+  english: boolean;
+  /** GatoPago Business, the merchant console: its own site. */
+  businessOrigin: string;
+  onClose: () => void;
+}) {
   const { profile } = useProfile();
   const initial = (profile?.username ?? profile?.display_name ?? '')[0];
   const items = [
@@ -27,12 +36,11 @@ export function MenuSheet({ english: en, onClose }: { english: boolean; onClose:
     },
     {
       href: '/contacts',
-      es: 'Contactos y amigos',
-      en: 'Contacts and friends',
+      es: 'Contactos e invitaciones',
+      en: 'Contacts and invitations',
       icon: ProfileIcon,
       tone: 'brand',
     },
-    { href: '/business', es: 'Negocios', en: 'Business', icon: BusinessIcon, tone: 'info' },
     { href: '/settings', es: 'Ajustes', en: 'Settings', icon: SettingsIcon, tone: 'neutral' },
   ];
   return (
@@ -44,7 +52,7 @@ export function MenuSheet({ english: en, onClose }: { english: boolean; onClose:
         </h2>
         <button
           type="button"
-          onClick={onClose}
+          data-sheet-close
           className="meli-square-action h-11 w-11"
           aria-label={en ? 'Close menu' : 'Cerrar menú'}
         >
@@ -105,6 +113,24 @@ export function MenuSheet({ english: en, onClose }: { english: boolean; onClose:
         ))}
       </nav>
       <a
+        href={businessOrigin}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="meli-menu-row"
+        onClick={onClose}
+      >
+        <span className="meli-menu-row__icon" data-tone="info">
+          <BusinessIcon />
+        </span>
+        <span>
+          {en ? 'GatoPago Business' : 'GatoPago Negocios'}
+          <small className="block text-[12px] text-text-faint">
+            {en ? 'Charges, API keys and webhooks ↗' : 'Cobros, claves API y webhooks ↗'}
+          </small>
+        </span>
+        <ChevronIcon />
+      </a>
+      <a
         href="https://t.me/danelerc"
         target="_blank"
         rel="noopener noreferrer"
@@ -117,9 +143,6 @@ export function MenuSheet({ english: en, onClose }: { english: boolean; onClose:
         <span>{en ? 'Support' : 'Soporte'}</span>
         <ChevronIcon />
       </a>
-      <button type="button" className="btn-text mt-1.5 w-full" onClick={onClose}>
-        {en ? 'Close' : 'Cerrar'}
-      </button>
     </Sheet>
   );
 }

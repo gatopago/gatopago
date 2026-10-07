@@ -28,6 +28,11 @@
   :focus {
     outline: none;
   }
+  /* The keyboard always shows where it is; a tap or a click does not. */
+  :focus-visible {
+    outline: 3px solid var(--color-cat-500);
+    outline-offset: 3px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   *,

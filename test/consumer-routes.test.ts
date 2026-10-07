@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { consumerRoutes, localizedPath } from '../src/consumer/routes';
+import { consumerRoutes, localizedPath, safeNext } from '../src/consumer/routes';
 import { parseConsumerQr, qrReviewPath, reviewedRecipient } from '../src/consumer/qr';
 import { RecoveryScreen } from '../src/consumer/AccountScreens';
 import { MoveMenu } from '../src/consumer/MoveMenu';
@@ -15,6 +15,7 @@ vi.mock('../src/marketing/CatGlyph', () => ({ CatGlyph: () => createElement('spa
 vi.mock('../src/pwa/PwaControls', () => ({ PwaControls: () => null }));
 vi.mock('next/navigation', () => ({
   usePathname: () => '/app',
+  useRouter: () => ({ back: () => {}, replace: () => {} }),
   useSearchParams: () => new URLSearchParams(),
 }));
 
@@ -53,15 +54,17 @@ describe('Next migration inventory', () => {
     expect(readFileSync('src/app/[...missing]/route.ts', 'utf8')).toContain('status: 404');
   });
   it('keeps the marketing receipt separate from consumer payment routes', () => {
-    expect(existsSync(resolve('src/app/(es)/pay/demo-cafe-norte/page.tsx'))).toBe(true);
+    expect(existsSync(resolve('src/app/(static)/pay/demo-cafe-norte/page.tsx'))).toBe(true);
     expect(consumerRoutes).not.toHaveProperty('/pay/demo-cafe-norte');
     expect(parseConsumerQr('/pay/demo-cafe-norte', 'https://gatopago.com')).toBeNull();
   });
-  it('offers the three V2 Move choices', () => {
+  it('offers the V2 Move choices and paying a team; networks only in the advanced view', () => {
     const html = renderToStaticMarkup(createElement(MoveMenu, { english: false }));
-    for (const path of ['/move?flow=receive', '/send', '/swap'])
+    for (const path of ['/move?flow=receive', '/send', '/team', '/swap'])
       expect(html).toContain(`href="${path.replace('&', '&amp;')}"`);
-    expect(html.match(/meli-path-card-app/g)).toHaveLength(3);
+    // Rendered without a stored preference: the simple view, which never shows networks.
+    expect(html).not.toContain('href="/crosschain"');
+    expect(html.match(/meli-path-card-app/g)).toHaveLength(4);
   });
   it('explains permanent loss of access without presenting a recovery form', () => {
     for (const english of [true, false]) {
@@ -78,6 +81,18 @@ describe('Next migration inventory', () => {
 describe('Untrusted QR review', () => {
   const origin = 'https://gatopago.com';
   const address = '0x1111111111111111111111111111111111111111';
+  it("opens GatoPago Business's sign-in QR with its request only", () => {
+    const request = '0123456789abcdef0123456789abcdef';
+    const scanned = parseConsumerQr(`${origin}/approve?request=${request}&next=/send`, origin);
+    expect(scanned).toEqual({ kind: 'link', path: `/approve?request=${request}` });
+    expect(qrReviewPath(scanned!)).toBe(`/approve?request=${request}`);
+    for (const value of [
+      `${origin}/approve?request=short`,
+      `${origin}/approve`,
+      `https://evil.example/approve?request=${request}`,
+    ])
+      expect(parseConsumerQr(value, origin)).toBeNull();
+  });
   it.each([
     address,
     `eip155:421614:${address}`,
@@ -128,4 +143,15 @@ describe('Untrusted QR review', () => {
     params.set('chain', '421614');
     expect(reviewedRecipient(params, 'eip155:421614')).toBe(address);
   });
+});
+
+describe('Return after signing in', () => {
+  it.each(['/pay/pi_0123456789abcdef0123456789abcdef', '/send?username=maria&lang=en'])(
+    'continues to %s',
+    (path) => expect(safeNext(path)).toBe(path),
+  );
+  it.each([null, '', 'https://evil.com', '//evil.com', '/\\evil.com', '/login?next=/app', '/a b'])(
+    'ignores %s',
+    (path) => expect(safeNext(path)).toBeNull(),
+  );
 });

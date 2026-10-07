@@ -1,10 +1,10 @@
 'use client';
 
-import { useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { ClientSettings } from '../lib/settings';
 import { api } from '../wallet/api';
 import { failureMessage } from '../wallet/messages';
-import { findWallet, newWallet } from '../wallet/passkey';
+import { findAnyWallet, newAccountWallet } from '../wallet/passkey';
 import { forgetWallet, knownWallet, type Wallet } from '../wallet/session';
 import { signIn } from '../wallet/signIn';
 import { Turnstile, type TurnstileHandle } from './Turnstile';
@@ -13,8 +13,10 @@ import { StageOverlay } from '../consumer/StageOverlay';
 import { MeliSprite } from '../marketing/MeliSprite';
 
 /**
- * Sign-in and sign-up with a passkey. Signing in needs one passkey prompt on a device that has
- * used the account before, two elsewhere (find the account, then sign in).
+ * Sign-in and sign-up with a passkey: one button for each, whatever key owns the account. With
+ * `settings.mera`, a new account is owned by the key Mera derives from its passkey when the device
+ * supports PRF (one prompt to sign in anywhere); otherwise by the passkey itself (one prompt on a
+ * device that used it before, two elsewhere: find the account, then sign in).
  */
 export function PasskeyAccess({
   settings,
@@ -41,7 +43,30 @@ export function PasskeyAccess({
   const [created, setCreated] = useState<Wallet | null>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
+  /**
+   * Whether Wallet Core asks new accounts for an invitation now (`INVITE_ONLY`): `null` until it
+   * answers, so the field never shows only to disappear.
+   */
+  const [inviteRequired, setInviteRequired] = useState<boolean | null>(null);
+  useEffect(() => {
+    let active = true;
+    api<{ invite_required: boolean }>(settings.apiOrigin, 'auth/signup')
+      .then(({ invite_required }) => {
+        if (active) setInviteRequired(invite_required);
+      })
+      // Unknown: ask for one; an invitation is always accepted.
+      .catch(() => {
+        if (active) setInviteRequired(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [settings.apiOrigin]);
   const verification = useRef<TurnstileHandle>(null);
+  // Mera loads after the page shows, so the passkey prompt opens right on the tap.
+  useEffect(() => {
+    if (settings.mera) void import('../wallet/mera');
+  }, [settings.mera]);
 
   function perform(action: () => Promise<void>) {
     if (busy) return;
@@ -54,7 +79,7 @@ export function PasskeyAccess({
 
   function enter(wallet: Wallet | null) {
     perform(async () => {
-      await signIn(settings, wallet ?? (await findWallet(settings)));
+      await signIn(settings, wallet ?? (await findAnyWallet(settings)));
       onSignedIn('/app');
     });
   }
@@ -64,10 +89,13 @@ export function PasskeyAccess({
     const checker = verification.current;
     if (!checker) return;
     perform(async () => {
-      const wallet = created ?? (await newWallet(settings, username));
+      const wallet = created ?? (await newAccountWallet(settings, username));
       setCreated(wallet);
       const turnstile = await checker.token(AbortSignal.timeout(60_000));
-      const session = await signIn(settings, wallet, { invite: invite.trim(), turnstile });
+      const session = await signIn(settings, wallet, {
+        invite: invite.trim() || undefined,
+        turnstile,
+      });
       try {
         await api(settings.apiOrigin, 'profile', {
           method: 'PUT',
@@ -95,8 +123,8 @@ export function PasskeyAccess({
                 ? 'Creating your account. Confirm on your device when asked.'
                 : 'Creando tu cuenta. Confirma en tu dispositivo cuando se te solicite.'
               : en
-                ? 'Signing in. Confirm with your passkey.'
-                : 'Entrando. Confirma con tu passkey.'
+                ? 'Signing in. Confirm with your fingerprint or face.'
+                : 'Entrando. Confirma con tu huella o tu rostro.'
             : null
         }
         spinner={false}
@@ -127,7 +155,7 @@ export function PasskeyAccess({
                 enter(null);
               }}
             >
-              {en ? 'Use another key' : 'Usar otra llave'}
+              {en ? 'Use another account' : 'Entrar con otra cuenta'}
             </button>
           ) : null}
           <button
@@ -141,11 +169,13 @@ export function PasskeyAccess({
           >
             {en ? 'Create account' : 'Crear cuenta'}
           </button>
-          <p className="auth-access-note">
-            {en
-              ? 'You need an invitation to create an account.'
-              : 'Necesitas una invitación para crear una cuenta.'}
-          </p>
+          {inviteRequired === true ? (
+            <p className="auth-access-note">
+              {en
+                ? 'You need an invitation to create an account.'
+                : 'Necesitas una invitación para crear una cuenta.'}
+            </p>
+          ) : null}
         </>
       ) : (
         <form onSubmit={register} className="flex flex-col items-center text-center">
@@ -156,7 +186,7 @@ export function PasskeyAccess({
           >
             <div className="grid grid-cols-3 gap-2 text-[10px] font-semibold uppercase tracking-[0.08em]">
               <span className="text-growth">{en ? 'Details' : 'Datos'}</span>
-              <span className="text-cat-300">{en ? 'Fingerprint' : 'Huella'}</span>
+              <span className="text-cat-300">{en ? 'Your key' : 'Tu llave'}</span>
               <span className="text-text-faint">{en ? 'Ready' : 'Listo'}</span>
             </div>
             <PixelRail state="active" className="mt-1" />
@@ -171,20 +201,26 @@ export function PasskeyAccess({
           </h2>
           <p className="mb-8 max-w-[300px] text-[15px] leading-relaxed text-text-muted">
             {en
-              ? "Let's create your account. Your fingerprint is your key: no passwords or strange phrases."
-              : 'Vamos a crear tu cuenta. Tu huella será tu llave: sin contraseñas ni frases raras.'}
+              ? 'Your fingerprint or face will be your key: no passwords and no strange phrases.'
+              : 'Tu huella o tu rostro serán tu llave: sin contraseñas ni frases raras.'}
           </p>
           <div className="meli-paper-card meli-paper-card--strong flex w-full max-w-[320px] flex-col gap-3.5 p-5">
             <Reassurance>
               {en ? 'Your money is always yours' : 'Tu dinero siempre es tuyo'}
             </Reassurance>
             <Reassurance>
-              {en
-                ? 'You confirm every payment with your fingerprint'
-                : 'Confirmas cada pago con tu huella'}
+              {settings.mera
+                ? en
+                  ? `One touch when you open the app, then pay without confirming each time for ${settings.meraSessionMinutes} minutes`
+                  : `Un toque al abrir la app y pagas sin confirmar cada vez durante ${settings.meraSessionMinutes} minutos`
+                : en
+                  ? 'You confirm every payment with your fingerprint'
+                  : 'Confirmas cada pago con tu huella'}
             </Reassurance>
             <Reassurance>
-              {en ? 'Gas covered by GatoPago' : 'Gas cubierto por GatoPago'}
+              {en
+                ? 'No network fees: GatoPago pays them'
+                : 'Sin comisiones de red: las paga GatoPago'}
             </Reassurance>
           </div>
           <div className="mt-6 flex w-full max-w-[320px] flex-col gap-4 text-left">
@@ -226,39 +262,43 @@ export function PasskeyAccess({
                   : '3–30 caracteres: letras, números y guion bajo. Empieza con una letra.'}
               </span>
             </label>
-            <label className="block text-[12px] text-text-muted">
-              <span className="mb-2 block">{en ? 'Invitation code' : 'Código de invitación'}</span>
-              <span className="flex h-12 items-center gap-2 border-2 border-text bg-surface px-4">
-                <svg
-                  aria-hidden="true"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="shrink-0 text-text-faint"
-                >
-                  <path d="M20 12v8H4v-8" />
-                  <path d="M2 7h20v5H2z" />
-                  <path d="M12 22V7" />
-                  <path d="M12 7c-1.5 0-3-1.5-3-3a2 2 0 0 1 4 0c0 1.5-1.5 3-1 3Z" />
-                </svg>
-                <input
-                  autoComplete="off"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  required
-                  value={invite}
-                  disabled={busy}
-                  onChange={(event) => setInvite(event.target.value)}
-                  placeholder={en ? 'Invite code' : 'Código de invitación'}
-                  className="min-w-0 flex-1 bg-transparent text-center text-[13px] tracking-wide text-text placeholder:text-text-faint"
-                />
-              </span>
-            </label>
+            {inviteRequired === true || invite ? (
+              <label className="block text-[12px] text-text-muted">
+                <span className="mb-2 block">
+                  {en ? 'Invitation code' : 'Código de invitación'}
+                </span>
+                <span className="flex h-12 items-center gap-2 border-2 border-text bg-surface px-4">
+                  <svg
+                    aria-hidden="true"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="shrink-0 text-text-faint"
+                  >
+                    <path d="M20 12v8H4v-8" />
+                    <path d="M2 7h20v5H2z" />
+                    <path d="M12 22V7" />
+                    <path d="M12 7c-1.5 0-3-1.5-3-3a2 2 0 0 1 4 0c0 1.5-1.5 3-1 3Z" />
+                  </svg>
+                  <input
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    required={inviteRequired === true}
+                    value={invite}
+                    disabled={busy}
+                    onChange={(event) => setInvite(event.target.value)}
+                    placeholder={en ? 'Invite code' : 'Código de invitación'}
+                    className="min-w-0 flex-1 bg-transparent text-center text-[13px] tracking-wide text-text placeholder:text-text-faint"
+                  />
+                </span>
+              </label>
+            ) : null}
             <details className="text-[12px] text-text-muted">
               <summary>
                 {en ? 'How to keep access to my account' : 'Cómo conservar el acceso a mi cuenta'}
@@ -294,7 +334,7 @@ export function PasskeyAccess({
                 setError('');
               }}
             >
-              {en ? 'Not today, thanks' : 'Hoy no, gracias'}
+              {en ? 'I already have an account' : 'Ya tengo una cuenta'}
             </button>
           </div>
         </form>

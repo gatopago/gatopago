@@ -17,8 +17,8 @@
   --meli-border-light: rgb(11 11 15 / 14%);
   --meli-container: 1200px;
   --meli-section-space: clamp(6rem, 11vw, 10rem);
-  --meli-font: 'Recursive Variable', 'Recursive', ui-sans-serif, system-ui, sans-serif;
-  --meli-mono: 'Recursive Variable', 'Recursive', ui-monospace, SFMono-Regular, Consolas, monospace;
+  --meli-font: var(--font-recursive), ui-sans-serif, system-ui, sans-serif;
+  --meli-mono: var(--font-recursive), ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
 html:has(.meli-landing) {
@@ -722,9 +722,9 @@ body:has(.meli-landing) {
   padding: 8px 10px;
   border: 1px solid var(--meli-border-dark);
   background: var(--meli-ink);
-  color: rgb(255 248 240 / 65%);
+  color: rgb(255 248 240 / 72%);
   font-family: var(--meli-mono);
-  font-size: 0.64rem;
+  font-size: 0.72rem;
   font-variation-settings:
     'MONO' 1,
     'wght' 590;
@@ -937,9 +937,9 @@ body:has(.meli-landing) {
   bottom: -2%;
   left: 1%;
   margin: 0;
-  color: rgb(255 248 240 / 45%);
+  color: rgb(255 248 240 / 68%);
   font-family: var(--meli-mono);
-  font-size: 0.59rem;
+  font-size: 0.68rem;
   font-variation-settings:
     'MONO' 1,
     'wght' 550;
@@ -1127,7 +1127,7 @@ body:has(.meli-landing) {
 
 .meli-cycle-state small {
   margin-top: 12px;
-  color: color-mix(in srgb, currentColor 62%, transparent);
+  color: color-mix(in srgb, currentColor 76%, transparent);
   font-size: 0.83rem;
   line-height: 1.45;
 }
@@ -1319,7 +1319,7 @@ body:has(.meli-landing) {
   align-items: center;
   gap: 8px;
   margin: 0 0 12px;
-  color: rgb(255 248 240 / 48%);
+  color: rgb(255 248 240 / 64%);
   font-family: var(--meli-mono);
   font-size: 0.62rem;
   font-variation-settings:
@@ -1396,7 +1396,7 @@ body:has(.meli-landing) {
 
 .meli-app-frame__header small {
   margin-top: 2px;
-  color: rgb(11 11 15 / 48%);
+  color: rgb(11 11 15 / 64%);
   font-family: var(--meli-mono);
   font-size: 0.62rem;
   font-variation-settings:
@@ -1552,7 +1552,7 @@ body:has(.meli-landing) {
 .meli-activity-card__heading {
   display: flex;
   justify-content: space-between;
-  color: rgb(11 11 15 / 48%);
+  color: rgb(11 11 15 / 64%);
   font-size: 0.7rem;
   font-weight: 680;
 }
@@ -1586,7 +1586,7 @@ body:has(.meli-landing) {
 
 .meli-activity-row small {
   margin-top: 3px;
-  color: rgb(11 11 15 / 48%);
+  color: rgb(11 11 15 / 64%);
   font-size: 0.62rem;
 }
 
@@ -1641,7 +1641,7 @@ body:has(.meli-landing) {
 
 .meli-channel-list .is-future {
   border-style: dashed;
-  opacity: 0.6;
+  opacity: 0.78;
 }
 
 .meli-honesty-note {
@@ -1653,7 +1653,7 @@ body:has(.meli-landing) {
   padding: 14px;
   border-left: 4px solid var(--meli-ink);
   background: rgb(255 248 240 / 18%);
-  color: rgb(11 11 15 / 75%) !important;
+  color: rgb(11 11 15 / 82%) !important;
   font-size: 0.78rem !important;
   line-height: 1.5 !important;
 }
@@ -1755,7 +1755,7 @@ body:has(.meli-landing) {
 
 .meli-receipt-label {
   margin: 34px 0 8px;
-  color: rgb(11 11 15 / 48%);
+  color: rgb(11 11 15 / 64%);
   font-size: 0.68rem;
   font-weight: 680;
 }
@@ -1783,7 +1783,7 @@ body:has(.meli-landing) {
 }
 
 .meli-receipt-main > div:first-child > span {
-  color: rgb(11 11 15 / 48%);
+  color: rgb(11 11 15 / 64%);
   font-size: 0.68rem;
   font-weight: 680;
 }
@@ -1812,7 +1812,7 @@ body:has(.meli-landing) {
 
 .meli-receipt-main p {
   margin: 10px 0 0;
-  color: rgb(11 11 15 / 54%);
+  color: rgb(11 11 15 / 66%);
   font-size: 0.75rem;
 }
 
@@ -1917,7 +1917,7 @@ body:has(.meli-landing) {
   position: absolute;
   right: 24px;
   bottom: 20px;
-  color: rgb(255 248 240 / 34%);
+  color: rgb(255 248 240 / 60%);
   font-family: var(--meli-mono);
   font-variation-settings:
     'MONO' 1,
@@ -2023,9 +2023,9 @@ body:has(.meli-landing) {
 }
 
 .meli-grow-details > div span {
-  color: rgb(255 248 240 / 42%);
+  color: rgb(255 248 240 / 64%);
   font-family: var(--meli-mono);
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   font-variation-settings:
     'MONO' 1,
     'wght' 630;
@@ -2068,147 +2068,6 @@ body:has(.meli-landing) {
     'MONO' 1,
     'wght' 800;
 }
-.meli-move .meli-container {
-  position: relative;
-}
-
-.meli-move .meli-section-heading--wide {
-  max-width: 760px;
-}
-
-.meli-move-mascot {
-  position: absolute;
-  top: -12px;
-  right: 0;
-  width: 300px;
-}
-
-.meli-move-mascot .meli-sprite__image {
-  animation: meli-conveyor-idle 3.4s steps(4, end) infinite;
-}
-
-@keyframes meli-conveyor-idle {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  50% {
-    transform: translateX(5px);
-  }
-}
-
-.meli-path-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin-top: 72px;
-}
-
-:where(.meli-landing) .meli-path-card {
-  position: relative;
-  display: flex;
-  min-height: 350px;
-  flex-direction: column;
-  padding: 22px;
-  border: 2px solid var(--meli-ink);
-  background: var(--meli-paper);
-  box-shadow: 0 0 0 var(--meli-cat-shadow);
-  transition:
-    box-shadow 160ms steps(3, end),
-    transform 160ms steps(3, end),
-    background-color 160ms ease;
-}
-
-:where(.meli-landing) .meli-path-card:hover {
-  background: var(--meli-cat-fire);
-  box-shadow: 8px 8px 0 var(--meli-cat-shadow);
-  transform: translate(-4px, -4px);
-}
-
-.meli-path-card__glyph {
-  display: grid;
-  width: 66px;
-  height: 66px;
-  place-items: center;
-  border: 2px solid var(--meli-ink);
-  background: var(--meli-ink);
-  color: var(--meli-milk);
-}
-
-.meli-path-card__glyph span {
-  font-family: var(--meli-mono);
-  font-size: 1.5rem;
-  font-variation-settings:
-    'MONO' 1,
-    'wght' 790;
-}
-
-:where(.meli-landing) .meli-path-card > p {
-  position: absolute;
-  top: 24px;
-  right: 22px;
-  margin: 0;
-  color: var(--meli-cat-shadow);
-  font-family: var(--meli-mono);
-  font-size: 0.65rem;
-  font-variation-settings:
-    'MONO' 1,
-    'wght' 740;
-}
-
-:where(.meli-landing) .meli-path-card:hover > p {
-  color: var(--meli-ink);
-}
-
-:where(.meli-landing) .meli-path-card h3 {
-  margin: 48px 0 0;
-  font-size: 2rem;
-  font-variation-settings:
-    'CASL' 0.55,
-    'wght' 780;
-  font-weight: 780;
-  letter-spacing: -0.055em;
-}
-
-:where(.meli-landing) .meli-path-card > span {
-  margin-top: 12px;
-  color: rgb(11 11 15 / 58%);
-  font-size: 0.82rem;
-  line-height: 1.5;
-}
-
-.meli-path-card__footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: auto;
-  padding-top: 18px;
-  border-top: 1px solid var(--meli-border-light);
-}
-
-.meli-path-card__footer small {
-  font-family: var(--meli-mono);
-  font-size: 0.58rem;
-  font-variation-settings:
-    'MONO' 1,
-    'wght' 620;
-  text-transform: uppercase;
-}
-
-.meli-path-card__footer i {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  background: var(--meli-cat-fire);
-  font-style: normal;
-  font-weight: 800;
-}
-
-.meli-path-card:hover .meli-path-card__footer i {
-  background: var(--meli-ink);
-  color: var(--meli-cat-fire);
-}
 .meli-control {
   border-bottom: 1px solid var(--meli-border-dark);
 }
@@ -2220,9 +2079,9 @@ body:has(.meli-landing) {
 .meli-dialog-hint {
   display: block;
   margin-top: 14px;
-  color: rgb(255 248 240 / 42%);
+  color: rgb(255 248 240 / 68%);
   font-family: var(--meli-mono);
-  font-size: 0.61rem;
+  font-size: 0.78rem;
   font-variation-settings:
     'MONO' 1,
     'wght' 580;
@@ -2429,7 +2288,7 @@ body:has(.meli-landing) {
 }
 
 .meli-dialog dt {
-  color: rgb(11 11 15 / 50%);
+  color: rgb(11 11 15 / 64%);
 }
 
 .meli-dialog dd {
@@ -2442,7 +2301,7 @@ body:has(.meli-landing) {
   gap: 10px;
   align-items: center;
   margin: 18px 0 0;
-  color: rgb(11 11 15 / 56%);
+  color: rgb(11 11 15 / 66%);
   font-size: 0.7rem;
   line-height: 1.45;
 }
@@ -2660,9 +2519,9 @@ body:has(.meli-landing) {
 .meli-card-notice {
   display: block;
   margin-top: 16px;
-  color: rgb(11 11 15 / 46%);
+  color: rgb(11 11 15 / 68%);
   font-family: var(--meli-mono);
-  font-size: 0.61rem;
+  font-size: 0.78rem;
   font-variation-settings:
     'MONO' 1,
     'wght' 580;
@@ -2705,9 +2564,9 @@ body:has(.meli-landing) {
 .meli-api-note {
   display: block;
   margin-top: 18px;
-  color: rgb(255 248 240 / 38%);
+  color: rgb(255 248 240 / 68%);
   font-family: var(--meli-mono);
-  font-size: 0.59rem;
+  font-size: 0.78rem;
   font-variation-settings:
     'MONO' 1,
     'wght' 550;
@@ -2749,7 +2608,7 @@ body:has(.meli-landing) {
 
 .meli-code-window__bar small {
   margin-left: auto;
-  color: rgb(255 248 240 / 36%);
+  color: rgb(255 248 240 / 60%);
   font-family: var(--meli-mono);
   font-size: 0.58rem;
   font-variation-settings:
@@ -2775,7 +2634,7 @@ body:has(.meli-landing) {
 }
 
 :where(.meli-landing) .code-muted {
-  color: rgb(255 248 240 / 34%);
+  color: rgb(255 248 240 / 58%);
 }
 
 .meli-code-response {
@@ -2996,7 +2855,7 @@ body:has(.meli-landing) {
 
 .meli-final__inner > p:not(.meli-kicker) {
   margin-inline: auto;
-  color: rgb(11 11 15 / 68%);
+  color: rgb(11 11 15 / 86%);
 }
 
 .meli-final__actions {
@@ -3054,7 +2913,7 @@ body:has(.meli-landing) {
 .meli-footer__brand > p {
   max-width: 280px;
   margin: 18px 0 0;
-  color: rgb(255 248 240 / 48%);
+  color: rgb(255 248 240 / 64%);
   font-size: 0.82rem;
   line-height: 1.55;
 }
@@ -3064,9 +2923,9 @@ body:has(.meli-landing) {
   gap: 8px;
   align-items: center;
   margin-top: 22px;
-  color: rgb(255 248 240 / 42%);
+  color: rgb(255 248 240 / 66%);
   font-family: var(--meli-mono);
-  font-size: 0.58rem;
+  font-size: 0.68rem;
   font-variation-settings:
     'MONO' 1,
     'wght' 570;
@@ -3115,9 +2974,9 @@ body:has(.meli-landing) {
   margin-top: 64px;
   padding-top: 24px;
   border-top: 1px solid var(--meli-border-dark);
-  color: rgb(255 248 240 / 32%);
+  color: rgb(255 248 240 / 64%);
   font-family: var(--meli-mono);
-  font-size: 0.57rem;
+  font-size: 0.72rem;
   font-variation-settings:
     'MONO' 1,
     'wght' 540;
@@ -3184,22 +3043,6 @@ body:has(.meli-landing) {
   .meli-signal:nth-child(4) {
     border-top: 1px solid var(--meli-border-light);
     border-right: 1px solid var(--meli-border-light);
-  }
-
-  .meli-path-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .meli-path-card {
-    min-height: 310px;
-  }
-
-  .meli-move-mascot {
-    position: relative;
-    top: auto;
-    right: auto;
-    width: min(280px, 72%);
-    margin: 34px 0 -24px auto;
   }
 
   .meli-split {
@@ -3306,6 +3149,10 @@ body:has(.meli-landing) {
 }
 
 @media (max-width: 620px) {
+  :root:has(.meli-landing) {
+    --meli-section-space: clamp(3.75rem, 15vw, 5.5rem);
+  }
+
   html:has(.meli-landing) {
     scroll-padding-top: 80px;
   }
@@ -3338,13 +3185,13 @@ body:has(.meli-landing) {
   }
 
   .meli-hero {
-    padding-top: 118px;
-    padding-bottom: 74px;
+    padding-top: 100px;
+    padding-bottom: 56px;
   }
 
   .meli-hero h1 {
-    font-size: clamp(3.25rem, 17vw, 5.2rem);
-    line-height: 0.88;
+    font-size: clamp(2.75rem, 14vw, 4.4rem);
+    line-height: 0.9;
   }
 
   .meli-hero__copy {
@@ -3359,15 +3206,24 @@ body:has(.meli-landing) {
     order: 2;
   }
 
-  .meli-hero__visual {
-    order: 3;
+  /* The promise and the way in come first; the cat follows. */
+  .meli-hero__grid {
+    gap: 0;
+  }
+
+  .meli-hero__copy h1 {
+    margin-top: 18px;
   }
 
   .meli-hero__lead {
-    order: 4;
+    order: 3;
   }
 
   .meli-hero__actions {
+    order: 4;
+  }
+
+  .meli-hero__visual {
     order: 5;
   }
 
@@ -3376,14 +3232,15 @@ body:has(.meli-landing) {
   }
 
   .meli-hero__lead {
-    margin-top: 26px;
+    margin-top: 20px;
     font-size: 1rem;
   }
 
   .meli-hero__actions {
     display: grid;
     grid-template-columns: 1fr;
-    margin-top: 30px;
+    gap: 10px;
+    margin-top: 24px;
   }
 
   .meli-hero__actions .meli-button {
@@ -3400,8 +3257,8 @@ body:has(.meli-landing) {
   }
 
   .meli-hero__visual {
-    min-height: 330px;
-    margin-top: 2px;
+    min-height: 280px;
+    margin-top: 28px;
   }
 
   .meli-cat-stage {
@@ -3409,7 +3266,7 @@ body:has(.meli-landing) {
   }
 
   .meli-hero-character {
-    width: min(82%, 390px);
+    width: min(68%, 300px);
   }
 
   .meli-dream-pixels {
@@ -3446,45 +3303,49 @@ body:has(.meli-landing) {
   .meli-signal,
   .meli-signal:nth-child(3),
   .meli-signal:nth-child(4) {
-    min-height: 116px;
+    min-height: 0;
     border-top: 1px solid var(--meli-border-light);
     border-right: 1px solid var(--meli-border-light);
-    padding: 24px 18px;
+    padding: 18px 16px;
   }
 
   .meli-section-heading h2,
   .meli-grow__heading h2 {
-    font-size: clamp(2.65rem, 13vw, 4.25rem);
+    font-size: clamp(2.1rem, 10.5vw, 3.3rem);
   }
 
   .meli-cycle-lab {
-    margin-top: 48px;
-    box-shadow: 7px 7px 0 var(--meli-cat-shadow);
+    margin-top: 32px;
+    box-shadow: 6px 6px 0 var(--meli-cat-shadow);
   }
 
   .meli-cycle-lab__topline {
     font-size: 0.56rem;
   }
 
-  .meli-cycle-track {
-    grid-template-columns: 1fr;
-  }
-
-  .meli-cycle-state,
-  .meli-cycle-state:nth-child(2),
-  .meli-cycle-state:nth-child(3),
-  .meli-cycle-state:nth-child(4) {
-    min-height: 190px;
-    border-top: 1px solid var(--meli-border-light);
-    border-right: 0;
-  }
-
-  .meli-cycle-state:first-child {
-    border-top: 0;
+  /* Two by two: the four steps fit on one screen, next to what each one does. */
+  .meli-cycle-state {
+    padding: 16px 14px 30px;
   }
 
   .meli-cycle-state__number {
-    margin-bottom: 22px;
+    margin-bottom: 12px;
+  }
+
+  .meli-cycle-state strong {
+    font-size: 1.25rem;
+  }
+
+  .meli-cycle-state small {
+    margin-top: 6px;
+    font-size: 0.76rem;
+  }
+
+  .meli-cycle-state i {
+    right: 14px;
+    bottom: 14px;
+    left: 14px;
+    height: 3px;
   }
 
   .meli-cycle-output {
@@ -3536,27 +3397,16 @@ body:has(.meli-landing) {
   }
 
   .meli-grow-route {
-    margin-top: 52px;
+    margin-top: 36px;
   }
 
   .meli-grow-bucket {
-    min-height: 200px;
-    padding: 26px;
+    min-height: 0;
+    padding: 22px;
   }
 
-  .meli-path-grid {
-    grid-template-columns: 1fr;
-    margin-top: 48px;
-  }
-
-  .meli-move-mascot {
-    width: min(230px, 78%);
-    margin-top: 28px;
-    margin-bottom: -10px;
-  }
-
-  .meli-path-card {
-    min-height: 280px;
+  .meli-grow-bridge {
+    height: 72px;
   }
 
   .meli-control-card {
@@ -3633,7 +3483,7 @@ body:has(.meli-landing) {
   }
 
   .meli-final h2 {
-    font-size: clamp(3.4rem, 17vw, 5.5rem);
+    font-size: clamp(2.5rem, 12.5vw, 4rem);
   }
 
   .meli-final__actions {
@@ -3672,4 +3522,10 @@ body:has(.meli-landing) {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* On orange sections the focus ring is ink, so it stays visible. */
+.meli-section--ember :focus-visible,
+.meli-final :focus-visible {
+  outline-color: var(--meli-ink);
 }

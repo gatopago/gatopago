@@ -45,8 +45,11 @@ const Charge = dynamic(() => import('./ChargeScreen').then((m) => m.ChargeScreen
 const Contacts = dynamic(() => import('./ContactsScreen').then((m) => m.ContactsScreen), {
   loading: DetailLoading,
 });
-const Business = dynamic(() => import('../business/Business').then((m) => m.Business), {
+const Approve = dynamic(() => import('./ApproveScreen').then((m) => m.ApproveScreen), {
   loading: DetailLoading,
+});
+const Team = dynamic(() => import('./TeamScreen').then((m) => m.TeamScreen), {
+  loading: FormLoading,
 });
 const Crosschain = dynamic(() => import('../wallet/Crosschain').then((m) => m.Crosschain), {
   loading: FormLoading,
@@ -71,6 +74,8 @@ export function ConsumerContent({
       return <MoveMenu english={en} />;
     case 'send':
       return <Send {...props} />;
+    case 'team':
+      return <Team {...props} />;
     case 'receive':
       return <Receive {...props} />;
     case 'scan':
@@ -87,8 +92,8 @@ export function ConsumerContent({
       return <Charge {...props} />;
     case 'contacts':
       return <Contacts {...props} />;
-    case 'business':
-      return <Business {...props} />;
+    case 'approve':
+      return <Approve {...props} />;
     case 'crosschain':
       return <Crosschain {...props} />;
     case 'settings':

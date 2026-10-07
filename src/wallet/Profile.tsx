@@ -94,7 +94,14 @@ function ProfileEditor({
   const [username, setUsername] = useState('');
   const [busy, setBusy] = useState<'profile' | 'username' | null>(null);
   const [notice, setNotice] = useState<{ tone: 'success' | 'warning'; text: string } | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'link' | 'address' | null>(null);
+  const link = profile.username ? `${settings.webOrigin}/@${profile.username}` : null;
+  function copy(value: string, what: 'link' | 'address') {
+    void navigator.clipboard.writeText(value).then(() => {
+      setCopied(what);
+      setTimeout(() => setCopied(null), 2000);
+    });
+  }
   const profileChanged =
     displayName.trim() !== (profile.display_name ?? '') ||
     socialUrl.trim() !== (profile.social_url ?? '');
@@ -138,7 +145,7 @@ function ProfileEditor({
   }
 
   return (
-    <div className="animate-fade-up">
+    <div>
       <div className="mb-7 flex items-center gap-4 px-1">
         <div className="flex h-16 w-16 items-center justify-center border-2 border-text bg-cat-500 font-display text-[22px] text-on-cat uppercase shadow-[5px_5px_0_var(--color-cat-700)]">
           {(profile.display_name || profile.username || 'G')[0]}
@@ -158,13 +165,12 @@ function ProfileEditor({
         </div>
       ) : null}
 
-      <SettingsSection title={en ? 'Profile' : 'Perfil'} icon={<UserIcon />} tone="brand">
+      <SettingsSection
+        title={en ? 'How people see you' : 'Cómo te ven'}
+        icon={<UserIcon />}
+        tone="brand"
+      >
         <form className="p-5" onSubmit={(event) => save(event, 'profile')}>
-          <p className="mb-3 text-[13px] text-text-muted">
-            {en
-              ? 'This is how people who pay you will see you.'
-              : 'Así te verán las personas que te pagan.'}
-          </p>
           <Label htmlFor="profile-display-name">
             {en ? 'Display name' : 'Nombre para mostrar'}
           </Label>
@@ -194,8 +200,8 @@ function ProfileEditor({
           />
           <p className="mb-3 text-[12px] text-text-faint">
             {en
-              ? 'Instagram, X, Telegram, TikTok or Facebook. Shown on your payment page.'
-              : 'Instagram, X, Telegram, TikTok o Facebook. Se muestra en tu página de pago.'}
+              ? 'Instagram, X, Telegram, TikTok or Facebook. It appears on your public page.'
+              : 'Instagram, X, Telegram, TikTok o Facebook. Aparece en tu página pública.'}
           </p>
           <button
             type="submit"
@@ -210,17 +216,32 @@ function ProfileEditor({
       <SettingsSection title={en ? 'Your username' : 'Tu usuario'} icon={<UserIcon />} tone="info">
         <form className="p-5" onSubmit={(event) => save(event, 'username')}>
           <p className="mb-3 text-[13px] text-text-muted">
-            {en
-              ? 'Get paid with an easy-to-share name.'
-              : 'Recibe pagos con un nombre fácil de compartir.'}
+            {link
+              ? en
+                ? 'Share your link: whoever opens it can pay you.'
+                : 'Comparte tu link: quien lo abre puede pagarte.'
+              : en
+                ? 'Get paid with an easy-to-share name.'
+                : 'Recibe pagos con un nombre fácil de compartir.'}
           </p>
-          <div className="mb-3 flex h-12 items-center gap-2 border-2 border-text bg-surface px-3.5">
-            <span className="text-[14px] text-text-faint">
-              {new URL(settings.webOrigin).host}/@
-            </span>
-            {profile.username ? (
-              <span className="min-w-0 flex-1 truncate text-[14px]">{profile.username}</span>
-            ) : (
+          {link ? (
+            <div className="mb-3 flex items-center gap-3 border border-border bg-surface-2 py-1 pr-1 pl-3.5">
+              <span className="min-w-0 flex-1 truncate text-[14px]">
+                {new URL(settings.webOrigin).host}/@{profile.username}
+              </span>
+              <button
+                type="button"
+                onClick={() => copy(link, 'link')}
+                className="btn btn-primary btn-sm shrink-0"
+              >
+                {copied === 'link' ? (en ? 'Copied ✓' : 'Copiado ✓') : en ? 'Copy' : 'Copiar'}
+              </button>
+            </div>
+          ) : (
+            <div className="mb-3 flex h-12 items-center gap-2 border-2 border-text bg-surface px-3.5">
+              <span className="text-[14px] text-text-faint">
+                {new URL(settings.webOrigin).host}/@
+              </span>
               <input
                 type="text"
                 required
@@ -236,13 +257,13 @@ function ProfileEditor({
                 }
                 className="min-w-0 flex-1 bg-transparent text-[14px] text-text"
               />
-            )}
-          </div>
+            </div>
+          )}
           {profile.username ? (
             <p className="text-[12px] text-text-faint">
               {en
-                ? 'Your username is permanent so payment links never change hands.'
-                : 'Tu usuario es permanente para que tus enlaces de pago nunca cambien de dueño.'}
+                ? 'Your username cannot change, so your link always reaches you.'
+                : 'Tu usuario no cambia, así tu link siempre llega a ti.'}
             </p>
           ) : (
             <>
@@ -277,14 +298,10 @@ function ProfileEditor({
           <div className="flex gap-2.5">
             <button
               type="button"
-              onClick={() =>
-                void navigator.clipboard
-                  .writeText(session.wallet.address)
-                  .then(() => setCopied(true))
-              }
+              onClick={() => copy(session.wallet.address, 'address')}
               className="btn btn-ghost btn-sm flex-1"
             >
-              {copied ? (en ? 'Copied' : 'Copiada') : en ? 'Copy' : 'Copiar'}
+              {copied === 'address' ? (en ? 'Copied ✓' : 'Copiada ✓') : en ? 'Copy' : 'Copiar'}
             </button>
             {explorer ? (
               <a
@@ -293,7 +310,7 @@ function ProfileEditor({
                 rel="noopener noreferrer"
                 className="btn btn-ghost btn-sm flex-1"
               >
-                {en ? 'View in explorer' : 'Ver en explorador'}
+                {en ? 'See on the blockchain' : 'Ver en la blockchain'}
               </a>
             ) : null}
           </div>

@@ -3,7 +3,10 @@ import type { Address, Hex } from 'viem';
 /** The passkey this device signs with and the account it owns. */
 export interface Wallet {
   readonly credentialId: string;
+  /** The passkey's P-256 key; `0x` for a Mera account, which `meraOwner` signs for. */
   readonly publicKey: Hex;
+  /** The key Mera derives from the passkey (`credentialId`), when it owns the account. */
+  readonly meraOwner?: Address;
   readonly address: Address;
   /** Owners the account was created with; its address derives from them. */
   readonly initialOwners: readonly Hex[];

@@ -1,8 +1,8 @@
 import Image from 'next/image';
 
-/** Original token images recovered from the V2 client. */
+/** Token images: USDC, ETH and WBTC from the V2 client; AUSD and MON from CoinGecko. */
 export function TokenIcon({ symbol, size = 28 }: { symbol: string; size?: number }) {
-  if (['USDC', 'ETH', 'WBTC'].includes(symbol))
+  if (['USDC', 'ETH', 'WBTC', 'AUSD', 'MON'].includes(symbol))
     return (
       <Image
         src={`/tokens/${symbol.toLowerCase()}.webp`}

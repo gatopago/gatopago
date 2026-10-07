@@ -15,7 +15,7 @@ export default function Screen({
     <main
       id="main-content"
       {...props}
-      className={`app-frame relative flex min-h-dvh w-full max-w-[480px] flex-col px-5 pt-[calc(env(safe-area-inset-top)_+_1.5rem)] mx-auto ${withPrimaryNav ? 'pb-[calc(env(safe-area-inset-bottom)_+_7.75rem)]' : 'pb-[calc(env(safe-area-inset-bottom)_+_2.5rem)]'} animate-fade-up${className ? ` ${className}` : ''}`}
+      className={`app-frame relative mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-(--frame-x) pt-[calc(env(safe-area-inset-top)_+_var(--frame-top))] ${withPrimaryNav ? 'pb-[calc(env(safe-area-inset-bottom)_+_6.5rem)]' : 'pb-[calc(env(safe-area-inset-bottom)_+_2rem)]'} animate-fade-up${className ? ` ${className}` : ''}`}
     >
       {children}
     </main>

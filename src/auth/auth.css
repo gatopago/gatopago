@@ -25,6 +25,12 @@
   gap: 8px;
   font-size: 16px;
 }
+/* A page anyone opens (a checkout, a profile): the brand, and the page right below it. */
+.auth-brand--public {
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+}
 .auth-content--login {
   display: flex;
   flex: 1;
@@ -299,4 +305,17 @@
 .auth-login-copy footer {
   margin-top: 1rem;
   font-size: 0.8rem;
+}
+/* Short screens (small phones, landscape): the cat shrinks so the buttons stay in view. */
+@media (max-height: 740px) {
+  .auth-art {
+    min-height: 10rem;
+    margin-bottom: 1rem;
+  }
+  .auth-art > .meli-sprite {
+    width: 7rem;
+  }
+  .auth-login-hero {
+    padding-block: 1rem 1.25rem;
+  }
 }

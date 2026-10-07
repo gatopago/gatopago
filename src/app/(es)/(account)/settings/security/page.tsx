@@ -8,7 +8,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang } = await searchParams;
   return {
-    title: lang === 'en' ? 'Security — GatoPago' : 'Seguridad — GatoPago',
+    title: lang === 'en' ? 'Security · GatoPago' : 'Seguridad · GatoPago',
     robots: { index: false, follow: false },
     referrer: 'no-referrer',
   };

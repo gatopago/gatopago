@@ -23,7 +23,7 @@ describe('Complete product landing', () => {
         lang === 'es' ? 'GatoPago no puede mover tus fondos' : 'GatoPago cannot move your funds',
       );
       expect(html).toContain(lang === 'es' ? 'GatoPago paga el gas' : 'GatoPago pays the gas');
-      for (const id of ['account', 'receive', 'grow', 'move', 'control', 'card', 'api'])
+      for (const id of ['cycle', 'account', 'receive', 'grow', 'control', 'card', 'api'])
         expect(html).toContain(`id="${id}"`);
       expect(html).toContain('Aave V3');
       expect(html).toContain('/v1/payment_intents');
@@ -40,7 +40,10 @@ describe('Complete product landing', () => {
       const html = renderToStaticMarkup(createElement(Landing, { lang }));
       const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]));
       const links = [...html.matchAll(/\bhref="([^"]+)"/g)].map((match) => match[1]);
+      // GatoPago Business, the merchant console, is its own site.
+      expect(links).toContain('https://business.gatopago.com');
       for (const href of links) {
+        if (href === 'https://business.gatopago.com') continue;
         if (href.startsWith('#')) expect(ids.has(href.slice(1)), href).toBe(true);
         else {
           const url = new URL(href, 'https://gatopago.com');
@@ -57,24 +60,31 @@ describe('Complete product landing', () => {
               '/en/terms',
               '/en/privacy',
               '/docs',
+              '/en/docs',
               '/login',
+              '/pay/demo-cafe-norte',
+              '/en/pay/demo-cafe-norte',
             ]).toContain(path);
-            if (path === '/docs' || path === '/login')
-              expect(url.searchParams.get('lang')).toBe(lang === 'en' ? 'en' : null);
+            // Static pages have a path per language; the app reads `?lang`.
+            expect(url.searchParams.get('lang')).toBe(
+              path === '/login' && lang === 'en' ? 'en' : null,
+            );
           }
         }
       }
-      for (const href of ['/app', '/login', '/docs']) {
+      for (const href of ['/app', '/login']) {
         expect(links).toContain(`${href}${lang === 'en' ? '?lang=en' : ''}`);
       }
+      expect(links).toContain(lang === 'en' ? '/en/docs' : '/docs');
+      expect(links).toContain(lang === 'en' ? '/en/pay/demo-cafe-norte' : '/pay/demo-cafe-norte');
     },
   );
   it('links to an example payment request', () => {
     const html = renderToStaticMarkup(createElement(Landing, { lang: 'es' }));
-    expect(html).toContain('Así se verán tus links de cobro');
-    expect(html).toContain('data-payment-link="/pay/demo-cafe-norte"');
-    expect(
-      readFileSync('src/app/(es)/pay/demo-cafe-norte/page.tsx', 'utf8').replace(/\s+/g, ' '),
-    ).toContain('Así ven tus clientes tus cobros');
+    expect(html).toContain('Ver el cobro de ejemplo');
+    expect(html).toContain('href="/pay/demo-cafe-norte"');
+    expect(readFileSync('src/marketing/DemoPayment.tsx', 'utf8').replace(/\s+/g, ' ')).toContain(
+      'Así ven tus clientes tus links de cobro',
+    );
   });
 });

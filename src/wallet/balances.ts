@@ -4,15 +4,18 @@ import { useEffect, useSyncExternalStore } from 'react';
 import {
   erc20Abi,
   formatUnits,
+  isAddressEqual,
   parseAbi,
   type Address,
   type ContractFunctionParameters,
 } from 'viem';
+import type { WalletHolding } from '@gatopago/shared/assets';
 import { walletNetwork } from '@gatopago/shared/networks';
 import type { ClientSettings } from '../lib/settings';
 import { publicClient, USDC_DECIMALS } from './account';
 import { onMovement } from './push';
 import type { Session } from './session';
+import { knownStellarAccount, stellarAccount, stellarBalance } from './stellar';
 
 const multicall3Abi = parseAbi(['function getEthBalance(address) view returns (uint256)']);
 
@@ -25,10 +28,21 @@ interface Snapshot {
   native: Readonly<Record<string, bigint | null>>;
   /** USDC saved in Aave (its aToken) on the networks that have a market. */
   saved: Readonly<Record<string, bigint | null>>;
+  /** Other configured coins (AUSD), per network and token address. */
+  tokens: Readonly<Record<string, Readonly<Record<Address, bigint | null>>>>;
+  /** The Stellar account and its USDC: `null` when Stellar is off, `undefined` until read. */
+  stellar: { account: string; usdc: bigint | null } | null | undefined;
   refreshing: boolean;
 }
 
-const EMPTY: Snapshot = { usdc: {}, native: {}, saved: {}, refreshing: false };
+const EMPTY: Snapshot = {
+  usdc: {},
+  native: {},
+  saved: {},
+  tokens: {},
+  stellar: undefined,
+  refreshing: false,
+};
 
 /**
  * The account's balances on every network, shared by every screen: one Multicall3 call per network
@@ -99,9 +113,10 @@ class Balances {
 
   private async read() {
     const { networks } = this.settings;
-    await Promise.all(
-      networks.map(async (id) => {
-        const { chain, usdc, aave } = walletNetwork(id);
+    await Promise.all([
+      this.readStellar(),
+      ...networks.map(async (id) => {
+        const { chain, usdc, aave, tokens = [] } = walletNetwork(id);
         const balanceOf = (token: Address) =>
           ({
             address: token,
@@ -118,8 +133,9 @@ class Balances {
             args: [this.address],
           },
           ...(aave ? [balanceOf(aave.aToken)] : []),
+          ...tokens.map((token) => balanceOf(token.address)),
         ];
-        let values: (bigint | null)[] = [null, null, null];
+        let values: (bigint | null)[] = contracts.map(() => null);
         try {
           const results = await publicClient(this.settings, id).multicall({ contracts });
           values = results.map((result) =>
@@ -128,10 +144,14 @@ class Balances {
         } catch {
           // A failed network is unknown, never a zero balance.
         }
+        const held = Object.fromEntries(
+          tokens.map((token, i) => [token.address, values[(aave ? 3 : 2) + i]]),
+        );
         if (
           this.snapshot.usdc[id] === values[0] &&
           this.snapshot.native[id] === values[1] &&
-          (!aave || this.snapshot.saved[id] === values[2])
+          (!aave || this.snapshot.saved[id] === values[2]) &&
+          tokens.every(({ address }) => this.snapshot.tokens[id]?.[address] === held[address])
         )
           return;
         this.set({
@@ -139,10 +159,27 @@ class Balances {
           usdc: { ...this.snapshot.usdc, [id]: values[0] },
           native: { ...this.snapshot.native, [id]: values[1] },
           saved: aave ? { ...this.snapshot.saved, [id]: values[2] } : this.snapshot.saved,
+          tokens: tokens.length ? { ...this.snapshot.tokens, [id]: held } : this.snapshot.tokens,
         });
       }),
-    );
+    ]);
     this.readAt = Date.now();
+  }
+
+  private async readStellar() {
+    const known = this.settings.stellar ? knownStellarAccount(this.address) : null;
+    // Not asked for yet: kept as it was until a screen with the session asks.
+    if (this.settings.stellar && !known) return;
+    const account = await known?.catch(() => null);
+    const stellar = account
+      ? {
+          account: account.account,
+          usdc: await stellarBalance(this.settings, account.account).catch(() => null),
+        }
+      : null;
+    const current = this.snapshot.stellar;
+    if (current === stellar || (current && stellar && current.usdc === stellar.usdc)) return;
+    this.set({ ...this.snapshot, stellar });
   }
 }
 
@@ -166,15 +203,39 @@ export function useBalances(settings: ClientSettings, session: Session) {
   const store = balancesOf(settings, session.wallet.address);
   const snapshot = useSyncExternalStore(store.subscribe, store.get, () => EMPTY);
   useEffect(() => {
-    void store.refresh();
-  }, [store]);
+    if (!settings.stellar || knownStellarAccount(session.wallet.address)) void store.refresh();
+    // The first time, the Stellar account comes from Wallet Core; then its balance is read too.
+    else
+      void stellarAccount(settings, session)
+        .catch(() => null)
+        .then(() => store.refresh(true));
+  }, [store, settings, session]);
+  const { stellar } = snapshot;
   return {
     balances: snapshot.usdc,
     natives: snapshot.native,
     saved: snapshot.saved,
+    /** The balance of one holding of a coin (`walletAssets`): USDC, a token or the native coin. */
+    holding: (holding: WalletHolding) =>
+      holding.token === null
+        ? snapshot.native[holding.networkId]
+        : isAddressEqual(holding.token, walletNetwork(holding.networkId).usdc)
+          ? snapshot.usdc[holding.networkId]
+          : snapshot.tokens[holding.networkId]?.[holding.token],
+    /** The Stellar account and its USDC, `null` when Stellar is off. */
+    stellar,
+    /** USDC on Stellar to add to totals: zero when Stellar is off. */
+    stellarUsdc: stellar === null ? 0n : stellar?.usdc,
     refreshing: snapshot.refreshing,
     refresh: () => void store.refresh(true),
   };
+}
+
+/** A sum shown only when both parts are known: `undefined` while reading, `null` if unreadable. */
+export function plus(a: bigint | null | undefined, b: bigint | null | undefined) {
+  if (a === undefined || b === undefined) return undefined;
+  if (a === null || b === null) return null;
+  return a + b;
 }
 
 /** A total is shown only when every configured network has a known balance. */
@@ -191,8 +252,16 @@ export function totalUsdc(
   return total;
 }
 
-export const formatUsdc = (amount: bigint) =>
-  Number(formatUnits(amount, USDC_DECIMALS)).toLocaleString(undefined, {
+/** An exact USDC amount (a transfer, a fee): two to six decimals, in the app's language. */
+export const formatUsdc = (amount: bigint, en: boolean) =>
+  Number(formatUnits(amount, USDC_DECIMALS)).toLocaleString(en ? 'en' : 'es', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 6,
+  });
+
+/** A balance: two decimals, cut rather than rounded so it never shows more than there is. */
+export const formatBalance = (amount: bigint, en: boolean) =>
+  (Number(amount / 10n ** BigInt(USDC_DECIMALS - 2)) / 100).toLocaleString(en ? 'en' : 'es', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });

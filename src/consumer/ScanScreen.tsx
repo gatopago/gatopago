@@ -9,7 +9,7 @@ import { networkName } from '../wallet/account';
 import { useProfile } from '../wallet/useProfile';
 import type { Session } from '../wallet/session';
 import { AddressQRCard } from './AddressQRCard';
-import { BackIcon } from './Icons';
+import { openScanCamera, qrDetector } from './camera';
 import { BackHeader, MoneyPanel, NoticeCard, SectionLabel, TransactionActions } from './Primitives';
 import { parseConsumerQr, qrReviewPath } from './qr';
 import { localizedPath } from './routes';
@@ -34,7 +34,8 @@ export default function ScanScreen({
   const [scanned, setScanned] = useState<Scanned | null>(null);
   const [error, setError] = useState(''),
     [camera, setCamera] = useState(false),
-    [busy, setBusy] = useState(true);
+    [busy, setBusy] = useState(true),
+    [reading, setReading] = useState(false);
   const video = useRef<HTMLVideoElement>(null),
     stream = useRef<MediaStream | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -68,8 +69,8 @@ export default function ScanScreen({
         parsed
           ? ''
           : en
-            ? "This QR doesn't contain a supported EVM address or GatoPago link."
-            : 'Este QR no contiene una dirección EVM o un enlace de GatoPago compatible.',
+            ? 'This QR has no address or GatoPago link we can use.'
+            : 'Este QR no tiene una dirección ni un link de GatoPago que podamos usar.',
       );
       if (parsed?.kind === 'address') setScanned(parsed);
       else if (parsed) router.push(localizedPath(qrReviewPath(parsed), en));
@@ -77,18 +78,45 @@ export default function ScanScreen({
     },
     [en, router],
   );
+  /** Reads a QR from an image, or from the centered square the preview shows (`square`). */
   const decode = useCallback(
-    async (source: CanvasImageSource, width: number, height: number, max: number) => {
+    async (
+      source: CanvasImageSource,
+      width: number,
+      height: number,
+      max: number,
+      square = false,
+    ) => {
       if (!width || !height || width * height > 40_000_000) throw new Error('Image too large');
-      const scale = Math.min(1, max / Math.max(width, height));
+      const side = Math.min(width, height);
+      const [cropWidth, cropHeight] = square ? [side, side] : [width, height];
+      const scale = Math.min(1, max / Math.max(cropWidth, cropHeight));
       const canvas = (scanCanvas.current ??= document.createElement('canvas'));
-      const scaledWidth = Math.max(1, Math.round(width * scale));
-      const scaledHeight = Math.max(1, Math.round(height * scale));
+      const scaledWidth = Math.max(1, Math.round(cropWidth * scale));
+      const scaledHeight = Math.max(1, Math.round(cropHeight * scale));
       if (canvas.width !== scaledWidth) canvas.width = scaledWidth;
       if (canvas.height !== scaledHeight) canvas.height = scaledHeight;
       const context = canvas.getContext('2d', { willReadFrequently: true });
       if (!context) throw new Error('Canvas unavailable');
-      context.drawImage(source, 0, 0, canvas.width, canvas.height);
+      context.drawImage(
+        source,
+        (width - cropWidth) / 2,
+        (height - cropHeight) / 2,
+        cropWidth,
+        cropHeight,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
+      const detector = await qrDetector();
+      if (detector) {
+        try {
+          return (await detector.detect(canvas))[0]?.rawValue ?? null;
+        } catch {
+          /* jsQR below. */
+        }
+      }
       const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
       const { default: jsQR } = await import('jsqr');
       return jsQR(pixels.data, pixels.width, pixels.height)?.data ?? null;
@@ -105,16 +133,13 @@ export default function ScanScreen({
         setCamera(false);
         setError(
           en
-            ? 'Camera permission timed out. Try again.'
-            : 'La autorización de cámara tardó demasiado. Reintenta.',
+            ? 'The camera permission took too long. Try again.'
+            : 'El permiso de la cámara tardó demasiado. Reintenta.',
         );
       }
     }, 15000);
     try {
-      const media = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false,
-      });
+      const media = await openScanCamera();
       if (generation.current !== current) {
         media.getTracks().forEach((track) => track.stop());
         return;
@@ -135,7 +160,9 @@ export default function ScanScreen({
               video.current,
               video.current.videoWidth,
               video.current.videoHeight,
-              640,
+              // The native reader takes the full 1080p; jsQR stays fast on a smaller frame.
+              (await qrDetector()) ? 1080 : 720,
+              true,
             );
             if (generation.current !== current) return;
             if (raw && parse(raw)) {
@@ -157,8 +184,8 @@ export default function ScanScreen({
         setCamera(false);
         setError(
           en
-            ? 'Camera unavailable. Check permissions, choose a photo or paste the address.'
-            : 'Cámara no disponible. Revisa permisos, elige una foto o pega la dirección.',
+            ? 'We could not use the camera. Check its permission in your browser, or choose a photo of the QR.'
+            : 'No pudimos usar la cámara. Revisa el permiso en tu navegador o elige una foto del QR.',
         );
       }
     }
@@ -181,6 +208,7 @@ export default function ScanScreen({
     const current = generation.current;
     setCamera(false);
     setBusy(true);
+    setReading(true);
     setError('');
     let bitmap: ImageBitmap | undefined;
     try {
@@ -196,11 +224,12 @@ export default function ScanScreen({
       if (generation.current === current)
         setError(
           en
-            ? 'Could not read the QR. Use a PNG, JPEG or WebP smaller than 10 MB.'
-            : 'No se pudo leer el QR. Usa PNG, JPEG o WebP de menos de 10 MB.',
+            ? 'We could not read a QR in that image. Try a sharper photo (PNG, JPEG or WebP, under 10 MB).'
+            : 'No encontramos un QR en esa imagen. Prueba con una foto más nítida (PNG, JPEG o WebP, de menos de 10 MB).',
         );
     } finally {
       bitmap?.close();
+      setReading(false);
       if (generation.current === current) setBusy(false);
     }
   }
@@ -279,44 +308,44 @@ export default function ScanScreen({
             )}
           </div>
           <p
-            className={`min-h-10 text-center text-[14px] ${error ? 'text-danger' : 'text-text-muted'}`}
+            className={`min-h-10 text-center text-[14px] ${error && camera ? 'text-danger' : 'text-text-muted'}`}
           >
             {error && camera
               ? error
               : en
-                ? 'Point at a GatoPago QR or any EVM wallet QR'
-                : 'Apunta a un QR de GatoPago o de cualquier billetera EVM'}
+                ? 'Point at a GatoPago QR or any wallet’s QR.'
+                : 'Apunta a un QR de GatoPago o de cualquier wallet.'}
           </p>
-          {!busy && !camera ? (
+          <div className="mt-4 flex w-full flex-col gap-3">
+            {!busy && !camera ? (
+              <button
+                type="button"
+                className="btn btn-primary btn-block"
+                onClick={() => {
+                  setBusy(true);
+                  setError('');
+                  void start();
+                }}
+              >
+                {en ? 'Try the camera again' : 'Reintentar la cámara'}
+              </button>
+            ) : null}
             <button
               type="button"
-              className="mt-1 text-[14px] font-semibold text-cat-300"
-              onClick={() => {
-                setBusy(true);
-                setError('');
-                void start();
-              }}
-            >
-              {en ? 'Retry camera' : 'Reintentar cámara'}
-            </button>
-          ) : null}
-          <div className="mt-7 flex w-full flex-col gap-3">
-            <button
-              type="button"
-              className="btn btn-primary btn-block"
-              disabled={busy && camera}
+              className="btn btn-ghost btn-block"
+              disabled={reading}
               onClick={() => fileInput.current?.click()}
             >
-              {busy && !camera
+              {reading
                 ? en
-                  ? 'Analyzing…'
-                  : 'Analizando…'
+                  ? 'Reading the photo…'
+                  : 'Leyendo la foto…'
                 : en
-                  ? 'Import QR from an image'
-                  : 'Importar QR desde una imagen'}
+                  ? 'Choose a photo of the QR'
+                  : 'Elegir una foto del QR'}
             </button>
-            <NavigationLink href={localizedPath('/send', en)} className="btn btn-ghost btn-block">
-              {en ? 'Enter details manually' : 'Ingresar datos manualmente'}
+            <NavigationLink href={localizedPath('/send', en)} className="btn-text w-full">
+              {en ? 'Send without a QR' : 'Enviar sin QR'}
             </NavigationLink>
           </div>
           <input
@@ -411,39 +440,24 @@ function Review({
   });
   return (
     <>
-      <header className="mb-7 flex items-center gap-4">
-        <button
-          type="button"
-          onClick={onRestart}
-          aria-label={en ? 'Back' : 'Volver'}
-          className="meli-square-action flex h-12 w-12 shrink-0 items-center justify-center"
-        >
-          <BackIcon />
-        </button>
-        <h1 className="font-display text-[28px] leading-tight">
-          {en ? 'Review recipient' : 'Revisar destinatario'}
-        </h1>
-      </header>
+      <BackHeader
+        title={en ? 'Review recipient' : 'Revisar destinatario'}
+        english={en}
+        onBack={onRestart}
+      />
       <MoneyPanel className="mb-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <span className="meli-chip border-border bg-surface-2 text-[10px] text-text-muted">
-            {en ? 'EVM address' : 'Dirección EVM'}
-          </span>
-          <span className="text-[11px] text-text-faint">
-            {scanned.chain ? 'CAIP-10' : en ? 'EVM address' : 'Dirección EVM'}
-          </span>
-        </div>
-        <p className="break-all font-mono text-[13px] leading-relaxed text-text-muted">
+        <p className="mb-2 text-[13px] text-text-muted">
+          {en ? 'You will send to' : 'Vas a enviar a'}
+        </p>
+        <p className="break-all font-mono text-[13px] leading-relaxed text-text">
           {scanned.address}
         </p>
       </MoneyPanel>
-      <SectionLabel>
-        {en ? 'Which network do you want to use?' : '¿En qué red quieres enviar?'}
-      </SectionLabel>
+      <SectionLabel>{en ? 'On which network?' : '¿Por qué red?'}</SectionLabel>
       <p className="mb-3 text-[12px] leading-relaxed text-text-muted">
         {en
-          ? 'The same address can exist on several networks. Confirm the network before continuing.'
-          : 'Una misma dirección puede existir en varias redes. Confirma la red antes de continuar.'}
+          ? 'The same address can exist on several networks. Choose the one the recipient uses.'
+          : 'Una misma dirección puede existir en varias redes. Elige la que usa quien recibe.'}
       </p>
       <SelectMenu
         label={en ? 'Choose network' : 'Elegir red'}
@@ -465,18 +479,10 @@ function Review({
           title={en ? 'Unsupported network' : 'Red no admitida'}
         >
           {en
-            ? `The QR requests network ${scanned.chain}, which GatoPago does not support yet. Choose an available network.`
-            : `El QR solicita la red ${scanned.chain}, que GatoPago todavía no admite. Elige una red disponible.`}
+            ? `The QR asks for a network GatoPago does not support yet (${scanned.chain}). Choose one of yours.`
+            : `El QR pide una red que GatoPago todavía no admite (${scanned.chain}). Elige una de las tuyas.`}
         </NoticeCard>
       ) : null}
-      <NoticeCard
-        className="mb-6"
-        title={en ? 'Which network do you want to use?' : '¿En qué red quieres enviar?'}
-      >
-        {en
-          ? `This will be a direct transfer on ${networkName(networkId)}.`
-          : `El envío será directo en ${networkName(networkId)}.`}
-      </NoticeCard>
       <TransactionActions>
         <NavigationLink
           href={localizedPath(`/send?${transfer}`, en)}

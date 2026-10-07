@@ -35,14 +35,19 @@ export function AddressQRCard({
       </div>
       <button
         type="button"
-        onClick={() => void navigator.clipboard?.writeText(address).then(() => setCopied(true))}
+        onClick={() =>
+          void navigator.clipboard?.writeText(address).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          })
+        }
         className="interactive-surface flex w-full items-center justify-between gap-2 border-2 border-text bg-surface px-4 py-3 shadow-[4px_4px_0_var(--color-border)]"
       >
         <span className="truncate font-mono text-[13px] text-text">
           {`${address.slice(0, 6)}…${address.slice(-4)}`}
         </span>
         <span className="shrink-0 text-[12px] font-semibold text-cat-300">
-          {copied ? (en ? 'Address copied' : 'Dirección copiada') : en ? 'Copy' : 'Copiar'}
+          {copied ? (en ? 'Copied ✓' : 'Copiada ✓') : en ? 'Copy address' : 'Copiar dirección'}
         </span>
       </button>
     </>

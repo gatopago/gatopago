@@ -1,0 +1,9 @@
+/* The API documentation's titles: the brand's casual, heavy Recursive. */
+.docs-title {
+  font-family: var(--font-display);
+  font-variation-settings:
+    'CASL' 1,
+    'wght' 760;
+  font-weight: 760;
+  letter-spacing: -0.035em;
+}

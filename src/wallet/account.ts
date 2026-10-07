@@ -3,13 +3,11 @@ import {
   fallback,
   http,
   type Chain,
-  type Hex,
   type PublicClient,
   type Transport,
 } from 'viem';
-import { toWebAuthnAccount } from 'viem/account-abstraction';
-import { walletContracts, walletNetwork } from '@gatopago/shared/networks';
-import { toGatoPagoAccount } from '@gatopago/shared/wallet';
+import type { CctpNetwork } from '@gatopago/shared/crosschain';
+import { stellarNetwork, walletContracts, walletNetwork } from '@gatopago/shared/networks';
 import type { ClientSettings } from '../lib/settings';
 import type { Wallet } from './session';
 
@@ -35,22 +33,51 @@ export function publicClient(settings: ClientSettings, networkId: string) {
   return client;
 }
 
+/** Stellar ids (`stellar:…`) are not EVM wallet networks: no chain, contracts or bundler. */
+export const isStellar = (networkId: string) => networkId.startsWith('stellar:');
+
+/** Either side of a CCTP crossing: an EVM wallet network or Stellar. */
+export const cctpNetwork = (networkId: string): CctpNetwork =>
+  isStellar(networkId) ? stellarNetwork(networkId) : walletNetwork(networkId);
+
 export function networkName(networkId: string): string {
-  return walletNetwork(networkId).chain.name;
+  return isStellar(networkId)
+    ? stellarNetwork(networkId).name
+    : walletNetwork(networkId).chain.name;
 }
 
-export function explorerUrl(networkId: string, hash: Hex): string | null {
-  const explorer = walletNetwork(networkId).chain.blockExplorers?.default.url;
+export function explorerUrl(networkId: string, hash: string): string | null {
+  const explorer = isStellar(networkId)
+    ? stellarNetwork(networkId).explorer
+    : walletNetwork(networkId).chain.blockExplorers?.default.url;
   return explorer ? `${explorer}/tx/${hash}` : null;
 }
 
-export function gatopagoAccount(settings: ClientSettings, wallet: Wallet, networkId: string) {
+/**
+ * The account as viem sees it, signed by its passkey on the device or, for a Mera account, by the
+ * open signing session (one passkey prompt when it has ended). The signing code loads only here:
+ * screens that just read balances do not download it.
+ */
+export async function gatopagoAccount(settings: ClientSettings, wallet: Wallet, networkId: string) {
+  const [{ toGatoPagoAccount }, owner] = await Promise.all([
+    import('@gatopago/shared/wallet'),
+    signer(settings, wallet),
+  ]);
   return toGatoPagoAccount({
     client: publicClient(settings, networkId),
-    owner: toWebAuthnAccount({
-      credential: { id: wallet.credentialId, publicKey: wallet.publicKey },
-    }),
+    owner,
     contracts: walletContracts,
     initialOwners: wallet.initialOwners,
+  });
+}
+
+async function signer(settings: ClientSettings, wallet: Wallet) {
+  if (wallet.meraOwner) {
+    const { meraSigner } = await import('./mera');
+    return meraSigner(settings, wallet.credentialId, wallet.meraOwner);
+  }
+  const { toWebAuthnAccount } = await import('viem/account-abstraction');
+  return toWebAuthnAccount({
+    credential: { id: wallet.credentialId, publicKey: wallet.publicKey },
   });
 }

@@ -12,7 +12,7 @@ import { MoveMenu } from '../src/consumer/MoveMenu';
 let searchParams = new URLSearchParams();
 vi.mock('next/navigation', () => ({
   usePathname: () => '/send',
-  useRouter: () => ({ replace: () => {} }),
+  useRouter: () => ({ back: () => {}, replace: () => {} }),
   useSearchParams: () => searchParams,
 }));
 
@@ -35,7 +35,8 @@ describe('Consumer presentation migration', () => {
     searchParams = new URLSearchParams();
     expect(html).toContain('href="/charge"');
     expect(html).toContain('href="/receive"');
-    expect(html).toContain('Volver a Mover');
+    expect(html).toContain('Recibir dinero');
+    expect(html).toContain('aria-label="Volver"');
   });
   it('retains deterministic Next settings destinations in both languages', () => {
     for (const english of [false, true]) {
@@ -45,10 +46,15 @@ describe('Consumer presentation migration', () => {
           settings: {
             webOrigin: 'https://gatopago.com',
             apiOrigin: 'https://api.gatopago.com',
+            businessOrigin: 'https://business.gatopago.com',
             networks: ['eip155:421614'],
             homeNetwork: 'eip155:421614',
             rpcUrls: {},
             turnstileSiteKey: '1x00000000000000000000AA',
+            mera: false,
+            meraSessionMinutes: 15,
+            passkeyRpId: 'localhost',
+            stellar: null,
             push: null,
           },
           session: {
@@ -64,11 +70,11 @@ describe('Consumer presentation migration', () => {
           },
         }),
       );
-      const suffix = english ? '?lang=en' : '';
-      expect(html).toContain(`href="/app${suffix}"`);
-      expect(html).toContain(`href="/settings/security${suffix}"`);
+      expect(html).toContain(english ? 'aria-label="Back"' : 'aria-label="Volver"');
+      // Security lives in the menu only, not repeated in Settings.
+      expect(html).not.toContain('/settings/security');
+      expect(html).toContain(`href="/settings${english ? '' : '?lang=en'}"`);
       expect(html).toContain('meli-paper-card');
-      expect(html).toContain('btn btn-primary btn-block');
       expect(html).not.toContain('workers.dev');
     }
   });

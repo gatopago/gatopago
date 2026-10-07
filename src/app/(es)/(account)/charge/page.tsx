@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { AccountView } from '../../../../auth/AccountShell';
 
 export const metadata: Metadata = {
-  title: 'Solicitar · GatoPago',
+  title: 'Cobrar · GatoPago',
   robots: { index: false, follow: false },
 };
 export const dynamic = 'force-dynamic';

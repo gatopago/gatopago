@@ -9,6 +9,10 @@ const messages: Record<string, [es: string, en: string]> = {
     'Este gestor ya tiene una llave de GatoPago. Usa otro gestor o una llave física.',
     'This manager already has a GatoPago key. Use another manager or a security key.',
   ],
+  PASSKEY_WITHOUT_PRF: [
+    'No encontramos tu cuenta con esta llave en este dispositivo. Entra desde el dispositivo donde creaste tu cuenta o con tu llave de respaldo.',
+    'We could not find your account with this key on this device. Sign in from the device where you created it, or with your backup key.',
+  ],
   ACCOUNT_NOT_FOUND: [
     'Esa llave no pertenece a una cuenta de GatoPago. Si eres nuevo, crea una cuenta.',
     'That key does not belong to a GatoPago account. If you are new, create an account.',
@@ -49,6 +53,10 @@ const messages: Record<string, [es: string, en: string]> = {
     'You reached the daily limit of free operations. Come back tomorrow.',
   ],
   INVALID_AMOUNT: ['Ingresa un monto mayor a cero.', 'Enter an amount above zero.'],
+  STELLAR_TRANSACTION_PENDING: [
+    'Tu operación sigue en proceso. Revisa Actividad en un momento antes de repetirla.',
+    'Your operation is still in progress. Check Activity in a moment before repeating it.',
+  ],
   INSUFFICIENT_FUNDS: [
     'No te alcanza el saldo. Si está repartido entre redes, júntalo en “Entre redes”.',
     'Your balance is not enough. If it is spread across networks, gather it in “Between networks”.',
@@ -58,6 +66,29 @@ const messages: Record<string, [es: string, en: string]> = {
     'Invalid address: it must be a valid 0x address.',
   ],
   SELF_TRANSFER: ['Esa es tu propia cuenta.', 'That is your own account.'],
+  INVALID_STELLAR_ADDRESS: [
+    'Dirección de Stellar inválida: debe empezar con G o C.',
+    'Invalid Stellar address: it must start with G or C.',
+  ],
+  STELLAR_RECIPIENT_CANNOT_RECEIVE: [
+    'Esa cuenta de Stellar no acepta USDC todavía: debe activar USDC (trustline) primero.',
+    'That Stellar account does not accept USDC yet: it must add USDC (a trustline) first.',
+  ],
+  STELLAR_SIGNER_PENDING: [
+    'La llave de este dispositivo aún no firma en Stellar. Sincronízala en Seguridad desde un dispositivo que ya firme allí.',
+    'This device key does not sign on Stellar yet. Sync it in Security from a device that already does.',
+  ],
+  APPROVAL_EXPIRED: ['La autorización venció. Reintenta.', 'The authorization expired. Try again.'],
+  NOT_AN_OWNER: ['Esa llave no es dueña de tu cuenta.', 'That key does not own your account.'],
+  STELLAR_NOT_ENABLED: ['Stellar no está disponible ahora.', 'Stellar is not available now.'],
+  STELLAR_ACCOUNT_WITHOUT_SIGNERS: [
+    'Tu cuenta no tiene una llave que pueda firmar en Stellar. Agrega una llave de respaldo en Seguridad.',
+    'Your account has no key that can sign on Stellar. Add a backup key in Security.',
+  ],
+  STELLAR_RELAY_REJECTED: [
+    'GatoPago no pudo entregar este envío en Stellar. Tus fondos siguen en Circle: escríbenos.',
+    'GatoPago could not deliver this transfer on Stellar. Your funds remain with Circle: contact us.',
+  ],
   BALANCE_ON_OTHER_NETWORK: [
     'Tu saldo en esta red no alcanza. Júntalo aquí desde tus otras redes en “Entre redes”.',
     'Your balance on this network is not enough. Gather it here from your other networks in “Between networks”.',
@@ -69,6 +100,23 @@ const messages: Record<string, [es: string, en: string]> = {
   CCTP_AMOUNT_BELOW_FEE: [
     'El monto es menor que la comisión entre redes.',
     'The amount is below the cross-network fee.',
+  ],
+  PAYOUT_SIZE: ['Agrega entre 1 y 10 personas.', 'Add between 1 and 10 people.'],
+  DUPLICATE_RECIPIENT: [
+    'Hay una persona repetida: junta sus montos en una sola fila.',
+    'Someone appears twice: put their amounts in a single row.',
+  ],
+  APPROVAL_PENDING: [
+    'El cambio quedó guardado, pero falta aplicarlo en algunas redes: revisa el estado de cada una abajo. Se completa solo en tu próxima operación en esa red.',
+    'The change is saved but still pending on some networks: check each one below. It completes on your next operation there.',
+  ],
+  OPERATION_PENDING: [
+    'Tu operación anterior sigue en proceso. Revisa Actividad en un momento antes de repetirla.',
+    'Your previous operation is still in progress. Check Activity in a moment before repeating it.',
+  ],
+  PREVIOUS_OPERATION_CONFIRMED: [
+    'Tu operación anterior ya se confirmó. Revisa Actividad antes de volver a enviarla.',
+    'Your previous operation went through. Check Activity before sending it again.',
   ],
   RATE_LIMITED: [
     'Hay demasiados intentos. Espera un momento.',

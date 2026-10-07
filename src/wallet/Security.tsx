@@ -5,6 +5,7 @@ import { encodeFunctionData, type Hex } from 'viem';
 import { walletContracts } from '@gatopago/shared/networks';
 import {
   gatopagoAccountAbi,
+  keyOwner,
   ownersAfter,
   passkeyOwner,
   signApproval,
@@ -22,9 +23,16 @@ import { applyApprovals, appliedApprovals } from './operations';
 import { api, type Approvals } from './api';
 import { failureMessage } from './messages';
 import { createPasskey } from './passkey';
-import type { Session, Wallet } from './session';
+import type { Session } from './session';
+import { stellarSignerChanges, syncStellarSigners } from './stellar';
 
-type State = { owners: Hex[]; total: number; applied: Record<string, number | null> };
+type State = {
+  owners: Hex[];
+  total: number;
+  applied: Record<string, number | null>;
+  /** Signer changes pending on Stellar (`stellarSignerChanges`), `null` when it is off. */
+  stellar: number | 'unused' | null;
+};
 
 /**
  * `/settings/security`, as V2's security center: the passkeys that own the account. Adding or
@@ -41,16 +49,20 @@ export function Security({
   english: boolean;
 }) {
   const { wallet } = session;
-  const current = passkeyOwner(walletContracts.webAuthnVerifier, wallet.publicKey).toLowerCase();
+  const current = (
+    wallet.meraOwner
+      ? keyOwner(wallet.meraOwner)
+      : passkeyOwner(walletContracts.webAuthnVerifier, wallet.publicKey)
+  ).toLowerCase();
   const [state, setState] = useState<State | null>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
-  const [dialog, setDialog] = useState<'stored' | 'options' | { remove: Hex } | null>(null);
+  const [dialog, setDialog] = useState<{ remove: Hex } | null>(null);
 
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     let active = true;
-    readKeys(settings, wallet)
+    readKeys(settings, session)
       .then((value) => {
         if (active) setState(value);
       })
@@ -60,7 +72,7 @@ export function Security({
     return () => {
       active = false;
     };
-  }, [settings, wallet, en, revision]);
+  }, [settings, session, en, revision]);
 
   function perform(action: () => Promise<void>) {
     setBusy(true);
@@ -70,13 +82,19 @@ export function Security({
         setDialog(null);
         setRevision((value) => value + 1);
       })
-      .catch((failure: unknown) => setError(failureMessage(failure, en)))
+      .catch((failure: unknown) => {
+        setError(failureMessage(failure, en));
+        // A change may have applied on some networks: show where it stands on each.
+        setRevision((value) => value + 1);
+      })
       .finally(() => setBusy(false));
   }
 
   /**
-   * Signs `call` as the next approval and stores it. It is applied where the account exists, or on
-   * every network when removing a key, so the removed key cannot use a network first.
+   * Signs `call` as the next approval and stores it. It is applied on the home network, where
+   * sign-in checks the owners (deploying the account if needed, so a new key works from day one),
+   * wherever else the account exists, or on every network when removing a key, so the removed key
+   * cannot use a network first.
    */
   async function approve(call: Hex, everywhere: boolean) {
     const account = await gatopagoAccount(settings, wallet, settings.homeNetwork);
@@ -85,14 +103,27 @@ export function Security({
       token: session.token,
       body: { call, signature, initial_owners: wallet.initialOwners },
     });
+    // Each network on its own: one that fails does not stop the others, and it applies the change
+    // before its next operation anyway.
+    const pending: string[] = [];
     for (const id of settings.networks)
-      if (everywhere || (await publicClient(settings, id).getCode({ address: wallet.address })))
-        await applyApprovals(settings, session, id);
+      if (
+        everywhere ||
+        id === settings.homeNetwork ||
+        (await publicClient(settings, id).getCode({ address: wallet.address }))
+      )
+        await applyApprovals(settings, session, id).catch(() => pending.push(id));
+    // A removed key must not keep signing on Stellar either; added ones are synced from the list.
+    if (everywhere)
+      await syncStellarSigners(settings, session, ownersAfter(state!.owners, [call])).catch(() =>
+        pending.push('stellar'),
+      );
+    if (pending.length) throw new Error('APPROVAL_PENDING');
   }
 
   const addKey = (attachment?: AuthenticatorAttachment) =>
     perform(async () => {
-      const backup = await createPasskey('GatoPago backup', wallet.address, attachment);
+      const backup = await createPasskey(settings, 'GatoPago backup', wallet.address, attachment);
       await approve(
         encodeFunctionData({
           abi: gatopagoAccountAbi,
@@ -122,25 +153,22 @@ export function Security({
       {!state && !error ? (
         <ScreenLoading kind="form" english={en} />
       ) : (
-        <div className="animate-fade-up">
+        <div>
           <section
-            className="meli-ink-card relative mb-6 min-h-[196px] overflow-hidden p-5"
+            className="meli-ink-card relative mb-6 overflow-hidden p-5"
             aria-labelledby="security-hero-title"
           >
-            <div className="relative z-1 max-w-[270px] pr-10">
-              <p className="meli-kicker mb-3 !text-cat-500">
-                {en ? 'Security center' : 'Centro de seguridad'}
-              </p>
+            <div className="relative z-1 pr-24">
               <h2
                 id="security-hero-title"
-                className="font-display text-[25px] leading-[1.02] text-[#fff8f0]"
+                className="font-display text-[22px] leading-[1.05] text-[#fff8f0]"
               >
-                {en ? 'Your money answers to your keys.' : 'Tu dinero responde a tus llaves.'}
+                {en ? 'Only your keys move your money.' : 'Solo tus llaves mueven tu dinero.'}
               </h2>
-              <p className="mt-3 text-[12px] leading-relaxed text-[rgb(255_248_240/.68)]">
+              <p className="mt-2.5 text-[12px] leading-relaxed text-[rgb(255_248_240/.68)]">
                 {en
-                  ? 'Your device or passkey manager keeps the private part of a cryptographic key. Your fingerprint, face or PIN unlocks it to authorize each movement. GatoPago never receives that private part.'
-                  : 'Tu dispositivo o gestor de passkeys guarda la parte privada de una llave criptográfica. Tu huella, rostro o PIN la desbloquea para autorizar cada movimiento. GatoPago nunca recibe esa parte privada.'}
+                  ? 'Your device or password manager keeps them, and you unlock them with your fingerprint, face or PIN. GatoPago never sees them.'
+                  : 'Las guarda tu dispositivo o tu gestor de contraseñas, y las abres con tu huella, tu rostro o tu PIN. GatoPago nunca las ve.'}
               </p>
               <span className="mt-4 inline-flex items-center gap-2 border border-[rgb(255_248_240/.3)] px-3 py-2 font-mono text-[9px] uppercase tracking-[0.08em] text-[#fff8f0]">
                 <i className={`h-2 w-2 ${state ? 'bg-growth' : 'bg-pending'}`} aria-hidden="true" />
@@ -156,7 +184,7 @@ export function Security({
             <MeliSprite
               variant="head-focused"
               motion="idle"
-              className="pointer-events-none absolute -right-3 -bottom-2 w-28 opacity-95"
+              className="pointer-events-none absolute -right-3 -bottom-2 w-24 opacity-95"
             />
           </section>
 
@@ -202,16 +230,17 @@ export function Security({
                     </svg>
                   </div>
                   <div className="min-w-0">
-                    <p id="security-keys-title" className="meli-kicker mb-2">
+                    <h3 id="security-keys-title" className="font-display text-[18px] leading-tight">
                       {en ? 'Your keys' : 'Tus llaves'}
-                    </p>
-                    <h3 className="font-display text-[18px] leading-tight">
-                      {en ? 'Your device protects your key' : 'Tu dispositivo protege tu llave'}
                     </h3>
                     <p className="mt-1 text-[13px] leading-relaxed text-text-muted">
-                      {en
-                        ? 'Your fingerprint, face or PIN unlocks the private part that authorizes each payment. GatoPago only records the public key.'
-                        : 'Tu huella, rostro o PIN desbloquea la parte privada que autoriza cada pago. GatoPago solo registra la llave pública.'}
+                      {backedUp
+                        ? en
+                          ? 'You have a backup: if you lose this device, you sign in with another key.'
+                          : 'Tienes respaldo: si pierdes este dispositivo, entras con otra llave.'
+                        : en
+                          ? 'You have a single key. Add a backup so you do not lose access if you lose this device.'
+                          : 'Tienes una sola llave. Agrega una de respaldo para no perder el acceso si pierdes este dispositivo.'}
                     </p>
                   </div>
                 </div>
@@ -254,34 +283,27 @@ export function Security({
                         ? 'Adding…'
                         : 'Agregando…'
                       : en
-                        ? 'Add a backup passkey'
-                        : 'Agregar passkey de respaldo'}
+                        ? 'Add a backup key'
+                        : 'Agregar llave de respaldo'}
                   </button>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setDialog('stored')}
-                      className="btn-text min-h-11 px-2 text-[12px]"
-                    >
-                      {en ? 'Where is it stored?' : '¿Dónde se guarda?'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDialog('options')}
-                      disabled={busy}
-                      className="btn-text min-h-11 px-2 text-[12px] disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      {en ? 'Other options' : 'Otras opciones'}
-                    </button>
-                  </div>
                   <p
                     id="add-passkey-help"
                     className="mt-3 px-0.5 text-[12px] leading-relaxed text-text-faint"
                   >
                     {en
-                      ? 'Save it in another password manager or on a security key. Every key has full control of the account.'
-                      : 'Guárdala en otro gestor de contraseñas o en una llave física. Cada llave tiene control total de la cuenta.'}
+                      ? 'Save it in another password manager, or on another device. Each key has full control of the account, so keep it safe.'
+                      : 'Guárdala en otro gestor de contraseñas o en otro dispositivo. Cada llave tiene control total de la cuenta: cuídala.'}
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => addKey('cross-platform')}
+                    disabled={busy}
+                    className="btn-text mt-1 min-h-11 w-full text-[13px] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {en
+                      ? 'Use a physical key (USB, NFC or Bluetooth)'
+                      : 'Usar una llave física (USB, NFC o Bluetooth)'}
+                  </button>
                 </div>
 
                 <div className="border-t border-border">
@@ -331,13 +353,6 @@ export function Security({
                       );
                     })}
                   </div>
-                  {state.owners.length === 1 ? (
-                    <p className="mx-5 mb-4 border-l-4 border-pending bg-pending/10 px-3 py-2 text-[11px] leading-relaxed text-pending">
-                      {en
-                        ? 'This is your only key. Add a backup before you need it.'
-                        : 'Esta es tu única llave. Agrega una de respaldo antes de necesitarla.'}
-                    </p>
-                  ) : null}
                 </div>
               </section>
 
@@ -398,6 +413,42 @@ export function Security({
                         </div>
                       );
                     })}
+                    {state.stellar !== null && settings.stellar ? (
+                      <div className="flex items-start justify-between gap-3 p-5">
+                        <div>
+                          <p className="font-display text-[15px]">
+                            {networkName(settings.stellar.network)}
+                          </p>
+                          <p
+                            className={`mt-1 font-mono text-[9px] uppercase tracking-[0.07em] ${state.stellar === 0 || state.stellar === 'unused' ? 'text-growth' : 'text-pending'}`}
+                          >
+                            {state.stellar === 'unused'
+                              ? en
+                                ? 'Applied on first use'
+                                : 'Se aplica al primer uso'
+                              : state.stellar === 0
+                                ? en
+                                  ? 'Keys synced'
+                                  : 'Llaves sincronizadas'
+                                : en
+                                  ? 'Needs sync: one confirmation per change'
+                                  : 'Requiere sincronización: una confirmación por cambio'}
+                          </p>
+                        </div>
+                        {typeof state.stellar === 'number' && state.stellar > 0 ? (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              perform(() => syncStellarSigners(settings, session, state.owners))
+                            }
+                            className="btn btn-primary min-h-10 px-4 text-[12px]"
+                          >
+                            {en ? 'Sync' : 'Sincronizar'}
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 </section>
               ) : null}
@@ -448,35 +499,16 @@ export function Security({
             </span>
           </NavigationLink>
 
-          <div className="meli-paper-card mb-6 grid grid-cols-[36px_1fr] gap-3 border-l-4 !border-l-info p-4">
-            <div
-              className="flex h-9 w-9 items-center justify-center border border-info bg-info/10 text-info"
-              aria-hidden="true"
-            >
-              ✦
-            </div>
-            <div>
-              <p className="font-display text-[14px]">
-                {en ? 'You stay in control' : 'El control sigue siendo tuyo'}
-              </p>
-              <p className="mt-1 text-[12px] leading-relaxed text-text-muted">
-                {en
-                  ? 'GatoPago does not keep your keys and cannot sign for you. Every movement requires an active key of your account.'
-                  : 'GatoPago no guarda tus llaves ni puede firmar por ti. Cada movimiento requiere una llave activa de tu cuenta.'}
-              </p>
-            </div>
-          </div>
-
           <section aria-labelledby="security-learn-title">
             <p id="security-learn-title" className="meli-kicker mb-3 px-1">
-              {en ? 'Understand your security' : 'Entiende tu seguridad'}
+              {en ? 'Frequent questions' : 'Preguntas frecuentes'}
             </p>
             <div className="meli-paper-card meli-paper-card--strong divide-y divide-border px-5 py-2">
               <Faq question={en ? 'What is your access key?' : '¿Qué es tu llave de acceso?'}>
                 <p>
                   {en
-                    ? 'It is like your house key, but digital: your device or passkey manager protects its private part and you unlock it with your fingerprint, face or PIN. There is no GatoPago password to steal or forget.'
-                    : 'Es como la llave de tu casa, pero digital: tu dispositivo o gestor de passkeys protege su parte privada y tú la desbloqueas con tu huella, rostro o PIN. No hay una contraseña de GatoPago que robar u olvidar.'}
+                    ? 'It is like your house key, but digital: your device or password manager keeps it, and you open it with your fingerprint, face or PIN. There is no GatoPago password to steal or forget.'
+                    : 'Es como la llave de tu casa, pero digital: la guarda tu dispositivo o tu gestor de contraseñas, y la abres con tu huella, tu rostro o tu PIN. No hay una contraseña de GatoPago que robar ni olvidar.'}
                 </p>
                 <p>
                   {en
@@ -513,74 +545,6 @@ export function Security({
           </section>
         </div>
       )}
-
-      {dialog === 'stored' ? (
-        <Sheet titleId="passkey-storage-title" onClose={() => setDialog(null)}>
-          <div className="sheet-handle mb-5" aria-hidden="true" />
-          <h2 id="passkey-storage-title" className="font-display text-[22px]">
-            {en ? 'Where your passkey lives' : 'Dónde vive tu passkey'}
-          </h2>
-          <div className="mt-3 space-y-3 text-[12px] leading-relaxed text-text-muted">
-            <p>
-              {en
-                ? 'Your device, browser or password manager chooses where to keep the private part. GatoPago cannot see it, download it or pick a manager behind your back.'
-                : 'Tu dispositivo, navegador o gestor de contraseñas elige dónde guardar la parte privada. GatoPago no puede verla, descargarla ni elegir un gestor a escondidas.'}
-            </p>
-            <p>
-              {en
-                ? 'When you create it you will see the system secure window. If your device offers Google Password Manager, Apple Passwords or another manager, you can choose there.'
-                : 'Al crearla verás la ventana segura del sistema. Si tu dispositivo ofrece Google Password Manager, Apple Passwords u otro gestor, allí podrás elegir entre las opciones disponibles.'}
-            </p>
-            <p className="border-l-4 border-info bg-info/8 px-3 py-2">
-              {en
-                ? 'GatoPago keeps only the public key.'
-                : 'GatoPago conserva solamente la clave pública.'}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setDialog(null)}
-            className="btn btn-primary btn-block mt-5"
-          >
-            {en ? 'Close' : 'Cerrar'}
-          </button>
-        </Sheet>
-      ) : null}
-
-      {dialog === 'options' ? (
-        <Sheet titleId="passkey-options-title" onClose={() => setDialog(null)} busy={busy}>
-          <div className="sheet-handle mb-5" aria-hidden="true" />
-          <h2 id="passkey-options-title" className="font-display text-[22px]">
-            {en ? 'Another way to keep a key' : 'Otra forma de guardar una llave'}
-          </h2>
-          <p className="mt-2 text-[12px] leading-relaxed text-text-muted">
-            {en
-              ? 'The main option uses this device or its passkey manager. If you prefer a separate device, you can register a physical key.'
-              : 'La opción principal usa este dispositivo o su gestor de passkeys. Si prefieres un dispositivo separado, puedes registrar una llave física.'}
-          </p>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => addKey('cross-platform')}
-            className="btn btn-primary btn-block mt-5"
-          >
-            {en ? 'Add a physical key' : 'Agregar llave física'}
-          </button>
-          <p className="mt-2 text-[11px] leading-relaxed text-text-faint">
-            {en
-              ? 'Plug in or tap a compatible USB, NFC or Bluetooth key when the system asks.'
-              : 'Conecta o acerca una llave compatible con USB, NFC o Bluetooth cuando el sistema lo solicite.'}
-          </p>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => setDialog(null)}
-            className="btn-text mt-2 w-full"
-          >
-            {en ? 'Cancel' : 'Cancelar'}
-          </button>
-        </Sheet>
-      ) : null}
 
       {removing ? (
         <Sheet titleId="remove-key-title" onClose={() => setDialog(null)} busy={busy}>
@@ -669,17 +633,21 @@ function Faq({ question, children }: { question: string; children: ReactNode }) 
   );
 }
 
-async function readKeys(settings: ClientSettings, wallet: Wallet): Promise<State> {
+async function readKeys(settings: ClientSettings, session: Session): Promise<State> {
+  const { wallet } = session;
   const { approvals } = await api<Approvals>(settings.apiOrigin, `approvals/${wallet.address}`);
   const applied = await Promise.all(
     settings.networks.map((id) => appliedApprovals(settings, wallet.address, id)),
   );
+  const owners = ownersAfter(
+    wallet.initialOwners,
+    approvals.map((approval) => approval.call),
+  );
   return {
-    owners: ownersAfter(
-      wallet.initialOwners,
-      approvals.map((approval) => approval.call),
-    ),
+    owners,
     total: approvals.length,
     applied: Object.fromEntries(settings.networks.map((id, i) => [id, applied[i]])),
+    // Stellar out of reach does not hide the keys.
+    stellar: await stellarSignerChanges(settings, session, owners).catch(() => null),
   };
 }

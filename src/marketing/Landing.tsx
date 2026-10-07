@@ -4,6 +4,7 @@ import { CatGlyph } from './CatGlyph';
 import { MeliSprite } from './MeliSprite';
 import { LandingInteractions } from './LandingInteractions';
 import { localizedPath } from '../consumer/routes';
+import { settings } from '../lib/settings';
 
 export function Landing({ lang }: { lang: 'es' | 'en' }) {
   const isSpanish = lang === 'es';
@@ -11,9 +12,10 @@ export function Landing({ lang }: { lang: 'es' | 'en' }) {
   const localeLabel = isSpanish ? 'EN' : 'ES';
   const appHref = localizedPath('/app', !isSpanish);
   const legalPrefix = isSpanish ? '' : '/en';
-  const demoPaymentPath = '/pay/demo-cafe-norte';
-  const cardMailHref = '#faq';
-  const docsHref = localizedPath('/docs', !isSpanish);
+  // Static pages: each language has its own path.
+  const demoPaymentPath = isSpanish ? '/pay/demo-cafe-norte' : '/en/pay/demo-cafe-norte';
+  const docsHref = isSpanish ? '/docs' : '/en/docs';
+  const businessHref = settings.businessOrigin;
   const apiExample = `const response = await fetch(
   API_ORIGIN + "/v1/payment_intents",
   {
@@ -50,8 +52,8 @@ const intent = await response.json();`;
             <div className="meli-nav__links" data-nav-menu>
               <a href="#cycle">{t.nav.cycle}</a>
               <a href="#account">{t.nav.account}</a>
-              <a href="#control">{t.nav.control}</a>
               <a href="#grow">{t.nav.grow}</a>
+              <a href="#control">{t.nav.control}</a>
               <a href="#card">{t.nav.card}</a>
               <a href="#api">{t.nav.developers}</a>
             </div>
@@ -95,8 +97,8 @@ const intent = await response.json();`;
           <div className="meli-mobile-menu" id="meli-mobile-menu" data-mobile-menu hidden>
             <a href="#cycle">{t.nav.cycle}</a>
             <a href="#account">{t.nav.account}</a>
-            <a href="#control">{t.nav.control}</a>
             <a href="#grow">{t.nav.grow}</a>
+            <a href="#control">{t.nav.control}</a>
             <a href="#card">{t.nav.card}</a>
             <a href="#api">{t.nav.developers}</a>
             <Link
@@ -360,7 +362,8 @@ const intent = await response.json();`;
                       <span>USDC</span>
                     </div>
                     <strong>
-                      1,280<span>.00</span>
+                      {t.money.balance[0]}
+                      <span>{t.money.balance[1]}</span>
                     </strong>
                     <div className="meli-balance-card__rail" aria-hidden="true">
                       <i></i>
@@ -370,13 +373,13 @@ const intent = await response.json();`;
                         <i aria-hidden="true"></i>
                         {t.account.growing}
                       </span>
-                      <b>420.00</b>
+                      <b>{t.money.growing}</b>
                     </div>
                   </div>
                   <div className="meli-quick-actions">
                     {t.account.actions.map((action, index) => (
                       <button key={action} type="button" disabled>
-                        <span aria-hidden="true">{['↗', '→', '⇄', '⌗'][index]}</span>
+                        <span aria-hidden="true">{['+', '↑', '⇅', '⌗'][index]}</span>
                         {action}
                       </button>
                     ))}
@@ -394,7 +397,7 @@ const intent = await response.json();`;
                         <strong>{t.account.received}</strong>
                         <small>{t.account.receivedFrom}</small>
                       </div>
-                      <b>+18.00</b>
+                      <b>+{t.money.charge}</b>
                     </div>
                   </div>
                 </div>
@@ -426,7 +429,7 @@ const intent = await response.json();`;
                   ))}
                 </div>
                 <p className="meli-honesty-note">
-                  <span aria-hidden="true">!</span>
+                  <span aria-hidden="true">↗</span>
                   {t.receive.note}
                 </p>
               </div>
@@ -450,23 +453,20 @@ const intent = await response.json();`;
                     <div>
                       <span>{t.receive.amountLabel}</span>
                       <strong>
-                        18.00 <small>USDC</small>
+                        {t.money.charge} <small>USDC</small>
                       </strong>
                       <p>{t.receive.item}</p>
                     </div>
                     <MeliSprite variant="body-qr" className="meli-receipt-qr-mascot" />
                   </div>
-                  <button
+                  <Link
                     className="meli-button meli-button--ink meli-button--full"
-                    type="button"
-                    data-copy-payment
-                    data-payment-link={demoPaymentPath}
-                    data-default-label={t.receive.copyLink}
-                    data-copied-label={t.receive.copied}
+                    href={demoPaymentPath}
+                    prefetch={false}
                   >
-                    <span data-copy-label>{t.receive.copyLink}</span>
-                    <span aria-hidden="true">⌁</span>
-                  </button>
+                    {t.receive.copyLink}
+                    <span aria-hidden="true">→</span>
+                  </Link>
                 </article>
               </div>
             </div>
@@ -496,11 +496,11 @@ const intent = await response.json();`;
               <div className="meli-grow-route">
                 <div className="meli-grow-bucket meli-grow-bucket--available">
                   <span>{t.grow.available}</span>
-                  <strong>USDC 1,000.00</strong>
+                  <strong>{t.money.available} USDC</strong>
                   <small>78%</small>
                 </div>
                 <div className="meli-grow-bridge" aria-hidden="true">
-                  <div className="meli-grow-bridge__packet">280</div>
+                  <div className="meli-grow-bridge__packet">{t.money.moving}</div>
                   <span></span>
                   <i></i>
                 </div>
@@ -531,46 +531,6 @@ const intent = await response.json();`;
                   <span aria-hidden="true">!</span>
                   {t.grow.risk}
                 </p>
-              </div>
-            </div>
-          </section>
-
-          <section
-            className="meli-section meli-section--milk meli-move"
-            id="move"
-            aria-labelledby="move-title"
-          >
-            <div className="meli-container">
-              <div className="meli-section-heading meli-section-heading--wide">
-                <p className="meli-kicker">
-                  <span aria-hidden="true"></span>
-                  {t.move.kicker}
-                </p>
-                <h2 id="move-title">{t.move.title}</h2>
-                <p>{t.move.copy}</p>
-              </div>
-              <div
-                className="meli-move-mascot"
-
-                aria-hidden="true"
-              >
-                <MeliSprite variant="body-conveyor" />
-              </div>
-              <div className="meli-path-grid">
-                {t.move.paths.map(([title, description, glyph], index) => (
-                  <article key={title} className="meli-path-card">
-                    <div className="meli-path-card__glyph" aria-hidden="true">
-                      <span>{glyph}</span>
-                    </div>
-                    <p>0{index + 1}</p>
-                    <h3>{title}</h3>
-                    <span>{description}</span>
-                    <div className="meli-path-card__footer">
-                      <small>{t.move.preview}</small>
-                      <i aria-hidden="true">→</i>
-                    </div>
-                  </article>
-                ))}
               </div>
             </div>
           </section>
@@ -693,14 +653,15 @@ const intent = await response.json();`;
                 </p>
                 <h2 id="card-title">{t.card.title}</h2>
                 <p>{t.card.copy}</p>
-                <a
+                <Link
                   className="meli-button meli-button--ink"
-                  href={cardMailHref}
+                  href={appHref}
+                  prefetch={false}
                   data-cta="card-interest"
                 >
                   {t.card.waitlist}
                   <span aria-hidden="true">↗</span>
-                </a>
+                </Link>
                 <small className="meli-card-notice">{t.card.notice}</small>
               </div>
             </div>
@@ -729,16 +690,16 @@ const intent = await response.json();`;
                     {t.developers.docs}
                     <span aria-hidden="true">→</span>
                   </Link>
-                  <Link className="meli-text-link" href={docsHref}>
+                  <a className="meli-text-link" href={businessHref}>
                     {t.developers.pilot}
                     <span aria-hidden="true">↗</span>
-                  </Link>
+                  </a>
                 </div>
                 <small className="meli-api-note">{t.developers.note}</small>
               </div>
               <div
                 className="meli-code-window"
-
+                role="figure"
                 aria-label={isSpanish ? 'Ejemplo de API' : 'API example'}
               >
                 <div className="meli-code-window__bar">
@@ -881,7 +842,7 @@ const intent = await response.json();`;
           </div>
         </footer>
       </div>
-      <LandingInteractions locale={lang} />
+      <LandingInteractions />
     </>
   );
 }

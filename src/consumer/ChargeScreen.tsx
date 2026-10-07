@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { parseUnits } from 'viem';
+import { formatUnits, parseUnits } from 'viem';
 import type { ClientSettings } from '../lib/settings';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { MeliSprite } from '../marketing/MeliSprite';
@@ -19,7 +19,7 @@ import { BackHeader, MoneyPanel, SectionLabel, TransactionActions } from './Prim
 import { localizedPath } from './routes';
 import { AmountInput } from './SelectMenu';
 import { RowSkeletonList } from './Skeleton';
-import { TokenSelect } from './TokenSelect';
+import { TokenIcon } from './TokenIcon';
 
 /** What the result screen shows: a Flow charge, or the profile link for an open amount. */
 type Link = { url: string; amount: bigint | null; description: string };
@@ -48,6 +48,8 @@ export function ChargeScreen({
   const [showAll, setShowAll] = useState(false);
   const [paid, setPaid] = useState<Intent | null>(null);
   const card = useRef<HTMLElement>(null);
+  /** One idempotency key per charge being created, kept while retrying it. */
+  const attempt = useRef<{ draft: string; key: string } | null>(null);
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
@@ -74,11 +76,15 @@ export function ChargeScreen({
       return;
     }
     setBusy(true);
-    createCharge(settings, session, {
+    const charge = {
       amount,
       ...(description.trim() ? { description: description.trim() } : {}),
-    })
+    };
+    const draft = JSON.stringify(charge);
+    if (attempt.current?.draft !== draft) attempt.current = { draft, key: crypto.randomUUID() };
+    createCharge(settings, session, charge, attempt.current.key)
       .then((intent) => {
+        attempt.current = null;
         setLink({ url: intent.checkout_url, amount: value, description: description.trim() });
         setRevision((current) => current + 1);
       })
@@ -111,13 +117,20 @@ export function ChargeScreen({
     }
   }
 
+  function newCharge() {
+    setLink(null);
+    setAmount('');
+    setDescription('');
+    setNotice('');
+  }
+
   if (link)
     return (
       <>
         <BackHeader
           title={en ? 'Your payment link' : 'Tu link de cobro'}
           english={en}
-          to="/move?flow=receive"
+          onBack={newCharge}
         />
         <div className="flex flex-1 flex-col justify-center">
           <MoneyPanel
@@ -144,7 +157,7 @@ export function ChargeScreen({
             </div>
             {link.amount ? (
               <p className="type-mono relative z-1 mb-2 text-[34px] font-bold leading-none">
-                {formatUsdc(link.amount)}
+                {formatUsdc(link.amount, en)}
                 <span className="ml-1.5 text-[18px] text-text-muted">USDC</span>
               </p>
             ) : (
@@ -159,8 +172,8 @@ export function ChargeScreen({
             ) : null}
             <p className="relative z-1 mt-5 text-[12px] text-text-faint">
               {en
-                ? `GatoPago · Secure payment on ${networkName(settings.homeNetwork)}`
-                : `GatoPago · Pago seguro en ${networkName(settings.homeNetwork)}`}
+                ? `Paid in USDC on ${networkName(settings.homeNetwork)}`
+                : `Se paga en USDC por ${networkName(settings.homeNetwork)}`}
             </p>
           </MoneyPanel>
         </div>
@@ -200,7 +213,7 @@ export function ChargeScreen({
                 void exportLink(() =>
                   downloadCard(
                     card.current,
-                    `gatopago-cobro-${link.amount ? formatUsdc(link.amount) : 'abierto'}-USDC.png`,
+                    `gatopago-cobro-${link.amount ? formatUnits(link.amount, USDC_DECIMALS) : 'abierto'}-USDC.png`,
                   ),
                 )
               }
@@ -228,17 +241,8 @@ export function ChargeScreen({
           >
             {en ? 'Share on WhatsApp' : 'Compartir por WhatsApp'}
           </a>
-          <button
-            type="button"
-            className="btn-text mt-1 w-full"
-            onClick={() => {
-              setLink(null);
-              setAmount('');
-              setDescription('');
-              setNotice('');
-            }}
-          >
-            {en ? 'Back' : 'Volver'}
+          <button type="button" className="btn-text mt-1 w-full" onClick={newCharge}>
+            {en ? 'Create another link' : 'Crear otro link'}
           </button>
         </TransactionActions>
       </>
@@ -247,43 +251,39 @@ export function ChargeScreen({
   const visible = showAll ? (charges ?? []) : (charges ?? []).slice(0, 5);
   return (
     <>
-      <BackHeader title={en ? 'Request' : 'Cobrar'} english={en} to="/move?flow=receive" />
+      <BackHeader
+        title={en ? 'Request a payment' : 'Cobrar'}
+        english={en}
+        to="/move?flow=receive"
+      />
       <MoneyPanel className="mb-5 flex flex-col items-center">
-        <p className="mb-4 text-[13px] text-text-muted">
-          {en ? 'Amount to request' : 'Monto a cobrar'}
-        </p>
+        <p className="mb-3 text-[13px] text-text-muted">{en ? 'How much?' : '¿Cuánto cobras?'}</p>
         <AmountInput
           name="amount"
           aria-label={en ? 'Amount to request' : 'Monto a cobrar'}
           placeholder="0"
           value={amount}
           onChange={setAmount}
-          className="tabular w-full max-w-[260px] bg-transparent text-center font-display text-[48px] leading-none text-text placeholder:text-text-faint"
+          className="amount-input tabular w-full max-w-[260px] bg-transparent text-center font-display leading-none text-text placeholder:text-text-faint"
         />
-        <div className="mt-4">
-          <TokenSelect
-            value="USDC"
-            options={[{ value: 'USDC', symbol: 'USDC', label: 'USD Coin' }]}
-            onChange={() => {}}
-            english={en}
-          />
-        </div>
-        <p className="mt-4 text-[12px] text-text-faint">
+        <span className="mt-3 inline-flex items-center gap-2 text-[13px] font-semibold">
+          <TokenIcon symbol="USDC" size={22} />
+          USDC
+        </span>
+        <p className="mt-3 text-center text-[12px] text-text-faint">
           {en
-            ? 'Leave the amount at 0 for an open-amount request.'
-            : 'Deja el monto en 0 para un cobro de monto abierto.'}
+            ? 'Leave it at 0 and the payer chooses the amount.'
+            : 'Si lo dejas en 0, quien paga elige el monto.'}
         </p>
       </MoneyPanel>
       <MoneyPanel className="mb-5">
         <label htmlFor="charge-reference" className="mb-2 block text-[13px] text-text-muted">
-          {en ? 'Reference (optional)' : 'Referencia (opcional)'}
+          {en ? 'Note (optional)' : 'Concepto (opcional)'}
         </label>
         <textarea
           id="charge-reference"
           name="reference"
-          placeholder={
-            en ? "What's it for? E.g. Logo design" : '¿Por qué cobras? Ej: Diseño de logo'
-          }
+          placeholder={en ? 'E.g. Logo design' : 'Ej.: Diseño de logo'}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           maxLength={200}
@@ -299,8 +299,8 @@ export function ChargeScreen({
       {open && profile && !profile.username ? (
         <p className="mb-4 text-center text-[12px] text-text-muted">
           {en
-            ? 'An open-amount request uses your username. '
-            : 'Un cobro de monto abierto usa tu usuario. '}
+            ? 'Without an amount, the link uses your username. '
+            : 'Sin monto, el link usa tu usuario. '}
           <NavigationLink href={localizedPath('/profile', en)} className="underline">
             {en ? 'Choose it' : 'Elígelo'}
           </NavigationLink>
@@ -325,7 +325,7 @@ export function ChargeScreen({
 
       {charges === null || charges.length > 0 ? (
         <div className="mt-9">
-          <SectionLabel>{en ? 'Your requests' : 'Tus cobros'}</SectionLabel>
+          <SectionLabel>{en ? 'Your payment links' : 'Tus links de cobro'}</SectionLabel>
           {charges === null ? (
             <RowSkeletonList count={3} />
           ) : (
@@ -344,7 +344,7 @@ export function ChargeScreen({
                   >
                     <div className="min-w-0">
                       <p className="truncate text-[14px]">
-                        {formatUsdc(parseUnits(intent.amount, USDC_DECIMALS))} USDC
+                        {formatUsdc(parseUnits(intent.amount, USDC_DECIMALS), en)} USDC
                       </p>
                       <p className="truncate text-[12px] text-text-faint">
                         {new Date(intent.created_at * 1000).toLocaleDateString(en ? 'en' : 'es', {
@@ -411,6 +411,17 @@ export function ChargeScreen({
             networkId: paid.payment.network,
             date: (paid.payment.paid_at ?? paid.created_at) * 1000,
           }}
+          action={
+            <NavigationLink
+              href={localizedPath(
+                `/team?${new URLSearchParams({ split: paid.amount, reference: paid.description ?? '' })}`,
+                en,
+              )}
+              className="btn-text mt-2 w-full text-[#fff8f0]"
+            >
+              {en ? 'Split this payment with my team' : 'Repartir este cobro con mi equipo'}
+            </NavigationLink>
+          }
         />
       ) : null}
     </>

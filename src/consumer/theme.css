@@ -29,9 +29,9 @@
   --color-paper-text: #0b0b0f;
   --color-paper-muted: #5f5650;
 
-  --font-sans: 'Recursive Variable', 'Recursive', system-ui, sans-serif;
-  --font-display: 'Recursive Variable', 'Recursive', system-ui, sans-serif;
-  --font-mono: 'Recursive Variable', 'Recursive', ui-monospace, monospace;
+  --font-sans: var(--font-recursive), system-ui, sans-serif;
+  --font-display: var(--font-recursive), system-ui, sans-serif;
+  --font-mono: var(--font-recursive), ui-monospace, monospace;
 
   --radius-pixel: 0;
   --radius-sm: 0;

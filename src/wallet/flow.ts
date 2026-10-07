@@ -11,7 +11,6 @@ import { walletNetwork } from '@gatopago/shared/networks';
 import { paymentCalls, paymentRouterAbi, type Payment } from '@gatopago/shared/payments';
 import type { ClientSettings } from '../lib/settings';
 import { publicClient } from './account';
-import { send } from './operations';
 import { api } from './api';
 import type { Session } from './session';
 
@@ -102,6 +101,8 @@ export async function payWithAccount(
   plan: Plan,
 ) {
   const calls = paymentCalls(walletNetwork(plan.network), plan.payment, plan.signature);
+  // Signing loads on paying: the checkout page opens without it.
+  const { send } = await import('./operations');
   return confirm(
     settings,
     intent.id,
@@ -157,12 +158,20 @@ export async function payWithBrowserWallet(
   return confirm(settings, intent.id, network, hash);
 }
 
-/** A charge: the member's own Flow payment intent, created with their session. */
+/**
+ * A charge: the member's own Flow payment intent, created with their session. Retrying with the
+ * same `key` returns the charge the first attempt created instead of a second one.
+ */
 export const createCharge = (
   settings: ClientSettings,
   session: Session,
   charge: { amount: string; description?: string },
-) => flowApi<Intent>(settings, session, 'payment_intents', { body: charge });
+  key: string,
+) =>
+  flowApi<Intent>(settings, session, 'payment_intents', {
+    body: charge,
+    headers: { 'Idempotency-Key': key },
+  });
 
 /** The member's latest charges (Flow keeps 100), newest first. */
 export const listCharges = (settings: ClientSettings, session: Session, signal?: AbortSignal) =>
@@ -175,5 +184,10 @@ export const flowApi = <T>(
   settings: ClientSettings,
   session: Session,
   path: string,
-  init: { method?: string; body?: unknown; signal?: AbortSignal } = {},
+  init: {
+    method?: string;
+    body?: unknown;
+    signal?: AbortSignal;
+    headers?: Record<string, string>;
+  } = {},
 ) => api<T>(settings.apiOrigin, `/v1/${path}`, { ...init, token: session.token });

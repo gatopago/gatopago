@@ -7,12 +7,13 @@ import { saveSession, type Session, type Wallet } from './session';
 
 /**
  * Sign-In with Ethereum (ERC-4361): the account signs the message with its passkey (ERC-1271, or
- * ERC-6492 before it is deployed). A new account also sends its invitation and Turnstile token.
+ * ERC-6492 before it is deployed). A new account also sends its Turnstile token and, unless sign-up
+ * is open, its invitation.
  */
 export async function signIn(
   settings: ClientSettings,
   wallet: Wallet,
-  signUp?: { invite: string; turnstile: string },
+  signUp?: { invite?: string; turnstile: string },
 ): Promise<Session> {
   const networkId = settings.homeNetwork;
   const account = await gatopagoAccount(settings, wallet, networkId);

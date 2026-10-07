@@ -31,6 +31,10 @@ export function parseConsumerQr(raw: string, origin: string): QrDestination | nu
     if (/^\/(@[a-zA-Z][a-zA-Z0-9_]{2,29}|pay\/pi_[0-9a-f]{32})$/.test(url.pathname)) {
       return { kind: 'link', path: url.pathname };
     }
+    // GatoPago Business's sign-in QR: only its request id is kept.
+    const request = url.searchParams.get('request');
+    if (url.pathname === '/approve' && request && /^[0-9a-f]{32}$/.test(request))
+      return { kind: 'link', path: `/approve?request=${request}` };
   } catch {
     /* empty */
   }
@@ -39,7 +43,7 @@ export function parseConsumerQr(raw: string, origin: string): QrDestination | nu
 
 export function qrReviewPath(destination: QrDestination): string {
   if (destination.kind === 'link')
-    return destination.path.startsWith('/pay/')
+    return destination.path.startsWith('/pay/') || destination.path.startsWith('/approve?')
       ? destination.path
       : `/send?username=${encodeURIComponent(destination.path.slice(2))}`;
   const query = new URLSearchParams({ recipient: destination.address });

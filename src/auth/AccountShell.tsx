@@ -6,11 +6,13 @@ import {
   Suspense,
   useContext,
   useEffect,
+  useRef,
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ConsumerFrame } from '../consumer/ConsumerFrame';
+import { useNavigationRecord } from '../consumer/history';
 import type { ConsumerView } from '../consumer/routes';
 import { ScreenLoading } from '../consumer/Skeleton';
 import type { ClientSettings } from '../lib/settings';
@@ -36,12 +38,24 @@ export function AccountShell({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const en = useSearchParams().get('lang') === 'en';
+  const params = useSearchParams();
+  const en = params.get('lang') === 'en';
+  const search = params.toString();
   // The session lives in this browser: unknown while rendering on the server.
   const session = useSyncExternalStore(subscribeSession, currentSession, () => undefined);
+  const direction = useNavigationRecord();
+  const signedOutOnArrival = useRef<boolean | null>(null);
   useEffect(() => {
-    if (session === null) router.replace(en ? '/login?lang=en' : '/login');
-  }, [session, router, en]);
+    if (session === undefined) return;
+    signedOutOnArrival.current ??= session === null;
+    if (session !== null) return;
+    const login = new URLSearchParams(en ? { lang: 'en' } : {});
+    // A link opened signed out (a send to @someone) continues there after signing in; signing out
+    // from the app does not bring the member back to where they left.
+    if (signedOutOnArrival.current && pathname !== '/app')
+      login.set('next', search ? `${pathname}?${search}` : pathname);
+    router.replace(login.size ? `/login?${login}` : '/login');
+  }, [session, router, en, pathname, search]);
 
   if (!session)
     return (
@@ -58,10 +72,13 @@ export function AccountShell({
         <ConsumerFrame
           english={en}
           navigation
-          account={{ address: session.wallet.address, networks: settings.networks }}
+          account={{
+            networks: settings.networks,
+            businessOrigin: settings.businessOrigin,
+          }}
         >
-          {/* Keyed by screen: the content enters gently while the frame stays put. */}
-          <div key={pathname} className="auth-content animate-fade-in">
+          {/* Keyed by screen: it slides in from where the member is going while the frame stays. */}
+          <div key={pathname} className="auth-content screen-enter" data-direction={direction}>
             {children}
           </div>
         </ConsumerFrame>

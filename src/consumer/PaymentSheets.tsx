@@ -66,14 +66,12 @@ export function ConfirmSheet({
         </div>
       </div>
       {children}
-      <p className="mb-2 border-l-4 border-info bg-info/8 px-3 py-2 text-[12px] leading-relaxed text-info">
+      <p className="mb-5 border-l-4 border-info bg-info/8 px-3 py-2 text-[12px] leading-relaxed text-text-muted">
+        {warning ? `${warning} ` : null}
         {en
-          ? 'Every movement requires an active key of your account.'
-          : 'Cada movimiento requiere una llave activa de tu cuenta.'}
+          ? 'You confirm it with your fingerprint, face or device PIN.'
+          : 'Lo confirmas con tu huella, tu rostro o el PIN de tu dispositivo.'}
       </p>
-      {warning ? (
-        <p className="mb-5 text-center text-[12px] leading-relaxed text-text-faint">{warning}</p>
-      ) : null}
       {error ? (
         <p className="auth-error mb-4" role="alert">
           {error}
@@ -88,7 +86,7 @@ export function ConfirmSheet({
       >
         {confirmLabel}
       </button>
-      <button type="button" disabled={busy} onClick={onCancel} className="btn-text mt-1 w-full">
+      <button type="button" disabled={busy} data-sheet-close className="btn-text mt-1 w-full">
         {en ? 'Cancel' : 'Cancelar'}
       </button>
     </Sheet>
@@ -219,11 +217,11 @@ export function SigningDetails({
           <span className="truncate text-[13px] text-text-muted">
             {open
               ? en
-                ? 'Hide signing details'
-                : 'Ocultar detalles de firma'
+                ? 'Hide technical details'
+                : 'Ocultar detalles técnicos'
               : en
-                ? 'Show signing details'
-                : 'Ver detalles de firma'}
+                ? 'What am I signing?'
+                : '¿Qué estoy firmando?'}
           </span>
         </span>
         <svg
@@ -245,8 +243,8 @@ export function SigningDetails({
         <div className="animate-fade-in mt-2 border border-border bg-surface px-3.5">
           <p className="pt-3 pb-1 text-[11px] leading-relaxed text-cat-300">
             {en
-              ? 'Your passkey signs this operation with the EIP-712 standard. Nobody else can authorize it.'
-              : 'Tu llave firma esta operación con el estándar EIP-712. Nadie más puede autorizarla.'}
+              ? 'Your passkey signs exactly this operation, with the EIP-712 standard. Nobody else can authorize it.'
+              : 'Tu llave firma exactamente esta operación, con el estándar EIP-712. Nadie más puede autorizarla.'}
           </p>
           <SigningRow label={en ? 'Standard' : 'Estándar'} value="EIP-712 · ERC-4337" />
           <SigningRow label={en ? 'Network' : 'Red'} value={`${chain.name} · ${chain.id}`} />
@@ -273,7 +271,8 @@ export function SigningDetails({
 
 /** A movement as V2's receipt shows it. */
 export interface ReceiptData {
-  kind: 'sent' | 'received' | 'swapped';
+  /** `paid` is a payment to a merchant; `sent`, a transfer. */
+  kind: 'sent' | 'paid' | 'received' | 'swapped';
   /** Atomic units of `currency`. */
   amount: bigint;
   currency: string;
@@ -281,7 +280,8 @@ export interface ReceiptData {
   /** `@username` or an address; addresses are shortened. */
   counterparty?: string | null;
   reference?: string | null;
-  hash?: Hex | null;
+  /** A transaction hash: `0x…` on EVM networks, bare hex on Stellar. */
+  hash?: string | null;
   networkId?: string | null;
   /** Milliseconds since the epoch. */
   date: number;
@@ -371,9 +371,13 @@ function ReceiptCard({
             ? en
               ? 'You received'
               : 'Recibiste'
-            : en
-              ? 'You paid'
-              : 'Pagaste'}
+            : receipt.kind === 'paid'
+              ? en
+                ? 'You paid'
+                : 'Pagaste'
+              : en
+                ? 'You sent'
+                : 'Enviaste'}
       </p>
       <p className="type-mono relative z-1 mb-4 max-w-full break-words text-center text-[40px] font-bold leading-tight text-paper-text">
         {hidden ? (
@@ -431,6 +435,12 @@ function ReceiptCard({
             </span>
           </div>
         ) : null}
+        {receipt.networkId ? (
+          <div className="flex items-center justify-between gap-3 text-[12px]">
+            <span className="shrink-0 text-paper-muted">{en ? 'Network' : 'Red'}</span>
+            <span className="text-right text-paper-text">{networkName(receipt.networkId)}</span>
+          </div>
+        ) : null}
         {url ? (
           <a
             href={url}
@@ -438,14 +448,8 @@ function ReceiptCard({
             rel="noopener noreferrer"
             className="mt-2 text-center text-[12px] font-semibold text-cat-700 underline underline-offset-2"
           >
-            {en ? 'View receipt on the network ↗' : 'Ver comprobante en la red ↗'}
+            {en ? 'See it on the blockchain ↗' : 'Verlo en la blockchain ↗'}
           </a>
-        ) : null}
-        {receipt.networkId ? (
-          <div className="flex items-center justify-between gap-3 text-[12px]">
-            <span className="shrink-0 text-paper-muted">{en ? 'Network' : 'Red'}</span>
-            <span className="text-right text-paper-text">{networkName(receipt.networkId)}</span>
-          </div>
         ) : null}
         <p className="mt-1 text-center text-[11px] text-paper-muted">
           GatoPago · {en ? 'Receipt' : 'Comprobante'}
@@ -483,10 +487,13 @@ export function Receipt({
   receipt,
   english: en,
   onClose,
+  action,
 }: {
   receipt: ReceiptData;
   english: boolean;
   onClose: () => void;
+  /** What to do next with this money (e.g. split a paid charge). */
+  action?: ReactNode;
 }) {
   const card = useRef<HTMLDivElement>(null);
   const [hidden] = useState(balanceHidden);
@@ -504,7 +511,7 @@ export function Receipt({
         >
           {en ? 'Download receipt' : 'Descargar comprobante'}
         </button>
-        <button type="button" className="btn btn-ghost shrink-0" onClick={onClose}>
+        <button type="button" className="btn btn-ghost shrink-0" data-sheet-close>
           {en ? 'Close' : 'Cerrar'}
         </button>
       </div>
@@ -513,6 +520,7 @@ export function Receipt({
           {error}
         </p>
       ) : null}
+      {action}
     </Sheet>
   );
 }
@@ -547,9 +555,14 @@ export function ReceiptScreen({
             void perform(async () => {
               const result = await shareCard(card.current, {
                 filename: receiptFile(receipt),
-                text: en
-                  ? `I paid ${receiptAmount(receipt, en)} ${receipt.currency} with GatoPago`
-                  : `Pagué ${receiptAmount(receipt, en)} ${receipt.currency} con GatoPago`,
+                text:
+                  receipt.kind === 'paid'
+                    ? en
+                      ? `I paid ${receiptAmount(receipt, en)} ${receipt.currency} with GatoPago`
+                      : `Pagué ${receiptAmount(receipt, en)} ${receipt.currency} con GatoPago`
+                    : en
+                      ? `I sent ${receiptAmount(receipt, en)} ${receipt.currency} with GatoPago`
+                      : `Envié ${receiptAmount(receipt, en)} ${receipt.currency} con GatoPago`,
                 url: url ?? undefined,
               });
               if (result === 'unsupported') await downloadCard(card.current, receiptFile(receipt));

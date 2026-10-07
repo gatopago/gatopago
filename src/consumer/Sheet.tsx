@@ -1,8 +1,14 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
-/** Native dialog keeps focus inside and opens above the app's animated frame. */
+/** How long a sheet takes to leave; `--sheet-out` in consumer.css. */
+const LEAVE_MS = 180;
+
+/**
+ * Native dialog keeps focus inside and opens above the app's animated frame. It leaves with an
+ * animation when the member closes it: the backdrop, Escape, or any `[data-sheet-close]` inside.
+ */
 export function Sheet({
   titleId,
   children,
@@ -17,6 +23,7 @@ export function Sheet({
   variant?: 'sheet' | 'menu' | 'selector' | 'receipt' | 'stage';
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const [leaving, setLeaving] = useState(false);
   useEffect(() => {
     const element = dialog.current;
     const previousFocus =
@@ -32,18 +39,26 @@ export function Sheet({
       if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
     };
   }, [variant]);
+  function close() {
+    if (busy || leaving) return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return onClose();
+    setLeaving(true);
+    setTimeout(onClose, LEAVE_MS);
+  }
   return (
     <dialog
       ref={dialog}
       className="meli-menu-sheet"
       data-variant={variant}
+      data-leaving={leaving || undefined}
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();
-        if (!busy) onClose();
+        close();
       }}
       onClick={(event) => {
-        if (!busy && event.target === event.currentTarget) onClose();
+        const target = event.target as HTMLElement;
+        if (event.target === event.currentTarget || target.closest('[data-sheet-close]')) close();
       }}
     >
       <div className="meli-menu-sheet__body">{children}</div>

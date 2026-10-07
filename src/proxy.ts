@@ -3,14 +3,30 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { settings } from './lib/settings';
 import { documentCsp, documentSecurityHeaders } from './security/content-policy';
 import { NONCE_HEADER } from './security/nonce';
+import { STATIC_PAGES, staticCsp, staticSecurityHeaders } from './security/static-pages';
 
 export function proxy(request: NextRequest) {
+  // Prerendered pages carry no nonce: their own policy, and the CDN may keep them.
+  if (STATIC_PAGES.has(request.nextUrl.pathname)) {
+    const response = NextResponse.next();
+    response.headers.set(
+      'Content-Security-Policy',
+      staticCsp({
+        development: process.env.NODE_ENV === 'development',
+        secure: request.nextUrl.protocol === 'https:',
+      }),
+    );
+    for (const [name, value] of Object.entries(staticSecurityHeaders))
+      response.headers.set(name, value);
+    return response;
+  }
   const nonce = randomBytes(32).toString('base64');
   const csp = documentCsp({
     nonce,
     apiOrigin: settings.apiOrigin,
     networks: settings.networks,
     rpcUrls: settings.rpcUrls,
+    stellar: settings.stellar,
     push: settings.push !== null,
     development: process.env.NODE_ENV === 'development',
     secure: request.nextUrl.protocol === 'https:',

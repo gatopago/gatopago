@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { Address, Hex } from 'viem';
+import type { Address } from 'viem';
 import type { ReceiptData } from '../consumer/PaymentSheets';
 import type { ClientSettings } from '../lib/settings';
+import { walletNetwork } from '@gatopago/shared/networks';
 import { USDC_DECIMALS } from './account';
 import { api } from './api';
 import { failureMessage } from './messages';
@@ -14,11 +15,12 @@ import type { Session } from './session';
 export interface Movement {
   id: string;
   network: string;
-  transaction_hash: Hex;
+  /** `0x…` on EVM networks, bare hex on Stellar. */
+  transaction_hash: string;
   /** Seconds since the epoch. */
   timestamp: number;
   direction: 'sent' | 'received';
-  kind: 'transfer' | 'crosschain' | 'payment' | 'earn' | 'swap';
+  kind: 'transfer' | 'crosschain' | 'payment' | 'earn' | 'swap' | 'settlement';
   currency: string;
   /** Atomic units. */
   amount: string;
@@ -137,21 +139,30 @@ export function presentMovement(movement: Movement, en: boolean) {
     (movement.counterparty_username ? `@${movement.counterparty_username}` : null);
   if (movement.kind === 'swap')
     return {
-      title: en ? 'Token swap' : 'Cambio de tokens',
-      detail: en ? 'Asset conversion' : 'Conversión de activos',
-      status: en ? 'Completed' : 'Completado',
+      title: en ? 'Swap' : 'Cambio de moneda',
+      detail: 'Uniswap',
+    };
+  if (movement.kind === 'settlement')
+    return {
+      title: en ? 'Instant settlement' : 'Liquidación instantánea',
+      detail: sent
+        ? en
+          ? 'Sent through Agora, at a fixed price'
+          : 'Enviado con Agora, a precio fijo'
+        : en
+          ? 'Received through Agora, at a fixed price'
+          : 'Recibido con Agora, a precio fijo',
     };
   if (movement.kind === 'earn')
     return {
-      title: 'Aave',
+      title: en ? 'Grow' : 'Crecer',
       detail: sent
         ? en
-          ? 'Moved into Grow'
-          : 'Movido a Crecer'
+          ? 'Deposited in Aave'
+          : 'Depositado en Aave'
         : en
-          ? 'Withdrawal from Grow'
-          : 'Retiro desde Crecer',
-      status: en ? 'Completed' : 'Completado',
+          ? 'Withdrawn from Aave'
+          : 'Retirado de Aave',
     };
   const detail =
     movement.kind === 'crosschain'
@@ -177,7 +188,7 @@ export function presentMovement(movement: Movement, en: boolean) {
           : identity
             ? en
               ? 'Payment received'
-              : 'Cobro recibido'
+              : 'Pago recibido'
             : en
               ? 'Deposit received'
               : 'Depósito recibido';
@@ -190,15 +201,29 @@ export function presentMovement(movement: Movement, en: boolean) {
       : movement.counterparty
         ? `Wallet ${shortAddress(movement.counterparty)}`
         : 'GatoPago');
-  return { title, detail, status: en ? 'Completed' : 'Completado' };
+  return { title, detail };
+}
+
+/** Decimals of the coin a movement moved: USDC's, or a configured token's (AUSD). */
+export function decimalsOf(movement: Movement) {
+  if (movement.currency === 'USDC' || !movement.network.startsWith('eip155:')) return USDC_DECIMALS;
+  return (
+    walletNetwork(movement.network).tokens?.find(({ symbol }) => symbol === movement.currency)
+      ?.decimals ?? USDC_DECIMALS
+  );
 }
 
 export function movementReceipt(movement: Movement, en: boolean): ReceiptData {
   return {
-    kind: movement.kind === 'swap' ? 'swapped' : movement.direction,
+    kind:
+      movement.kind === 'swap'
+        ? 'swapped'
+        : movement.kind === 'payment' && movement.direction === 'sent'
+          ? 'paid'
+          : movement.direction,
     amount: BigInt(movement.amount),
     currency: movement.currency,
-    decimals: USDC_DECIMALS,
+    decimals: decimalsOf(movement),
     counterparty: movement.counterparty_username
       ? `@${movement.counterparty_username}`
       : movement.counterparty,

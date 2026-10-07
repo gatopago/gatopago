@@ -329,11 +329,161 @@
 }
 
 .consumer-ui .app-frame {
+  --frame-x: 20px;
+  --frame-top: 20px;
   position: relative;
   isolation: isolate;
+  overflow-x: clip;
   background: var(--color-canvas);
   color: var(--color-text);
   color-scheme: light;
+}
+/* Small phones (iPhone SE, compact Androids) get a tighter frame and type. */
+@media (max-width: 389px) {
+  .consumer-ui .app-frame {
+    --frame-x: 16px;
+    --frame-top: 14px;
+  }
+  .consumer-ui .finance-panel {
+    padding: 16px;
+    box-shadow: 4px 4px 0 var(--color-cat-700);
+  }
+  .consumer-ui .meli-paper-card--strong,
+  .consumer-ui .meli-ink-card,
+  .consumer-ui .meli-balance-card-app {
+    box-shadow: 4px 4px 0 var(--color-cat-700);
+  }
+  .consumer-ui .meli-paper-card--strong {
+    box-shadow: 4px 4px 0 var(--color-border);
+  }
+  .consumer-ui .meli-balance-card-app {
+    box-shadow: 4px 4px 0 var(--color-cat-500);
+  }
+}
+
+/* The screen's entrance follows the navigation: forward from the right, back from the left. */
+.consumer-ui .screen-enter {
+  animation: fade-up 240ms var(--ease-enter) both;
+}
+.consumer-ui .screen-enter[data-direction='forward'] {
+  animation-name: screen-forward;
+  animation-duration: 280ms;
+}
+.consumer-ui .screen-enter[data-direction='back'] {
+  animation-name: screen-back;
+  animation-duration: 280ms;
+}
+.consumer-ui .screen-enter[data-direction='tab'] {
+  animation-name: fade-in;
+  animation-duration: 160ms;
+}
+@keyframes screen-forward {
+  from {
+    opacity: 0;
+    transform: translate3d(32px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes screen-back {
+  from {
+    opacity: 0;
+    transform: translate3d(-32px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A main tab's title. */
+.consumer-ui .tab-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.consumer-ui .tab-header__title {
+  font-size: 28px;
+  line-height: 1;
+}
+.consumer-ui .tab-header__description {
+  max-width: 30ch;
+  margin-top: 8px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.consumer-ui .tab-header .meli-sprite {
+  width: 72px;
+  flex: none;
+}
+@media (min-width: 390px) {
+  .consumer-ui .tab-header__title {
+    font-size: 32px;
+  }
+  .consumer-ui .tab-header .meli-sprite {
+    width: 84px;
+  }
+}
+
+/* A screen's top bar: it stays while the screen scrolls. */
+.consumer-ui .back-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  min-height: 60px;
+  align-items: center;
+  gap: 12px;
+  margin: calc(-1 * (env(safe-area-inset-top) + var(--frame-top))) calc(-1 * var(--frame-x)) 20px;
+  padding: calc(env(safe-area-inset-top) + 8px) var(--frame-x) 8px;
+  border-bottom: 1px solid var(--color-border);
+  background: rgb(255 248 240 / 0.94);
+  backdrop-filter: blur(12px);
+}
+.consumer-ui .back-header__button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  place-items: center;
+  margin-left: -6px;
+  border: 1px solid transparent;
+  color: var(--color-text);
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    transform 150ms var(--ease-press);
+}
+.consumer-ui .back-header__button:active {
+  transform: translateX(-3px);
+  background: var(--color-cat-50);
+}
+.consumer-ui .back-header__button:focus-visible {
+  border-color: var(--color-text);
+}
+@media (hover: hover) and (pointer: fine) {
+  .consumer-ui .back-header__button:hover {
+    border-color: var(--color-border);
+    background: var(--color-surface);
+  }
+}
+.consumer-ui .back-header__title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 20px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (min-width: 390px) {
+  .consumer-ui .back-header__title {
+    font-size: 22px;
+  }
 }
 
 .consumer-ui .app-frame::after {
@@ -601,14 +751,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-bottom: 1.25rem;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--color-border);
 }
 
 .consumer-ui .meli-identity {
   display: grid;
   min-width: 0;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   text-align: left;
@@ -616,8 +767,8 @@
 
 .consumer-ui .meli-avatar {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   flex: none;
   place-items: center;
   overflow: hidden;
@@ -700,7 +851,7 @@
 .consumer-ui .meli-quick-action {
   display: flex;
   min-width: 0;
-  min-height: 78px;
+  min-height: 74px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -708,16 +859,16 @@
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 10px;
-  font-weight: 740;
+  font-size: 12px;
+  font-weight: 680;
   line-height: 1.15;
   text-align: center;
 }
 
 .consumer-ui .meli-quick-action > span:first-child {
   display: grid;
-  width: 31px;
-  height: 31px;
+  width: 32px;
+  height: 32px;
   place-items: center;
   background: var(--color-cat-500);
   color: var(--color-on-cat);
@@ -1157,8 +1308,10 @@
   display: flex;
   width: 100%;
 }
+/* Full-width options stretch anyway: less side padding lets four fit on a 375px screen. */
 .consumer-ui .seg-track-block .seg-item {
   flex: 1;
+  padding-inline: 8px;
 }
 .consumer-ui .btn-sm {
   min-height: 42px;
@@ -1262,5 +1415,70 @@
   .consumer-ui ::view-transition-old(root),
   .consumer-ui ::view-transition-new(root) {
     animation: none !important;
+  }
+}
+
+/* A movement in a list: the row lights up instead of moving. */
+.consumer-ui .activity-row {
+  transition: background-color 140ms ease;
+}
+.consumer-ui .activity-row:active {
+  background: var(--color-cat-50);
+}
+@media (hover: hover) and (pointer: fine) {
+  .consumer-ui .activity-row:hover {
+    background: var(--color-cat-50);
+  }
+}
+
+/* The balance scales with the screen so long amounts stay on one line. */
+.consumer-ui .balance-amount {
+  font-size: clamp(34px, 11vw, 46px);
+}
+.consumer-ui .balance-refresh {
+  color: rgb(255 248 240 / 0.64);
+  font-size: 12px;
+  transition: color 140ms ease;
+}
+.consumer-ui .balance-refresh:hover {
+  color: #fff8f0;
+}
+.consumer-ui .balance-refresh[data-busy='true'] svg {
+  animation: spin 900ms linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* An amount being typed: large, but it fits a small phone. */
+.consumer-ui .amount-input {
+  font-size: clamp(44px, 14vw, 56px);
+}
+
+/* Sheets fade their backdrop in and slide back down when they close. */
+.consumer-ui .meli-menu-sheet::backdrop {
+  animation: fade-in 220ms ease-out both;
+}
+.consumer-ui .meli-menu-sheet[data-leaving] {
+  animation: sheet-down 180ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+.consumer-ui .meli-menu-sheet[data-leaving]::backdrop {
+  animation: fade-out 180ms ease-in both;
+}
+.consumer-ui .meli-menu-sheet[data-variant='receipt'][data-leaving],
+.consumer-ui .meli-menu-sheet[data-variant='stage'][data-leaving] {
+  animation-name: fade-out;
+}
+@keyframes sheet-down {
+  to {
+    opacity: 0;
+    transform: translate3d(0, 32px, 0);
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
   }
 }

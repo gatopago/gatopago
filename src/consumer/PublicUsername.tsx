@@ -7,7 +7,7 @@ import { api, type Recipient } from '../wallet/api';
 import { failureMessage } from '../wallet/messages';
 import { ConsumerFrame } from './ConsumerFrame';
 import { NavigationLink } from './NavigationLink';
-import { BackHeader, Panel } from './Primitives';
+import { Panel } from './Primitives';
 import { localizedPath } from './routes';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { ScreenLoading } from './Skeleton';
@@ -36,11 +36,10 @@ export function PublicUsername({
     return () => controller.abort();
   }, [settings, username, en]);
   return (
-    <ConsumerFrame english={en}>
+    <ConsumerFrame english={en} presentation="public">
       <div className="auth-content">
-        <BackHeader title={`@${username}`} english={en} to={en ? '/en' : '/'} />
         {error ? <p role="alert">{error}</p> : null}
-        {!recipient && !error ? <ScreenLoading kind="detail" english={en} /> : null}
+        {!recipient && !error ? <ScreenLoading kind="detail" english={en} bar={false} /> : null}
         {recipient ? (
           <>
             <div className="flex flex-col items-center py-6 text-center">
@@ -50,9 +49,9 @@ export function PublicUsername({
               >
                 {(recipient.display_name || recipient.username)[0]}
               </div>
-              <h2 className="mb-1 font-display text-[28px]">
+              <h1 className="mb-1 font-display text-[28px]">
                 {recipient.display_name || `@${recipient.username}`}
-              </h2>
+              </h1>
               {recipient.display_name ? (
                 <p className="mb-3 text-[15px] text-text-muted">@{recipient.username}</p>
               ) : null}

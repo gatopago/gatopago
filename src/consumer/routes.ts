@@ -2,6 +2,7 @@ export const consumerRoutes = {
   '/app': 'account',
   '/move': 'move',
   '/send': 'send',
+  '/team': 'team',
   '/scan': 'scan',
   '/receive': 'receive',
   '/profile': 'profile',
@@ -14,11 +15,7 @@ export const consumerRoutes = {
   '/settings': 'settings',
   '/settings/security': 'security',
   '/settings/security/recovery': 'recovery',
-  '/business': 'business',
-  '/business/payments': 'business',
-  '/business/keys': 'business',
-  '/business/webhooks': 'business',
-  '/business/events': 'business',
+  '/approve': 'approve',
 } as const;
 export type ConsumerView = 'login' | (typeof consumerRoutes)[keyof typeof consumerRoutes];
 
@@ -27,4 +24,9 @@ export function localizedPath(path: string, english: boolean): string {
   if (english) url.searchParams.set('lang', 'en');
   else url.searchParams.delete('lang');
   return url.pathname + url.search + url.hash;
+}
+
+/** Where to go after signing in: a path on this site only, never another origin. */
+export function safeNext(value: string | null): string | null {
+  return value && /^\/(?![/\\])\S*$/.test(value) && !value.startsWith('/login') ? value : null;
 }

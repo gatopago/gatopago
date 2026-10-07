@@ -76,7 +76,7 @@ export function SelectMenu({
             </h2>
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              data-sheet-close
               aria-label={en ? 'Close' : 'Cerrar'}
               className="meli-square-action h-11 w-11"
             >
@@ -92,9 +92,9 @@ export function SelectMenu({
                   type="button"
                   role="option"
                   aria-selected={isSelected}
+                  data-sheet-close
                   onClick={() => {
                     onChange(option.value);
-                    setOpen(false);
                   }}
                   className={`select-menu-option flex min-h-14 w-full items-center gap-3 border px-4 py-3 text-left ${isSelected ? 'border-text bg-cat-500/15 shadow-[3px_3px_0_var(--color-cat-700)]' : 'border-border bg-surface'}`}
                 >

@@ -2,22 +2,17 @@
 
 import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { isAddress, isAddressEqual, parseUnits, type Address, type Hex } from 'viem';
-import {
-  BackHeader,
-  MoneyPanel,
-  OptionCard,
-  SectionLabel,
-  TransactionActions,
-} from '../consumer/Primitives';
+import { formatUnits, isAddress, isAddressEqual, parseUnits, type Address, type Hex } from 'viem';
+import { BackHeader, MoneyPanel, TransactionActions } from '../consumer/Primitives';
 import { AmountInput, SelectMenu } from '../consumer/SelectMenu';
-import { TokenSelect } from '../consumer/TokenSelect';
-import { CatGlyph } from '../marketing/CatGlyph';
+import { RecipientShortcuts } from '../consumer/RecipientShortcuts';
+import { TokenIcon } from '../consumer/TokenIcon';
 import type { ClientSettings } from '../lib/settings';
-import { networkName, USDC_DECIMALS } from './account';
+import { networkName, publicClient, USDC_DECIMALS } from './account';
 import { send } from './operations';
 import { api, type Recipient } from './api';
-import { formatUsdc, totalUsdc, useBalances } from './balances';
+import { formatBalance, formatUsdc, plus, totalUsdc, useBalances } from './balances';
+import { checkStellarRecipient, planStellarSend, sendOnStellar, stellarArrived } from './stellar';
 import { failureMessage } from './messages';
 import { reviewedRecipient } from '../consumer/qr';
 import {
@@ -34,8 +29,40 @@ import { CrosschainTimeline } from '../consumer/CrosschainTimeline';
 import { StageOverlay } from '../consumer/StageOverlay';
 import type { Session } from './session';
 import { planTransfer, transferCalls, type Transfer } from './transfer';
+import { assetBalance, walletAssets } from '@gatopago/shared/assets';
+import { walletNetwork } from '@gatopago/shared/networks';
+import { quoteSettlement, settlementAllowed, settlementCalls } from '@gatopago/shared/settlement';
+import { payoutCalls } from '@gatopago/shared/rules';
+import { TokenSelect } from '../consumer/TokenSelect';
 
-type Review = Transfer & { label: string };
+/** A send: USDC (on its network or across through CCTP), or another coin on its own network. */
+type Review = EvmReview | StellarReview;
+
+/** USDC to a Stellar address: from the Stellar account, or burned on an EVM network (`calls`). */
+type StellarReview = Omit<Transfer, 'recipient'> & {
+  stellar: true;
+  recipient: string;
+  label: string;
+  calls: readonly { to: Address; data: Hex }[] | null;
+  coin?: undefined;
+  settle?: undefined;
+};
+
+type EvmReview = Transfer & {
+  stellar?: undefined;
+  label: string;
+  coin?: { symbol: string; token: Address; decimals: number };
+  /** Settled through Agora Instant Settlement: what the recipient receives, quoted at a fixed price. */
+  settle?: {
+    symbol: string;
+    token: Address;
+    decimals: number;
+    quote: bigint;
+    allowListed: boolean;
+    /** When it was prepared: the pair accepts the signature for ten minutes from then. */
+    now: bigint;
+  };
+};
 
 export function Send({
   settings,
@@ -47,8 +74,25 @@ export function Send({
   english: boolean;
 }) {
   const params = useSearchParams();
-  const { balances, refresh } = useBalances(settings, session);
-  const total = totalUsdc(balances, settings.networks);
+  const { balances, holding, stellar, stellarUsdc, refresh } = useBalances(settings, session);
+  const stellarId = stellar ? settings.stellar!.network : null;
+  // USDC, or another dollar the wallet holds (AUSD): each lives on its own network.
+  const others = walletAssets(settings.networks).filter(
+    (asset) => asset.symbol !== 'USDC' && asset.holdings.every(({ token }) => token !== null),
+  );
+  const [coin, setCoin] = useState('USDC');
+  const chosen = others.find((asset) => asset.symbol === coin);
+  const symbol = chosen?.symbol ?? 'USDC';
+  // Where the coin's network has Agora Instant Settlement, the recipient may receive another coin.
+  const settlementNetwork = chosen ? walletNetwork(chosen.holdings[0].networkId) : null;
+  const settleOptions = settlementNetwork?.instantSettlement
+    ? (settlementNetwork.tokens ?? []).filter((token) => token.symbol !== chosen!.symbol)
+    : [];
+  const [receiveAs, setReceiveAs] = useState('');
+  const settleInto = settleOptions.find((token) => token.symbol === receiveAs);
+  const total = chosen
+    ? assetBalance(chosen, holding)
+    : plus(totalUsdc(balances, settings.networks), stellarUsdc);
   const requestedNetwork = params.get('chain') ? `eip155:${params.get('chain')}` : null;
   const initialNetwork =
     requestedNetwork && settings.networks.includes(requestedNetwork)
@@ -62,7 +106,7 @@ export function Send({
   const [networkId, setNetworkId] = useState(initialNetwork);
   const [amount, setAmount] = useState('');
   const [review, setReview] = useState<Review | null>(null);
-  const [sent, setSent] = useState<{ hash: Hex; review: Review } | null>(null);
+  const [sent, setSent] = useState<{ hash: string; review: Review } | null>(null);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
@@ -78,9 +122,23 @@ export function Send({
   function prepare(event: FormEvent) {
     event.preventDefault();
     perform(async () => {
-      const value = parseUnits(amount.replace(',', '.'), USDC_DECIMALS);
+      const value = parseUnits(amount.replace(',', '.'), chosen?.decimals ?? USDC_DECIMALS);
       if (value <= 0n) throw new Error('INVALID_AMOUNT');
       const text = recipient.trim();
+      if (destination === 'address' && networkId === stellarId) {
+        await checkStellarRecipient(settings, text);
+        if (text === stellar!.account) throw new Error('SELF_TRANSFER');
+        const plan = await planStellarSend(settings, balances, stellarUsdc, text, value);
+        setReview({
+          stellar: true,
+          ...plan,
+          to: stellarId,
+          recipient: text,
+          amount: value,
+          label: text,
+        });
+        return;
+      }
       let to: Address, label: string;
       if (destination === 'address') {
         if (!isAddress(text)) throw new Error('INVALID_ADDRESS');
@@ -95,6 +153,37 @@ export function Send({
         label = `@${found.username}${found.display_name ? ` · ${found.display_name}` : ''}`;
       }
       if (isAddressEqual(to, session.wallet.address)) throw new Error('SELF_TRANSFER');
+      if (chosen) {
+        const held = chosen.holdings[0];
+        if ((holding(held) ?? 0n) < value) throw new Error('INSUFFICIENT_FUNDS');
+        const network = walletNetwork(held.networkId);
+        const reader = publicClient(settings, held.networkId);
+        const settle = settleInto
+          ? {
+              symbol: settleInto.symbol,
+              token: settleInto.address,
+              decimals: settleInto.decimals,
+              quote: await quoteSettlement(reader, network, {
+                tokenIn: held.token!,
+                tokenOut: settleInto.address,
+                amountIn: value,
+              }),
+              allowListed: await settlementAllowed(reader, network, session.wallet.address),
+              now: BigInt(Math.floor(Date.now() / 1000)),
+            }
+          : undefined;
+        setReview({
+          from: held.networkId,
+          to: held.networkId,
+          recipient: to,
+          amount: value,
+          fee: 0n,
+          label,
+          coin: { symbol: chosen.symbol, token: held.token!, decimals: chosen.decimals },
+          settle,
+        });
+        return;
+      }
       setReview({
         ...(await planTransfer(balances, networkId, to, value, destination === 'address')),
         label,
@@ -102,15 +191,39 @@ export function Send({
     });
   }
 
+  const callsFor = (current: Review) =>
+    current.stellar
+      ? (current.calls ?? [])
+      : current.coin && current.settle
+        ? settlementCalls(walletNetwork(current.from), {
+            account: session.wallet.address,
+            allowListed: current.settle.allowListed,
+            tokenIn: current.coin.token,
+            tokenOut: current.settle.token,
+            amountIn: current.amount,
+            minOut: current.settle.quote,
+            recipient: current.recipient,
+            now: current.settle.now,
+          })
+        : current.coin
+          ? payoutCalls(current.coin.token, [{ to: current.recipient, amount: current.amount }])
+          : transferCalls(current);
+
   function confirm(current: Review) {
     perform(async () => {
-      const hash = await send(settings, session, current.from, transferCalls(current));
+      let hash: string;
+      if (!current.stellar) hash = await send(settings, session, current.from, callsFor(current));
+      else if (current.calls) {
+        hash = await send(settings, session, current.from, current.calls);
+        // Wallet Core delivers burns toward Stellar; the timeline reports it again if this is lost.
+        void stellarArrived(settings, session, current.from, hash).catch(() => undefined);
+      } else hash = await sendOnStellar(settings, session, current.recipient, current.amount);
       setSent({ hash, review: current });
       setReceipt({
         kind: 'sent',
         amount: current.amount,
-        currency: 'USDC',
-        decimals: USDC_DECIMALS,
+        currency: current.coin?.symbol ?? 'USDC',
+        decimals: current.coin?.decimals ?? USDC_DECIMALS,
         counterparty: current.label.split(' · ')[0],
         hash,
         networkId: current.from,
@@ -125,7 +238,7 @@ export function Send({
     <>
       <BackHeader title={en ? 'Send money' : 'Enviar dinero'} english={en} to="/move" />
       <StageOverlay
-        label={busy && !review ? (en ? 'Preparing your send…' : 'Preparando tu envío…') : null}
+        label={busy && !review ? (en ? 'Preparing your transfer…' : 'Preparando tu envío…') : null}
       />
       {error && !review ? (
         <p className="auth-error" role="alert">
@@ -151,11 +264,16 @@ export function Send({
                 to={sent.review.to}
                 hash={sent.hash}
                 english={en}
+                delivery={
+                  sent.review.stellar
+                    ? () => stellarArrived(settings, session, sent.review.from, sent.hash)
+                    : undefined
+                }
               />
             </div>
           ) : null}
           <NavigationLink href={localizedPath('/app', en)} className="btn btn-ghost btn-block mt-4">
-            {en ? 'Back to home' : 'Volver a Inicio'}
+            {en ? 'Go to home' : 'Ir al inicio'}
           </NavigationLink>
           <button
             type="button"
@@ -171,51 +289,76 @@ export function Send({
         </ReceiptScreen>
       ) : (
         <form onSubmit={prepare} aria-busy={busy} className="flex flex-1 flex-col">
-          <div className="mb-7 flex items-center justify-center gap-2">
-            <CatGlyph className="w-6" decorative />
-            <span className="text-[13px] text-text-muted">
-              {en ? 'Secure payment with' : 'Pago seguro con'}{' '}
-              <span className="font-medium text-text">GatoPago</span>
-            </span>
-          </div>
-          <MoneyPanel className="mb-6 flex flex-col items-center">
+          <MoneyPanel className="mb-5 flex flex-col items-center">
             <AmountInput
               name="amount"
-              aria-label={en ? 'Amount' : 'Monto'}
+              aria-label={en ? `Amount in ${symbol}` : `Monto en ${symbol}`}
               placeholder="0"
               value={amount}
               disabled={busy}
               onChange={setAmount}
-              className="tabular w-full max-w-[260px] bg-transparent text-center font-display text-[56px] leading-none text-text placeholder:text-text-faint"
+              className="amount-input tabular w-full max-w-[260px] bg-transparent text-center font-display leading-none text-text placeholder:text-text-faint"
             />
-            <div className="mt-4">
-              <TokenSelect
-                value="USDC"
-                options={[{ value: 'USDC', symbol: 'USDC', label: 'USD Coin' }]}
-                onChange={() => {}}
-                english={en}
-              />
-            </div>
-            <p className="mt-3 text-[12px] text-text-faint">
-              {en ? 'Your balance' : 'Tu saldo'}:{' '}
-              {typeof total === 'bigint' ? formatUsdc(total) : '—'} USDC
+            {others.length > 0 ? (
+              <div className="mt-3">
+                <TokenSelect
+                  value={symbol}
+                  label={en ? 'Currency' : 'Moneda'}
+                  options={[
+                    { value: 'USDC', symbol: 'USDC', label: 'USD Coin' },
+                    ...others.map((asset) => ({
+                      value: asset.symbol,
+                      symbol: asset.symbol,
+                      label: asset.name,
+                    })),
+                  ]}
+                  onChange={setCoin}
+                  english={en}
+                  disabled={busy}
+                />
+              </div>
+            ) : (
+              <span className="mt-3 inline-flex items-center gap-2 text-[13px] font-semibold">
+                <TokenIcon symbol="USDC" size={22} />
+                USDC
+              </span>
+            )}
+            {settleOptions.length > 0 ? (
+              <div className="mt-4 w-full max-w-[300px]">
+                <p className="mb-2 text-center text-[12px] text-text-muted">
+                  {en ? 'They receive' : 'Recibe en'}
+                </p>
+                <div className="seg-track seg-track-block">
+                  {[chosen!.symbol, ...settleOptions.map((token) => token.symbol)].map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      className="seg-item"
+                      aria-pressed={(receiveAs || chosen!.symbol) === option}
+                      data-active={(receiveAs || chosen!.symbol) === option}
+                      disabled={busy}
+                      onClick={() => setReceiveAs(option === chosen!.symbol ? '' : option)}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+                {settleInto ? (
+                  <p className="mt-2 text-center text-[11px] leading-snug text-text-faint">
+                    {en
+                      ? `Agora converts it at a fixed price and it arrives as ${settleInto.symbol} in seconds.`
+                      : `Agora lo convierte a precio fijo y le llega en ${settleInto.symbol} en segundos.`}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            <p className="mt-2 text-[12px] text-text-faint">
+              {en ? 'Available' : 'Disponible'}:{' '}
+              {typeof total === 'bigint' ? formatBalance(total, en) : '—'} {symbol}
             </p>
           </MoneyPanel>
-          <SelectMenu
-            label={en ? 'Choose network' : 'Elegir red'}
-            showLabel={false}
-            value={networkId}
-            options={settings.networks.map((id) => ({
-              value: id,
-              label: networkName(id),
-              tone: 'info' as const,
-            }))}
-            onChange={setNetworkId}
-            english={en}
-            disabled={busy}
-            className="mb-5"
-          />
           <MoneyPanel className="mb-5">
+            <p className="mb-3 text-[13px] font-semibold">{en ? 'To whom?' : '¿A quién?'}</p>
             <div className="seg-track seg-track-block mb-4">
               {(['username', 'address'] as const).map((type) => (
                 <button
@@ -227,52 +370,89 @@ export function Send({
                   onClick={() => {
                     setDestination(type);
                     setRecipient('');
+                    // A GatoPago account receives on the home network.
+                    if (type === 'username') setNetworkId(settings.homeNetwork);
                   }}
                 >
                   {type === 'address'
                     ? en
-                      ? 'Wallet or exchange'
-                      : 'Wallet o exchange'
+                      ? 'Address'
+                      : 'Dirección'
                     : en
-                      ? 'GatoPago account'
-                      : 'Cuenta GatoPago'}
+                      ? '@username'
+                      : '@usuario'}
                 </button>
               ))}
             </div>
-            <input
-              name="destination"
-              autoComplete="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              aria-label={destination === 'address' ? 'Wallet' : en ? 'Username' : 'Usuario'}
-              placeholder={destination === 'address' ? '0x…' : en ? 'theirname' : 'tunombre'}
-              value={recipient}
-              disabled={busy}
-              onChange={(event) =>
-                setRecipient(
+            <div className="relative">
+              {destination === 'username' ? (
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[15px] text-text-faint"
+                >
+                  @
+                </span>
+              ) : null}
+              <input
+                name="destination"
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                aria-label={destination === 'address' ? 'Wallet' : en ? 'Username' : 'Usuario'}
+                placeholder={
                   destination === 'username'
-                    ? event.target.value.replace(/[^a-z0-9_]/gi, '').toLowerCase()
-                    : event.target.value.trim(),
-                )
-              }
-              className={`meli-field h-12 text-[14px] placeholder:text-text-faint ${destination === 'address' ? 'font-mono' : ''}`}
-            />
+                    ? en
+                      ? 'username'
+                      : 'usuario'
+                    : networkId === stellarId
+                      ? 'G… / C…'
+                      : '0x…'
+                }
+                value={recipient}
+                disabled={busy}
+                onChange={(event) =>
+                  setRecipient(
+                    destination === 'username'
+                      ? event.target.value.replace(/[^a-z0-9_]/gi, '').toLowerCase()
+                      : event.target.value.trim(),
+                  )
+                }
+                className={`meli-field h-12 text-[15px] placeholder:text-text-faint ${destination === 'address' ? 'font-mono text-[13px]' : '!pl-8'}`}
+              />
+            </div>
+            {destination === 'username' ? (
+              <RecipientShortcuts
+                settings={settings}
+                session={session}
+                english={en}
+                selected={[recipient]}
+                onPick={setRecipient}
+                className="mt-3"
+              />
+            ) : null}
             <p className="mt-3 text-[12px] leading-relaxed text-text-muted">
               {destination === 'username'
                 ? en
-                  ? 'Send using their @username. The money will reach their GatoPago account.'
-                  : 'Envía usando su @username. El dinero llegará a su cuenta GatoPago.'
+                  ? 'Their GatoPago username. It arrives instantly, with no fees.'
+                  : 'Su usuario de GatoPago. Le llega al instante y sin comisión.'
                 : en
-                  ? `Send to any EVM address compatible with ${networkName(networkId)}, including a wallet or exchange deposit address.`
-                  : `Envía a una dirección EVM compatible con ${networkName(networkId)}, incluida una wallet o dirección de depósito de un exchange.`}
+                  ? 'Paste the address and choose its network. For an exchange, make sure it accepts USDC on that network.'
+                  : 'Pega la dirección y elige su red. Si es de un exchange, confirma que acepte USDC en esa red.'}
             </p>
-            {destination === 'address' ? (
-              <div className="mt-4 flex items-center justify-between border border-border bg-surface-2 px-3.5 py-3 text-[12px]">
-                <span className="text-text-faint">
-                  {en ? 'Network for this transfer' : 'Red de este envío'}
-                </span>
-                <span className="text-text">{networkName(networkId)}</span>
-              </div>
+            {destination === 'address' && !chosen ? (
+              <SelectMenu
+                label={en ? 'Network of the address' : 'Red de la dirección'}
+                value={networkId}
+                options={[...settings.networks, ...(stellarId ? [stellarId] : [])].map((id) => ({
+                  value: id,
+                  label: networkName(id),
+                  tone: 'info' as const,
+                }))}
+                onChange={setNetworkId}
+                english={en}
+                disabled={busy}
+                className="mt-4"
+              />
             ) : null}
           </MoneyPanel>
           <TransactionActions>
@@ -281,58 +461,35 @@ export function Send({
               className="btn btn-primary btn-block"
               disabled={busy || !recipient || !(Number(amount) > 0)}
             >
-              {busy ? (en ? 'Looking up user…' : 'Buscando usuario…') : en ? 'Send' : 'Enviar'}
+              {busy
+                ? en
+                  ? 'Preparing…'
+                  : 'Preparando…'
+                : en
+                  ? 'Review transfer'
+                  : 'Revisar envío'}
             </button>
             {recipient && amount !== '' && !(Number(amount) > 0) ? (
               <p
                 role="status"
                 className="animate-fade-in mt-3 text-center text-[12px] text-text-faint"
               >
-                {en ? 'The amount must be greater than 0.' : 'El monto debe ser mayor a 0.'}
+                {en ? 'Enter an amount above zero.' : 'Ingresa un monto mayor a cero.'}
               </p>
             ) : null}
           </TransactionActions>
-          <div className="mt-8">
-            <SectionLabel>{en ? 'Other options' : 'Otras opciones'}</SectionLabel>
-            <OptionCard
-              href="/crosschain"
-              english={en}
-              tone="brand"
-              title={en ? 'Send USDC to another network' : 'Enviar USDC a otra red'}
-              description={
-                en
-                  ? 'Use CCTP to move it to another supported blockchain'
-                  : 'Usa CCTP para moverlo a otra blockchain compatible'
-              }
-              icon={
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M7 17 17 7" />
-                  <path d="M7 7h10v10" />
-                </svg>
-              }
-            />
-          </div>
         </form>
       )}
       {review ? (
         <ConfirmSheet
           title={en ? 'Confirm your send' : 'Confirma tu envío'}
           amountLabel={en ? 'You will send' : 'Vas a enviar'}
-          amount={formatUsdc(review.amount)}
-          unit="USDC"
+          amount={formatUsdc(review.amount, en)}
+          unit={review.coin?.symbol ?? 'USDC'}
           warning={
             en
-              ? 'Check the destination carefully: payments cannot be undone. GatoPago covers gas; any other cost is shown before you confirm.'
-              : 'Revisa bien el destino: los pagos no se pueden deshacer. GatoPago cubre el gas; cualquier otro costo se muestra antes de confirmar.'
+              ? 'Check who receives it: a transfer cannot be undone. GatoPago pays the network fee.'
+              : 'Revisa quién lo recibe: un envío no se puede deshacer. GatoPago paga la comisión de red.'
           }
           confirmLabel={en ? 'Confirm and send' : 'Confirmar y enviar'}
           english={en}
@@ -353,6 +510,18 @@ export function Send({
           />
           <ConfirmDetails
             rows={[
+              ...(review.settle
+                ? ([
+                    [
+                      en ? 'They receive' : 'Recibe',
+                      `${Number(formatUnits(review.settle.quote, review.settle.decimals)).toLocaleString(en ? 'en' : 'es', { maximumFractionDigits: 6 })} ${review.settle.symbol}`,
+                    ],
+                    [
+                      en ? 'Price' : 'Precio',
+                      en ? 'Fixed, no slippage (Agora)' : 'Fijo, sin deslizamiento (Agora)',
+                    ],
+                  ] as const)
+                : []),
               [en ? 'Network' : 'Red', networkName(review.to)],
               ...(review.from !== review.to
                 ? ([[en ? 'From' : 'Desde', networkName(review.from)]] as const)
@@ -361,19 +530,21 @@ export function Send({
                 ? ([
                     [
                       en ? 'Circle transfer fee' : 'Comisión de Circle',
-                      `${en ? 'up to' : 'hasta'} ${formatUsdc(review.fee)} USDC`,
+                      `${en ? 'up to' : 'hasta'} ${formatUsdc(review.fee, en)} USDC`,
                     ],
                   ] as const)
                 : []),
             ]}
           />
-          <SigningDetails
-            settings={settings}
-            wallet={session.wallet}
-            networkId={review.from}
-            calls={transferCalls(review)}
-            english={en}
-          />
+          {review.stellar && !review.calls ? null : (
+            <SigningDetails
+              settings={settings}
+              wallet={session.wallet}
+              networkId={review.from}
+              calls={callsFor(review)}
+              english={en}
+            />
+          )}
         </ConfirmSheet>
       ) : null}
     </>

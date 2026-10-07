@@ -1,10 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { Hex } from 'viem';
 import { crosschainStatus, type CrosschainStage } from '@gatopago/shared/crosschain';
-import { walletNetwork } from '@gatopago/shared/networks';
-import { networkName } from '../wallet/account';
+import { cctpNetwork, networkName } from '../wallet/account';
 
 type StepState = 'waiting' | 'active' | 'done' | 'error';
 
@@ -81,32 +79,40 @@ export function CrosschainTimeline({
   hash,
   english: en,
   onDelivered,
+  delivery,
 }: {
   from: string;
   to: string;
   /** The confirmed burn on `from`. */
-  hash: Hex;
+  hash: string;
   english: boolean;
   onDelivered?: () => void;
+  /** Where Circle does not deliver (toward Stellar): whether the attested burn arrived. */
+  delivery?: () => Promise<boolean>;
 }) {
   const [stage, setStage] = useState<CrosschainStage>('burned');
   const [delayed, setDelayed] = useState(false);
   const delivered = useRef(onDelivered);
+  const arrival = useRef(delivery);
   useEffect(() => {
     delivered.current = onDelivered;
+    arrival.current = delivery;
   });
   useEffect(() => {
     const controller = new AbortController();
     const started = Date.now();
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
-      const status = await crosschainStatus(walletNetwork(from), hash, controller.signal).catch(
+      const status = await crosschainStatus(cctpNetwork(from), hash, controller.signal).catch(
         () => null,
       );
+      const landed =
+        status?.attested && arrival.current ? await arrival.current().catch(() => false) : false;
       if (controller.signal.aborted) return;
-      if (status) setStage(status.stage);
-      if (status?.stage === 'delivered') return delivered.current?.();
-      if (status?.stage === 'failed') return;
+      const next = landed ? 'delivered' : status?.stage;
+      if (next) setStage(next);
+      if (next === 'delivered') return delivered.current?.();
+      if (next === 'failed') return;
       setDelayed(Date.now() - started > DELAYED_MS);
       timer = setTimeout(poll, POLL_MS);
     };

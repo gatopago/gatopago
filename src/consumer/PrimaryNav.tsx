@@ -22,7 +22,7 @@ export function PrimaryNav({ english: en }: { english: boolean }) {
         {destinations.map((item) => {
           const active =
             pathname === item.href ||
-            (item.href === '/move' && ['/send', '/receive', '/scan'].includes(pathname));
+            (item.href === '/move' && ['/send', '/team', '/receive', '/scan'].includes(pathname));
           const className = `primary-nav__item relative flex min-h-13 flex-col items-center justify-center gap-1 text-[10px] font-semibold ${active ? 'is-active' : ''}`;
           const content = (
             <>

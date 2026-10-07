@@ -35,10 +35,15 @@ const networks = ['eip155:421614', 'eip155:43113'];
 const settings: ClientSettings = {
   webOrigin: 'https://gatopago.com',
   apiOrigin: 'https://api.gatopago.com',
+  businessOrigin: 'https://business.gatopago.com',
   networks,
   homeNetwork: networks[0],
   rpcUrls: {},
   turnstileSiteKey: '1x00000000000000000000AA',
+  mera: false,
+  meraSessionMinutes: 15,
+  passkeyRpId: 'localhost',
+  stellar: null,
   push: null,
 };
 const session: Session = {

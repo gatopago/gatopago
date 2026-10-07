@@ -66,7 +66,7 @@ export function TokenSelect({
               type="button"
               className="meli-square-action h-11 w-11"
               aria-label={en ? 'Close' : 'Cerrar'}
-              onClick={() => setOpen(false)}
+              data-sheet-close
             >
               <span aria-hidden="true">×</span>
             </button>
@@ -98,9 +98,9 @@ export function TokenSelect({
                     optionRefs.current[next]?.focus();
                   }
                 }}
+                data-sheet-close
                 onClick={() => {
                   onChange(item.value);
-                  setOpen(false);
                 }}
               >
                 <TokenIcon symbol={item.symbol} size={28} />

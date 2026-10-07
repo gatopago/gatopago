@@ -1,9 +1,10 @@
 'use client';
 
 import { useSyncExternalStore, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ConsumerFrame } from '../consumer/ConsumerFrame';
 import { NavigationLink } from '../consumer/NavigationLink';
+import { safeNext } from '../consumer/routes';
 import type { ClientSettings } from '../lib/settings';
 import { currentSession, signOut, subscribeSession } from '../wallet/session';
 import { PasskeyAccess } from './PasskeyAccess';
@@ -24,18 +25,26 @@ export function AuthScreen({
   // The session lives in this browser: unknown while rendering on the server.
   const session = useSyncExternalStore(subscribeSession, currentSession, () => undefined);
   const suffix = en ? '?lang=en' : '';
+  // Where the member was going: a payment or a send opened before signing in.
+  const next = safeNext(useSearchParams().get('next'));
   return (
     <ConsumerFrame english={en} presentation="access">
       <AccessContent art={art} english={en}>
         {session === undefined ? (
-          <ScreenLoading kind="form" english={en} />
+          <ScreenLoading kind="form" english={en} bar={false} />
         ) : session ? (
           <section>
             <NavigationLink
               className="auth-primary btn btn-primary btn-block"
-              href={`/app${suffix}`}
+              href={next ?? `/app${suffix}`}
             >
-              {en ? 'Continue to my account' : 'Continuar a mi cuenta'}
+              {next
+                ? en
+                  ? 'Continue'
+                  : 'Continuar'
+                : en
+                  ? 'Continue to my account'
+                  : 'Continuar a mi cuenta'}
             </NavigationLink>
             <button className="auth-secondary btn btn-ghost btn-block" onClick={signOut}>
               {en ? 'Sign out' : 'Cerrar sesión'}
@@ -45,7 +54,9 @@ export function AuthScreen({
           <PasskeyAccess
             settings={settings}
             english={en}
-            onSignedIn={(path) => router.replace(`${path}${suffix}`)}
+            onSignedIn={(path) =>
+              router.replace(path === '/app' && next ? next : `${path}${suffix}`)
+            }
           />
         )}
       </AccessContent>
@@ -72,7 +83,7 @@ function AccessContent({
               {art}
             </figure>
           ) : null}
-          <h1>{en ? 'Sign in or create an account' : 'Iniciar sesión o crear cuenta'}</h1>
+          <h1>{en ? 'Sign in to GatoPago' : 'Entra a GatoPago'}</h1>
           <p className="auth-tagline">
             {en ? (
               <>
@@ -86,8 +97,8 @@ function AccessContent({
           </p>
           <p className="auth-description">
             {en
-              ? 'Sign in to your account or create a new one in a few steps.'
-              : 'Entra a tu cuenta o crea una nueva en unos pasos.'}
+              ? 'Use your phone’s fingerprint or face. No passwords.'
+              : 'Usa la huella o el rostro de tu teléfono. Sin contraseñas.'}
           </p>
         </div>
         <div className="auth-login-copy">{children}</div>

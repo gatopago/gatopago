@@ -8,12 +8,12 @@ import type { ClientSettings } from '../lib/settings';
 import { MeliSprite } from '../marketing/MeliSprite';
 import { networkName, publicClient, USDC_DECIMALS } from '../wallet/account';
 import { send } from '../wallet/operations';
-import { formatUsdc, useBalances } from '../wallet/balances';
+import { formatBalance, formatUsdc, useBalances } from '../wallet/balances';
 import { failureMessage } from '../wallet/messages';
 import type { Session } from '../wallet/session';
+import { ElsewhereNote } from './ElsewhereNote';
 import { ConfirmSheet, SigningDetails } from './PaymentSheets';
-import { BackHeader, MoneyPanel } from './Primitives';
-import { PixelRail } from './PixelRail';
+import { MoneyPanel, TabHeader } from './Primitives';
 import { AmountInput } from './SelectMenu';
 import { TxResult } from './TxResult';
 
@@ -69,14 +69,14 @@ export function EarnScreen({
   const canContinue =
     typeof source === 'bigint' && source > 0n && (all || (value > 0n && value <= source));
   const shown = (balance: bigint | null | undefined) =>
-    typeof balance === 'bigint' ? formatUsdc(balance) : '—';
+    typeof balance === 'bigint' ? formatBalance(balance, en) : '—';
   const rate =
     apy === null ? '—' : apy.toLocaleString(en ? 'en' : 'es', { maximumFractionDigits: 2 });
 
   if (!network.aave)
     return (
       <>
-        <BackHeader title={en ? 'Grow' : 'Crecer'} english={en} />
+        <TabHeader title={en ? 'Grow' : 'Crecer'} />
         <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
           <MeliSprite variant="head-cautious" className="mb-5 w-24" />
           <p className="font-display text-[22px]">
@@ -91,7 +91,7 @@ export function EarnScreen({
   if (done)
     return (
       <>
-        <BackHeader title={en ? 'Grow' : 'Crecer'} english={en} />
+        <TabHeader title={en ? 'Grow' : 'Crecer'} />
         <TxResult
           state="success"
           lead={
@@ -103,12 +103,12 @@ export function EarnScreen({
                 ? 'Withdrawal complete'
                 : 'Retiro realizado'
           }
-          amount={formatUsdc(done.amount)}
+          amount={formatUsdc(done.amount, en)}
           unit="USDC"
           body={
             en
-              ? 'Your savings will update in a few seconds.'
-              : 'Tu ahorro se actualizará en unos segundos.'
+              ? 'You will see it in your balance in a few seconds.'
+              : 'Lo verás reflejado en tu saldo en unos segundos.'
           }
         >
           <button
@@ -116,7 +116,7 @@ export function EarnScreen({
             className="btn btn-primary btn-block mt-6"
             onClick={() => setDone(null)}
           >
-            {en ? 'Back' : 'Volver'}
+            {en ? 'Done' : 'Listo'}
           </button>
         </TxResult>
       </>
@@ -130,30 +130,29 @@ export function EarnScreen({
 
   return (
     <>
-      <header className="mb-6">
-        <p className="meli-kicker mb-3">{en ? 'Money at work' : 'Dinero trabajando'}</p>
-        <h1 className="font-display text-[36px] leading-[.94]">{en ? 'Grow' : 'Crecer'}</h1>
-        <p className="mt-3 text-[13px] leading-relaxed text-text-muted">
-          {en
-            ? 'Grow USDC through a flexible position. The rate can change and your funds remain under your control.'
-            : 'Haz crecer USDC con una posición flexible. La tasa puede cambiar y tus fondos siguen bajo tu control.'}
-        </p>
-      </header>
-      <PixelRail state="done" className="mb-5" />
+      <TabHeader
+        title={en ? 'Grow' : 'Crecer'}
+        description={
+          en
+            ? 'Earn interest on the USDC you are not using and withdraw it whenever you want.'
+            : 'Gana intereses con los USDC que no estás usando y retíralos cuando quieras.'
+        }
+      />
 
-      <MoneyPanel className="mb-4 min-h-[150px] pr-24">
-        <p className="mb-2 text-[13px] text-text-muted">{en ? 'Growing now' : 'Creciendo ahora'}</p>
-        <p className="type-mono mb-2 text-[38px] font-bold leading-none">
-          {shown(savings)} <span className="text-[20px]">USDC</span>
-        </p>
-        <p className="text-[12px] text-text-faint">
-          {en
-            ? `Current rate: ${rate}% per year (variable, not guaranteed)`
-            : `Tasa actual: ${rate}% anual (variable, no garantizada)`}
-        </p>
+      <MoneyPanel className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
+        <div className="min-w-0">
+          <p className="mb-2 text-[13px] text-text-muted">{en ? 'In Grow' : 'En Crecer'}</p>
+          <p className="type-mono text-[clamp(30px,9vw,38px)] font-bold leading-none">
+            {shown(savings)} <span className="text-[0.5em]">USDC</span>
+          </p>
+          <p className="mt-3 inline-flex items-center gap-1.5 border border-growth bg-growth/10 px-2 py-1 text-[12px] font-semibold text-growth">
+            {rate}% {en ? 'a year' : 'anual'}
+            <span className="font-normal text-text-muted">· variable</span>
+          </p>
+        </div>
         <MeliSprite
           variant="body-sleeping"
-          className="pointer-events-none absolute -right-2 -bottom-3 w-28"
+          className="pointer-events-none -mr-2 -mb-3 w-20 min-[390px]:w-24"
           loading="eager"
         />
       </MoneyPanel>
@@ -181,12 +180,12 @@ export function EarnScreen({
           <span className="text-[13px] text-text-muted">
             {action === 'deposit'
               ? `${en ? 'Available' : 'Disponible'}: ${shown(available)} USDC`
-              : `${en ? 'Saved' : 'Ahorrado'}: ${shown(savings)} USDC`}
+              : `${en ? 'In Grow' : 'En Crecer'}: ${shown(savings)} USDC`}
           </span>
           <button
             type="button"
             disabled={typeof source !== 'bigint' || source === 0n}
-            className="min-h-11 text-[12px] text-text-faint"
+            className="-mr-2 min-h-11 px-2 text-[13px] font-semibold text-cat-700 underline underline-offset-2 disabled:text-text-faint disabled:no-underline"
             onClick={() => {
               if (typeof source !== 'bigint') return;
               setAmount(formatUnits(source, USDC_DECIMALS));
@@ -197,6 +196,14 @@ export function EarnScreen({
             {en ? 'Use all' : 'Usar todo'}
           </button>
         </div>
+        {action === 'deposit' ? (
+          <ElsewhereNote
+            balances={balances}
+            networkId={networkId}
+            english={en}
+            className="-mt-1 mb-3"
+          />
+        ) : null}
         <AmountInput
           name="amount"
           aria-label={en ? 'Amount in USDC' : 'Monto en USDC'}
@@ -206,7 +213,7 @@ export function EarnScreen({
             setAmount(next);
             setAll(false);
           }}
-          className="tabular mb-4 w-full bg-transparent font-display text-[34px] leading-none text-text placeholder:text-text-faint"
+          className="tabular mb-2 w-full bg-transparent font-display text-[34px] leading-none text-text placeholder:text-text-faint"
         />
         {error && !review ? (
           <p role="alert" className="mb-3 text-center text-[13px] text-danger">
@@ -223,14 +230,20 @@ export function EarnScreen({
               setReview({ action, amount: all && savings ? savings : value, all });
             }}
           >
-            {en ? 'Continue' : 'Continuar'}
+            {action === 'deposit'
+              ? en
+                ? 'Review deposit'
+                : 'Revisar depósito'
+              : en
+                ? 'Review withdrawal'
+                : 'Revisar retiro'}
           </button>
         </div>
       </MoneyPanel>
 
       <details className="meli-paper-card meli-paper-card--strong px-4 py-3">
         <summary className="min-h-11 cursor-pointer py-3 text-[13px] text-text-muted">
-          {en ? 'Protocol, risks, and technical details' : 'Protocolo, riesgos y detalles técnicos'}
+          {en ? 'How it works and its risks' : 'Cómo funciona y sus riesgos'}
         </summary>
         <dl className="grid gap-3 pt-4 text-[12px]">
           <div className="flex justify-between gap-4">
@@ -257,7 +270,7 @@ export function EarnScreen({
           </div>
         </dl>
         <p className="mt-5 mb-2 text-[12px] text-text-muted">
-          {en ? 'What you should know' : 'Lo que debes saber'}
+          {en ? 'Good to know' : 'Antes de empezar'}
         </p>
         <ul className="flex list-disc flex-col gap-1 pb-2 pl-4 text-[12px] leading-relaxed text-text-faint">
           <li>
@@ -267,18 +280,18 @@ export function EarnScreen({
           </li>
           <li>
             {en
-              ? 'Your funds are lent through Aave, a public protocol; smart-contract risk exists.'
-              : 'Tus fondos se prestan a través de Aave, un protocolo público; existe riesgo de contrato inteligente.'}
+              ? 'Your USDC is lent through Aave, a public protocol. Like any smart contract, it carries risk.'
+              : 'Tus USDC se prestan a través de Aave, un protocolo público. Como todo contrato inteligente, tiene riesgos.'}
           </li>
           <li>
             {en
-              ? 'Withdraw anytime (subject to protocol liquidity, historically instant).'
-              : 'Retiras cuando quieras (sujeto a la liquidez del protocolo, históricamente inmediata).'}
+              ? 'You can withdraw anytime, as long as Aave has liquidity (so far it always has, instantly).'
+              : 'Retiras cuando quieras, mientras Aave tenga liquidez (hasta ahora siempre la tuvo, al instante).'}
           </li>
           <li>
             {en
-              ? 'Your funds remain yours: GatoPago never holds custody.'
-              : 'Tus fondos siguen siendo tuyos: GatoPago nunca los custodia.'}
+              ? 'The money is still yours: GatoPago never holds it.'
+              : 'El dinero sigue siendo tuyo: GatoPago nunca lo custodia.'}
           </li>
         </ul>
       </details>
@@ -294,12 +307,20 @@ export function EarnScreen({
                 ? 'Confirm withdrawal'
                 : 'Confirmar retiro'
           }
-          amount={formatUsdc(review.amount)}
+          amount={formatUsdc(review.amount, en)}
           unit="USDC"
-          confirmLabel={en ? 'Confirm with your fingerprint' : 'Confirmar con tu huella'}
+          confirmLabel={
+            review.action === 'deposit'
+              ? en
+                ? 'Confirm deposit'
+                : 'Confirmar depósito'
+              : en
+                ? 'Confirm withdrawal'
+                : 'Confirmar retiro'
+          }
           english={en}
           busy={busy}
-          busyLabel={en ? 'Confirm with your fingerprint' : 'Confirma con tu huella'}
+          busyLabel={en ? 'Confirm on your device…' : 'Confirma en tu dispositivo…'}
           error={error}
           onCancel={() => setReview(null)}
           onConfirm={() => {
@@ -320,21 +341,21 @@ export function EarnScreen({
           <p className="mb-3 text-center text-[13px] leading-relaxed text-text-muted">
             {review.action === 'deposit'
               ? en
-                ? `You're moving ${formatUsdc(review.amount)} USDC from your available balance into your savings. Withdraw anytime.`
-                : `Vas a mover ${formatUsdc(review.amount)} USDC de tu saldo disponible a tu ahorro. Puedes retirarlo cuando quieras.`
+                ? 'It moves from your balance to Grow, where it starts earning interest. You can withdraw it whenever you want.'
+                : 'Pasa de tu saldo a Crecer, donde empieza a ganar intereses. Puedes retirarlo cuando quieras.'
               : review.all
                 ? en
-                  ? `You're withdrawing all your savings (~${formatUsdc(review.amount)} USDC, including accrued interest).`
-                  : `Vas a retirar todo tu ahorro (~${formatUsdc(review.amount)} USDC, incluye los intereses acumulados).`
+                  ? 'You withdraw everything in Grow, interest included. The final amount may be a little higher.'
+                  : 'Retiras todo lo que tienes en Crecer, intereses incluidos. El monto final puede ser un poco mayor.'
                 : en
-                  ? `You're moving ${formatUsdc(review.amount)} USDC from your savings back to your available balance.`
-                  : `Vas a mover ${formatUsdc(review.amount)} USDC de tu ahorro a tu saldo disponible.`}
+                  ? 'It moves from Grow back to your balance, ready to use.'
+                  : 'Vuelve de Crecer a tu saldo, listo para usar.'}
           </p>
           {review.action === 'deposit' ? (
             <p className="mb-5 text-center text-[12px] text-text-faint">
               {en
-                ? `Current rate: ${rate}% per year (variable, not guaranteed)`
-                : `Tasa actual: ${rate}% anual (variable, no garantizada)`}
+                ? `Today’s rate: ${rate}% a year. It is variable and not guaranteed.`
+                : `Tasa de hoy: ${rate}% anual. Es variable y no está garantizada.`}
             </p>
           ) : null}
           <SigningDetails

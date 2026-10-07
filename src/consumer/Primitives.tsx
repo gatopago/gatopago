@@ -4,27 +4,60 @@ import { useId, type ReactNode, type Ref } from 'react';
 import { NavigationLink } from './NavigationLink';
 import { localizedPath } from './routes';
 import { BackIcon, ChevronIcon } from './Icons';
+import { useBack } from './history';
 
+/**
+ * A screen's top bar, fixed while it scrolls: back to where the member came from (`to`, the
+ * screen's parent, when opened directly), the title, and an optional action.
+ */
 export function BackHeader({
   title,
   english,
   to = '/app',
+  onBack,
+  action,
 }: {
   title: string;
   english: boolean;
   to?: string;
+  /** A step inside the screen (a result, a sub-view) goes back to the screen itself. */
+  onBack?: () => void;
+  action?: ReactNode;
 }) {
+  const back = useBack(to, english);
   return (
-    <header className="mb-7 flex items-center gap-4">
-      <NavigationLink
-        href={localizedPath(to, english)}
-        replace
+    <header className="back-header">
+      <button
+        type="button"
+        onClick={onBack ?? back}
         aria-label={english ? 'Back' : 'Volver'}
-        className="meli-square-action flex h-12 w-12 shrink-0 items-center justify-center"
+        className="back-header__button"
       >
         <BackIcon />
-      </NavigationLink>
-      <h1 className="font-display text-[28px] leading-tight">{title}</h1>
+      </button>
+      <h1 className="back-header__title">{title}</h1>
+      {action}
+    </header>
+  );
+}
+
+/** The title of a main tab (Move, Grow, Activity), under the account's header. */
+export function TabHeader({
+  title,
+  description,
+  art,
+}: {
+  title: string;
+  description?: ReactNode;
+  art?: ReactNode;
+}) {
+  return (
+    <header className="tab-header">
+      <div className="min-w-0 flex-1">
+        <h1 className="tab-header__title">{title}</h1>
+        {description ? <p className="tab-header__description">{description}</p> : null}
+      </div>
+      {art}
     </header>
   );
 }

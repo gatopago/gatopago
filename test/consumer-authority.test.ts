@@ -5,6 +5,7 @@ import { RecoveryScreen } from '../src/consumer/AccountScreens';
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/settings/security/recovery',
+  useRouter: () => ({ back: () => {}, replace: () => {} }),
   useSearchParams: () => new URLSearchParams(),
 }));
 

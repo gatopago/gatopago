@@ -1,4 +1,8 @@
+'use client';
+
 import type { CSSProperties } from 'react';
+
+import { useTopLevel } from './history';
 
 export function Skeleton({ className = '', style }: { className?: string; style?: CSSProperties }) {
   return <div className={`skeleton ${className}`} style={style} aria-hidden="true" />;
@@ -81,16 +85,26 @@ export function FormPageSkeleton() {
   );
 }
 
+/** A screen while it loads; outside the main tabs, with the top bar it is about to have. */
 export function ScreenLoading({
   kind = 'form',
   english: en = false,
+  bar,
 }: {
   kind?: 'form' | 'detail' | 'account';
   english?: boolean;
+  bar?: boolean;
 }) {
+  const tab = useTopLevel();
   return (
     <div className="flex min-h-[440px] flex-1 flex-col" role="status" aria-busy="true">
       <span className="sr-only">{en ? 'Loading…' : 'Cargando…'}</span>
+      {(bar ?? !tab) ? (
+        <div className="back-header" aria-hidden="true">
+          <Skeleton className="h-11 w-11 border-0" />
+          <Skeleton className="h-5 w-36" />
+        </div>
+      ) : null}
       {kind === 'account' ? (
         <>
           <div className="meli-balance-card-app mb-6 p-5">

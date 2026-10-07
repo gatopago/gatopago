@@ -7,8 +7,9 @@ import { disablePush, enablePush, pushEnabled, pushSupported } from '../wallet/p
 import { signOut, type Session } from '../wallet/session';
 import { NavigationLink as Link } from './NavigationLink';
 import { BackHeader } from './Primitives';
+import { setAdvanced, useAdvanced } from '../wallet/preferences';
 import { SettingsSection } from './SettingsSection';
-import { BellIcon, SecurityIcon } from './Icons';
+import { BellIcon, EyeIcon } from './Icons';
 
 const GlobeIcon = () => (
   <svg
@@ -28,7 +29,7 @@ const GlobeIcon = () => (
   </svg>
 );
 
-/** `/settings`, as in V2: security, notifications, language and sign out. */
+/** `/settings`: notifications, view, language and sign out. Security has its own place in the menu. */
 export function AccountSettings({
   settings,
   session,
@@ -38,6 +39,7 @@ export function AccountSettings({
   session: Session;
   english: boolean;
 }) {
+  const advanced = useAdvanced();
   const router = useRouter();
   const suffix = en ? '?lang=en' : '';
   const [pushAvailable, setPushAvailable] = useState(false);
@@ -50,23 +52,7 @@ export function AccountSettings({
   return (
     <>
       <BackHeader title={en ? 'Settings' : 'Ajustes'} english={en} />
-      <div className="animate-fade-up">
-        <SettingsSection
-          title={en ? 'Security' : 'Seguridad'}
-          tone="pending"
-          icon={<SecurityIcon />}
-        >
-          <div className="p-5">
-            <p className="mb-4 text-[13px] leading-relaxed text-text-muted">
-              {en
-                ? 'Access keys, recovery and how we protect you.'
-                : 'Llaves de acceso, recuperación y cómo te protegemos.'}
-            </p>
-            <Link href={`/settings/security${suffix}`} className="btn btn-primary btn-block">
-              {en ? 'Your security center' : 'Tu centro de seguridad'}
-            </Link>
-          </div>
-        </SettingsSection>
+      <div>
         {pushOn ? (
           <SettingsSection
             title={en ? 'Notifications' : 'Notificaciones'}
@@ -139,11 +125,43 @@ export function AccountSettings({
             </div>
           </SettingsSection>
         ) : null}
+        <SettingsSection
+          title={en ? 'View' : 'Vista'}
+          tone="neutral"
+          icon={<EyeIcon hidden={false} />}
+        >
+          <div className="p-5">
+            <div
+              className="seg-track seg-track-block"
+              role="group"
+              aria-label={en ? 'View' : 'Vista'}
+            >
+              {[false, true].map((option) => (
+                <button
+                  key={String(option)}
+                  type="button"
+                  className="seg-item"
+                  aria-pressed={advanced === option}
+                  data-active={advanced === option}
+                  onClick={() => setAdvanced(option)}
+                >
+                  {option ? (en ? 'Advanced' : 'Avanzada') : en ? 'Simple' : 'Simple'}
+                </button>
+              ))}
+            </div>
+            <p className="mt-3 text-[12px] leading-relaxed text-text-muted">
+              {advanced
+                ? en
+                  ? 'You also see networks, the balance on each one, moving between networks and technical details.'
+                  : 'También ves las redes, el saldo en cada una, el paso entre redes y los detalles técnicos.'
+                : en
+                  ? 'You see your coins and GatoPago takes care of the networks.'
+                  : 'Ves tus monedas y GatoPago se encarga de las redes.'}
+            </p>
+          </div>
+        </SettingsSection>
         <SettingsSection title={en ? 'Language' : 'Idioma'} tone="neutral" icon={<GlobeIcon />}>
           <div className="p-5">
-            <p className="mb-3 text-[13px] text-text-muted">
-              {en ? 'Choose the app language.' : 'Elige el idioma de la app.'}
-            </p>
             <nav className="seg-track seg-track-block" aria-label={en ? 'Language' : 'Idioma'}>
               <Link
                 href="/settings"
@@ -168,7 +186,7 @@ export function AccountSettings({
         </SettingsSection>
         <button
           type="button"
-          className="btn btn-danger btn-block"
+          className="btn btn-ghost btn-block text-danger"
           onClick={() => {
             void disablePush(settings, session).finally(() => {
               signOut();

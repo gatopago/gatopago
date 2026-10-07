@@ -38,7 +38,13 @@ export interface Approvals {
 export async function api<T>(
   apiOrigin: string,
   path: string,
-  init: { method?: string; body?: unknown; token?: string; signal?: AbortSignal } = {},
+  init: {
+    method?: string;
+    body?: unknown;
+    token?: string;
+    signal?: AbortSignal;
+    headers?: Record<string, string>;
+  } = {},
 ): Promise<T> {
   let response: Response;
   const timeout = AbortSignal.timeout(20_000);
@@ -51,6 +57,7 @@ export async function api<T>(
           Accept: 'application/json',
           ...(init.body === undefined ? {} : { 'Content-Type': 'application/json' }),
           ...(init.token ? { Authorization: `Bearer ${init.token}` } : {}),
+          ...init.headers,
         },
         body: init.body === undefined ? undefined : JSON.stringify(init.body),
         credentials: 'omit',

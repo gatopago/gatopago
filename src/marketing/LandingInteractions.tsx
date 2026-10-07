@@ -3,12 +3,11 @@
 import { useEffect } from 'react';
 import { navigationScrollState } from './navigation-scroll';
 
-export function LandingInteractions({ locale }: { locale: 'es' | 'en' }) {
+export function LandingInteractions() {
   useEffect(() => {
     const root = document.querySelector<HTMLElement>('.meli-landing');
     if (!root) return;
     const controller = new AbortController();
-    const timers = new Set<ReturnType<typeof setTimeout>>();
     const menu = root.querySelector<HTMLElement>('[data-mobile-menu]');
     const menuButton = root.querySelector<HTMLButtonElement>('[data-menu-button]');
     const nav = root.querySelector<HTMLElement>('[data-nav-shell]');
@@ -43,7 +42,7 @@ export function LandingInteractions({ locale }: { locale: 'es' | 'en' }) {
       if (open) nav?.classList.remove('is-hidden');
       previousY = Math.max(0, window.scrollY);
     }
-    async function onClick(event: MouseEvent) {
+    function onClick(event: MouseEvent) {
       if (!(event.target instanceof Element)) return;
       const target = event.target.closest<HTMLElement>('button, a');
       if (!target || !root?.contains(target)) return;
@@ -75,28 +74,6 @@ export function LandingInteractions({ locale }: { locale: 'es' | 'en' }) {
       if (target.matches('[data-dialog-open]') && dialog && !dialog.open) {
         dialogTrigger = target;
         dialog.showModal();
-      }
-      if (target.matches('[data-copy-payment]')) {
-        const label = target.querySelector<HTMLElement>('[data-copy-label]');
-        try {
-          await navigator.clipboard.writeText(
-            new URL(target.dataset.paymentLink ?? '/', window.location.origin).href,
-          );
-          if (controller.signal.aborted) return;
-          if (label) label.textContent = target.dataset.copiedLabel ?? 'Copied';
-          target.classList.add('is-copied');
-        } catch {
-          if (controller.signal.aborted) return;
-          if (label)
-            label.textContent =
-              locale === 'es' ? 'No se pudo copiar. Reintenta.' : 'Could not copy. Try again.';
-        }
-        const timer = setTimeout(() => {
-          if (label) label.textContent = target.dataset.defaultLabel ?? 'Copy';
-          target.classList.remove('is-copied');
-          timers.delete(timer);
-        }, 2000);
-        timers.add(timer);
       }
     }
     root.addEventListener('click', onClick, { signal: controller.signal });
@@ -135,11 +112,10 @@ export function LandingInteractions({ locale }: { locale: 'es' | 'en' }) {
     return () => {
       controller.abort();
       if (scrollFrame !== null) cancelAnimationFrame(scrollFrame);
-      timers.forEach(clearTimeout);
       if (dialog?.open) dialog.close();
       toggleMenu(false);
       nav?.classList.remove('is-hidden', 'is-scrolled');
     };
-  }, [locale]);
+  }, []);
   return null;
 }

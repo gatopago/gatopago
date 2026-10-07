@@ -148,7 +148,7 @@ export function CardInterestSheet({
         </div>
         <button
           type="button"
-          onClick={onClose}
+          data-sheet-close
           aria-label={en ? 'Close' : 'Cerrar'}
           className="meli-square-action h-11 w-11 shrink-0"
         >

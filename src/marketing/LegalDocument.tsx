@@ -38,10 +38,10 @@ export function LegalDocument({ kind, lang }: { kind: 'terms' | 'privacy'; lang:
         </Link>
       </header>
       <main id="main-content" className="mx-auto max-w-3xl px-6 pb-16 leading-relaxed">
-        <aside className="mb-8 border-l-4 border-pending bg-pending/10 p-4 text-sm" role="note">
+        <aside className="mb-8 border-l-4 border-info bg-info/10 p-4 text-sm" role="note">
           {en
-            ? 'Historical text preserved from the previous site. V3 is a local candidate: this is not confirmation of V3 availability or a reviewed V3 policy.'
-            : 'Texto histórico conservado del sitio anterior. V3 es un candidato local: esto no confirma su disponibilidad ni constituye una política V3 revisada.'}
+            ? 'GatoPago is in public beta and runs only on test networks, with test funds. If anything here changes, we will update this page and its date.'
+            : 'GatoPago está en beta pública y funciona solo con redes y fondos de prueba. Si algo de este texto cambia, actualizaremos esta página y su fecha.'}
         </aside>
         <h1 className="font-display text-4xl font-bold">{c.title}</h1>
         <p className="my-4 text-sm text-text-muted">{c.updated}</p>

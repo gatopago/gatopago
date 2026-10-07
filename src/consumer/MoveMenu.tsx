@@ -3,10 +3,8 @@
 import type { ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { MeliSprite } from '../marketing/MeliSprite';
-import { NavigationLink } from './NavigationLink';
-import { PixelRail } from './PixelRail';
-import { OptionCard, SectionLabel } from './Primitives';
-import { localizedPath } from './routes';
+import { useAdvanced } from '../wallet/preferences';
+import { BackHeader, OptionCard, TabHeader } from './Primitives';
 
 const icon = (children: ReactNode) => (
   <svg
@@ -33,46 +31,31 @@ const receiveIcon = icon(
 /** `/move`, as in V2: receive, send or swap; receiving then chooses a request or the account. */
 export function MoveMenu({ english: en }: { english: boolean }) {
   const receiving = useSearchParams().get('flow') === 'receive';
+  // Moving between networks is for the advanced view: the simple one never shows networks.
+  const advanced = useAdvanced();
 
   if (receiving)
     return (
       <>
-        <header className="mb-4">
-          <NavigationLink
-            href={localizedPath('/move', en)}
-            className="meli-square-action mb-6 px-3 text-[12px]"
-          >
-            <span aria-hidden="true">←</span>
-            {en ? 'Back to Move' : 'Volver a Mover'}
-          </NavigationLink>
-          <div className="flex items-end gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="meli-kicker mb-3">
-                {en ? 'Your money, in motion' : 'Tu dinero, en movimiento'}
-              </p>
-              <h1 className="font-display text-[34px] leading-[.96]">
-                {en ? 'Receive money' : 'Recibir dinero'}
-              </h1>
-              <p className="mt-3 text-[13px] leading-relaxed text-text-muted">
-                {en
-                  ? 'Choose whether to request a payment or share your account details.'
-                  : 'Elige si quieres solicitar un pago o compartir los datos de tu cuenta.'}
-              </p>
-            </div>
-            <MeliSprite variant="body-qr" className="w-24 shrink-0" motion="idle" />
-          </div>
-        </header>
-        <PixelRail state="future" className="mb-5" />
+        <BackHeader title={en ? 'Receive money' : 'Recibir dinero'} english={en} to="/move" />
+        <div className="mb-5 flex items-end gap-3">
+          <p className="min-w-0 flex-1 text-[14px] leading-relaxed text-text-muted">
+            {en
+              ? 'Ask someone to pay you, or share your details to receive from a wallet or exchange.'
+              : 'Pide un pago a alguien o comparte tus datos para recibir desde una wallet o un exchange.'}
+          </p>
+          <MeliSprite variant="body-qr" className="w-20 shrink-0" motion="idle" />
+        </div>
         <div className="flex flex-col gap-2.5">
           <OptionCard
             href="/charge"
             english={en}
             tone="brand"
-            title={en ? 'Request with a link or QR' : 'Cobrar con link o QR'}
+            title={en ? 'Request a payment' : 'Cobrar'}
             description={
               en
-                ? 'Set an amount and concept to request a payment'
-                : 'Define un monto y concepto para solicitar un pago'
+                ? 'Create a link or QR with an amount and a note'
+                : 'Crea un link o un QR con monto y concepto'
             }
             icon={icon(
               <>
@@ -86,11 +69,11 @@ export function MoveMenu({ english: en }: { english: boolean }) {
             href="/receive"
             english={en}
             tone="info"
-            title={en ? 'Receive into my account' : 'Recibir en mi cuenta'}
+            title={en ? 'Receive in my account' : 'Recibir en mi cuenta'}
             description={
               en
-                ? 'From a wallet or exchange using the correct network and address'
-                : 'Desde una wallet o exchange usando la red y dirección correctas'
+                ? 'Your address and QR, for a wallet or an exchange'
+                : 'Tu dirección y tu QR, para una wallet o un exchange'
             }
             icon={receiveIcon}
           />
@@ -100,32 +83,25 @@ export function MoveMenu({ english: en }: { english: boolean }) {
 
   return (
     <>
-      <header className="mb-4 flex items-end gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="meli-kicker mb-3">
-            {en ? 'Your money, in motion' : 'Tu dinero, en movimiento'}
-          </p>
-          <h1 className="font-display text-[36px] leading-[.94]">{en ? 'Move' : 'Mover'}</h1>
-          <p className="mt-3 text-[13px] leading-relaxed text-text-muted">
-            {en
-              ? 'Choose what you want to do. GatoPago handles the route and shows the details before confirmation.'
-              : 'Elige qué quieres hacer. GatoPago se ocupa de la ruta y te muestra los detalles antes de confirmar.'}
-          </p>
-        </div>
-        <MeliSprite variant="body-courier" className="w-24 shrink-0" motion="deliver" />
-      </header>
-      <PixelRail state="idle" className="mb-5" />
-      <SectionLabel>{en ? 'What do you want to do?' : '¿Qué quieres hacer?'}</SectionLabel>
+      <TabHeader
+        title={en ? 'Move' : 'Mover'}
+        description={
+          en
+            ? 'Choose what to do. You will see every detail before confirming.'
+            : 'Elige qué hacer. Verás todos los detalles antes de confirmar.'
+        }
+        art={<MeliSprite variant="body-courier" motion="deliver" />}
+      />
       <div className="flex flex-col gap-2.5">
         <OptionCard
           href="/move?flow=receive"
           english={en}
           tone="info"
-          title={en ? 'Receive money' : 'Recibir dinero'}
+          title={en ? 'Receive' : 'Recibir'}
           description={
             en
-              ? 'Request with a link or receive into one of your accounts'
-              : 'Cobrar con un link o recibir en una de tus cuentas'
+              ? 'Request a payment or share your account'
+              : 'Cobra con un link o comparte tu cuenta'
           }
           icon={receiveIcon}
         />
@@ -133,11 +109,11 @@ export function MoveMenu({ english: en }: { english: boolean }) {
           href="/send"
           english={en}
           tone="brand"
-          title={en ? 'Send money' : 'Enviar dinero'}
+          title={en ? 'Send' : 'Enviar'}
           description={
             en
-              ? 'To a GatoPago account, wallet, exchange, or another network'
-              : 'A una cuenta GatoPago, wallet, exchange u otra red'
+              ? 'To a @username, a wallet or an exchange'
+              : 'A un @usuario, una wallet o un exchange'
           }
           icon={icon(
             <>
@@ -147,15 +123,30 @@ export function MoveMenu({ english: en }: { english: boolean }) {
           )}
         />
         <OptionCard
+          href="/team"
+          english={en}
+          tone="brand"
+          title={en ? 'Pay my team' : 'Pagar a mi equipo'}
+          description={
+            en
+              ? 'Several people at once, from your balance or your savings'
+              : 'A varias personas a la vez, desde tu saldo o tu ahorro'
+          }
+          icon={icon(
+            <>
+              <circle cx="9" cy="8" r="3" />
+              <path d="M3 19c0-3 3-5 6-5s6 2 6 5" />
+              <path d="M16 11a3 3 0 1 0 0-6" />
+              <path d="M21 19c0-2-1.5-3.6-4-4.4" />
+            </>,
+          )}
+        />
+        <OptionCard
           href="/swap"
           english={en}
           tone="neutral"
           title={en ? 'Swap' : 'Cambiar'}
-          description={
-            en
-              ? 'Convert assets with a breakdown before signing'
-              : 'Convierte activos con desglose antes de firmar'
-          }
+          description={en ? 'Between USDC and other coins' : 'Entre USDC y otras monedas'}
           icon={icon(
             <>
               <path d="M7 4v16" />
@@ -165,6 +156,25 @@ export function MoveMenu({ english: en }: { english: boolean }) {
             </>,
           )}
         />
+        {advanced ? (
+          <OptionCard
+            href="/crosschain"
+            english={en}
+            tone="pending"
+            title={en ? 'Between networks' : 'Entre redes'}
+            description={
+              en ? 'Move your USDC from one network to another' : 'Pasa tus USDC de una red a otra'
+            }
+            icon={icon(
+              <>
+                <path d="M7 7h11l-3-3" />
+                <path d="m18 7-3 3" />
+                <path d="M17 17H6l3 3" />
+                <path d="m6 17 3-3" />
+              </>,
+            )}
+          />
+        ) : null}
       </div>
     </>
   );

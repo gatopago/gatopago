@@ -7,10 +7,18 @@ import type { ClientSettings } from '../lib/settings';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { MeliSprite } from '../marketing/MeliSprite';
 import { networkName } from '../wallet/account';
-import { movementReceipt, presentMovement, useActivity, type Movement } from '../wallet/activity';
+import {
+  decimalsOf,
+  type Movement,
+  movementReceipt,
+  presentMovement,
+  useActivity,
+} from '../wallet/activity';
 import type { Session } from '../wallet/session';
 import { balanceHidden, Receipt } from './PaymentSheets';
+import { useAdvanced } from '../wallet/preferences';
 import { SelectMenu } from './SelectMenu';
+import { TabHeader } from './Primitives';
 import { RowSkeletonList } from './Skeleton';
 
 const RECENT_COUNT = 4;
@@ -39,21 +47,21 @@ function ActivityRow({
   const crossing = movement.kind === 'crosschain';
   const earn = movement.kind === 'earn';
   const swap = movement.kind === 'swap';
-  const { title, detail, status } = presentMovement(movement, en);
-  const amount = Number(formatUnits(BigInt(movement.amount), 6)).toLocaleString(en ? 'en' : 'es', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 6,
-  });
-  const date = new Date(movement.timestamp * 1000).toLocaleDateString(en ? 'en' : 'es', {
-    day: 'numeric',
-    month: 'short',
-  });
+  const { title, detail } = presentMovement(movement, en);
+  const amount = Number(formatUnits(BigInt(movement.amount), decimalsOf(movement))).toLocaleString(
+    en ? 'en' : 'es',
+    {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 6,
+    },
+  );
+  const date = movementDate(movement.timestamp, en);
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="interactive-surface flex w-full items-center gap-3.5 border-b border-border bg-surface px-3 py-3 text-left last:border-b-0 hover:bg-cat-50"
-      aria-label={`${title}, ${detail}, ${hidden ? '' : amount} ${movement.currency}`}
+      className="activity-row flex w-full items-center gap-3 border-b border-border bg-surface px-3 py-3 text-left last:border-b-0"
+      aria-label={`${title}, ${detail}, ${date}, ${hidden ? '' : amount} ${movement.currency}`}
     >
       <span
         aria-hidden="true"
@@ -81,10 +89,9 @@ function ActivityRow({
         </svg>
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15px]">{title}</span>
-        <span className="block truncate text-[12px] text-text-muted">{detail}</span>
-        <span className="block text-[11px] text-text-faint">
-          {status} · {date}
+        <span className="block truncate text-[15px] leading-snug">{title}</span>
+        <span className="block truncate text-[12px] leading-snug text-text-muted">
+          {detail} · {date}
         </span>
       </span>
       <span
@@ -95,6 +102,22 @@ function ActivityRow({
       </span>
     </button>
   );
+}
+
+/** "Today, 14:32", "Yesterday", or the day: recent movements read like a conversation. */
+function movementDate(seconds: number, en: boolean) {
+  const date = new Date(seconds * 1000);
+  const days = Math.round(
+    (new Date().setHours(0, 0, 0, 0) - new Date(date).setHours(0, 0, 0, 0)) / 86_400_000,
+  );
+  const time = date.toLocaleTimeString(en ? 'en' : 'es', { hour: 'numeric', minute: '2-digit' });
+  if (days === 0) return `${en ? 'Today' : 'Hoy'}, ${time}`;
+  if (days === 1) return en ? 'Yesterday' : 'Ayer';
+  return date.toLocaleDateString(en ? 'en' : 'es', {
+    day: 'numeric',
+    month: 'short',
+    ...(date.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}),
+  });
 }
 
 /** Home's "Recent activity": the last movements, each opening its receipt. */
@@ -122,13 +145,13 @@ export function RecentActivity({
       <div className="px-6 py-7 text-center">
         <MeliSprite variant="head-curious" className="mx-auto mb-3 w-16" />
         <p className="text-[14px] font-semibold">
-          {error || (en ? 'No activity yet' : 'Aún no hay movimientos')}
+          {error || (en ? 'No movements yet' : 'Todavía no hay movimientos')}
         </p>
         {!error ? (
           <p className="mt-1 text-[12px] leading-relaxed text-text-muted">
             {en
-              ? 'Your payments, requests, swaps, and Grow movements will appear here.'
-              : 'Tus pagos, cobros, cambios y movimientos en Crecer aparecerán aquí.'}
+              ? 'When you send, receive or grow your money, you will see it here.'
+              : 'Cuando envíes, recibas o hagas crecer tu dinero, lo verás aquí.'}
           </p>
         ) : null}
       </div>
@@ -167,7 +190,7 @@ const TYPES: [TypeFilter, string, string][] = [
   ['all', 'Todos', 'All'],
   ['received', 'Recibidos', 'Received'],
   ['sent', 'Enviados', 'Sent'],
-  ['swap', 'Cambios (SWAP)', 'Swaps'],
+  ['swap', 'Cambios', 'Swaps'],
 ];
 
 function periodBounds(period: Period, from: string, to: string) {
@@ -225,8 +248,15 @@ export function ActivityScreen({
   );
   const from = params.get('from') ?? '';
   const to = params.get('to') ?? '';
-  const currency = pick('asset', ['USDC']);
-  const network = pick('network', settings.networks);
+  // The simple view never filters by network: it shows every movement as one history.
+  const advanced = useAdvanced();
+  // Stellar movements come with the rest when it is on.
+  const requested = params.get('network');
+  const chosenNetwork =
+    requested && (settings.networks.includes(requested) || requested === settings.stellar?.network)
+      ? requested
+      : 'all';
+  const network = advanced ? chosenNetwork : 'all';
   const type = pick<TypeFilter>(
     'type',
     TYPES.map(([value]) => value),
@@ -249,37 +279,73 @@ export function ActivityScreen({
       const when = movement.timestamp * 1000;
       if (start && when < start.getTime()) return false;
       if (end && when > end.getTime()) return false;
-      if (currency !== 'all' && movement.currency !== currency) return false;
       if (network !== 'all' && movement.network !== network) return false;
       if (type === 'swap') return movement.kind === 'swap';
       if (type !== 'all' && movement.direction !== type) return false;
       return true;
     });
-  }, [movements, period, from, to, currency, network, type]);
+  }, [movements, period, from, to, network, type]);
 
   return (
     <>
-      <header className="mb-6">
-        <p className="meli-kicker mb-3">{en ? "Your money's history" : 'Historia de tu dinero'}</p>
-        <h1 className="font-display text-[36px] leading-[.94]">{en ? 'Activity' : 'Actividad'}</h1>
-        <p className="mt-3 text-[13px] leading-relaxed text-text-muted">
-          {en
-            ? 'Payments, requests, swaps, and positions in one timeline.'
-            : 'Pagos, cobros, cambios y posiciones en una sola línea de tiempo.'}
-        </p>
-      </header>
-
-      <SelectMenu
-        label={en ? 'Period' : 'Período'}
-        showLabel={false}
-        value={period}
-        options={PERIODS.map(([value, es, english]) => ({ value, label: en ? english : es }))}
-        onChange={(value) =>
-          setFilter({ period: value, ...(value !== 'custom' ? { from: '', to: '' } : {}) })
+      <TabHeader
+        title={en ? 'Activity' : 'Actividad'}
+        description={
+          en
+            ? 'Everything that came in and went out of your account.'
+            : 'Todo lo que entró y salió de tu cuenta.'
         }
-        english={en}
-        className="mb-3"
       />
+
+      <div
+        className="seg-track seg-track-block mb-2.5"
+        role="group"
+        aria-label={en ? 'Movement type' : 'Tipo de movimiento'}
+      >
+        {TYPES.map(([value, es, english]) => (
+          <button
+            key={value}
+            type="button"
+            className="seg-item"
+            data-active={type === value}
+            aria-pressed={type === value}
+            onClick={() => setFilter({ type: value })}
+          >
+            {en ? english : es}
+          </button>
+        ))}
+      </div>
+      {/* Side by side only where both names fit; the simple view has just the period. */}
+      <div className={`mb-3 grid gap-2 ${advanced ? 'min-[420px]:grid-cols-2' : ''}`}>
+        <SelectMenu
+          label={en ? 'Period' : 'Período'}
+          showLabel={false}
+          value={period}
+          options={PERIODS.map(([value, es, english]) => ({ value, label: en ? english : es }))}
+          onChange={(value) =>
+            setFilter({ period: value, ...(value !== 'custom' ? { from: '', to: '' } : {}) })
+          }
+          english={en}
+          className="min-w-0"
+        />
+        {advanced ? (
+          <SelectMenu
+            label={en ? 'Network' : 'Red'}
+            showLabel={false}
+            value={network}
+            options={[
+              { value: 'all', label: en ? 'All networks' : 'Todas las redes' },
+              ...[
+                ...settings.networks,
+                ...(settings.stellar ? [settings.stellar.network] : []),
+              ].map((id) => ({ value: id, label: networkName(id) })),
+            ]}
+            onChange={(value) => setFilter({ network: value })}
+            english={en}
+            className="min-w-0"
+          />
+        ) : null}
+      </div>
       {period === 'custom' ? (
         <div className="mb-3 flex gap-2.5">
           {(
@@ -301,39 +367,6 @@ export function ActivityScreen({
           ))}
         </div>
       ) : null}
-      <SelectMenu
-        label={en ? 'Filter by currency' : 'Filtrar por moneda'}
-        showLabel={false}
-        value={currency}
-        options={[
-          { value: 'all', label: en ? 'All currencies' : 'Todas las monedas' },
-          { value: 'USDC', label: 'USDC' },
-        ]}
-        onChange={(value) => setFilter({ asset: value })}
-        english={en}
-        className="mb-2"
-      />
-      <SelectMenu
-        label={en ? 'Filter by network' : 'Filtrar por red'}
-        showLabel={false}
-        value={network}
-        options={[
-          { value: 'all', label: en ? 'All networks' : 'Todas las redes' },
-          ...settings.networks.map((id) => ({ value: id, label: networkName(id) })),
-        ]}
-        onChange={(value) => setFilter({ network: value })}
-        english={en}
-        className="mb-2"
-      />
-      <SelectMenu
-        label={en ? 'Movement type' : 'Tipo de movimiento'}
-        showLabel={false}
-        value={type}
-        options={TYPES.map(([value, es, english]) => ({ value, label: en ? english : es }))}
-        onChange={(value) => setFilter({ type: value })}
-        english={en}
-        className="mb-5"
-      />
 
       {error ? (
         <p className="auth-error mb-4" role="alert">
@@ -346,7 +379,13 @@ export function ActivityScreen({
         <div className="flex flex-col items-center px-6 py-14 text-center">
           <CatGlyph className="mb-4 w-10 opacity-40" decorative />
           <p className="text-[14px] text-text-muted">
-            {en ? 'No movements match these filters.' : 'No hay movimientos con estos filtros.'}
+            {movements?.length
+              ? en
+                ? 'Nothing matches these filters.'
+                : 'Nada coincide con estos filtros.'
+              : en
+                ? 'No movements yet. When you send or receive money, you will see it here.'
+                : 'Todavía no hay movimientos. Cuando envíes o recibas dinero, lo verás aquí.'}
           </p>
         </div>
       ) : (

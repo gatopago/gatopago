@@ -12,11 +12,13 @@ import {
 } from '@gatopago/shared/swap';
 import type { ClientSettings } from '../lib/settings';
 import { CatGlyph } from '../marketing/CatGlyph';
+import { walletAssets } from '@gatopago/shared/assets';
 import { explorerUrl, networkName, publicClient, USDC_DECIMALS } from '../wallet/account';
 import { send } from '../wallet/operations';
 import { useBalances } from '../wallet/balances';
 import { failureMessage } from '../wallet/messages';
 import type { Session } from '../wallet/session';
+import { ElsewhereNote } from './ElsewhereNote';
 import { ConfirmDetails, ConfirmSheet, SigningDetails } from './PaymentSheets';
 import { BackHeader, MoneyPanel, TransactionActions } from './Primitives';
 import { AmountInput } from './SelectMenu';
@@ -122,10 +124,10 @@ export function SwapScreen({
         <BackHeader title={en ? 'Swap' : 'Cambiar'} english={en} to="/move" />
         <TxResult
           state="success"
-          lead={en ? 'Done! You received about' : '¡Listo! Recibiste aproximadamente'}
+          lead={en ? 'Done! You received about' : '¡Listo! Recibiste cerca de'}
           amount={format(done.quote.amountOut, done.quote.tokenOut)}
           unit={symbol(done.quote.tokenOut)}
-          body={en ? 'Your funds are already updated.' : 'Tus fondos ya están actualizados.'}
+          body={en ? 'It is already in your balance.' : 'Ya está en tu saldo.'}
         >
           {explorerUrl(networkId, done.hash) ? (
             <a
@@ -134,7 +136,7 @@ export function SwapScreen({
               rel="noopener noreferrer"
               className="text-[12px] text-text-faint"
             >
-              {en ? 'View receipt on the network ↗' : 'Ver comprobante en la red ↗'}
+              {en ? 'See it on the blockchain ↗' : 'Verlo en la blockchain ↗'}
             </a>
           ) : null}
         </TxResult>
@@ -147,7 +149,11 @@ export function SwapScreen({
   const options = (['usdc', 'native'] as const).map((token) => ({
     value: token,
     symbol: symbol(token),
-    label: token === 'usdc' ? 'USD Coin' : native.name,
+    label:
+      token === 'usdc'
+        ? 'USD Coin'
+        : (walletAssets([networkId]).find((coin) => coin.symbol === native.symbol)?.name ??
+          native.name),
   }));
   const calls = current ? swapCalls(network, session.wallet.address, current, minimum) : [];
 
@@ -186,6 +192,9 @@ export function SwapScreen({
             label={en ? 'Currency to swap' : 'Moneda que cambias'}
           />
         </div>
+        {tokenIn === 'usdc' ? (
+          <ElsewhereNote balances={balances} networkId={networkId} english={en} className="mt-3" />
+        ) : null}
       </MoneyPanel>
 
       <div className="relative z-10 -my-1 flex justify-center">
@@ -301,8 +310,8 @@ export function SwapScreen({
       <TransactionActions
         hint={
           en
-            ? 'You confirm with your fingerprint. GatoPago covers gas; the breakdown shows any other cost.'
-            : 'Confirmas con tu huella. GatoPago cubre el gas; el desglose muestra cualquier otro costo.'
+            ? 'GatoPago pays the network fee. You will see the full breakdown before confirming.'
+            : 'GatoPago paga la comisión de red. Verás el desglose completo antes de confirmar.'
         }
       >
         <button
@@ -319,8 +328,8 @@ export function SwapScreen({
               ? 'Finding the best route…'
               : 'Buscando mejor ruta…'
             : en
-              ? 'Swap'
-              : 'Cambiar'}
+              ? 'Review swap'
+              : 'Revisar cambio'}
         </button>
       </TransactionActions>
 
@@ -332,13 +341,13 @@ export function SwapScreen({
           unit={symbol(tokenIn)}
           warning={
             en
-              ? 'The price may move within the stated tolerance. Check the minimum before confirming.'
-              : 'El precio puede variar dentro de la tolerancia indicada. Revisa el mínimo antes de confirmar.'
+              ? 'The price can move a little before it runs; you will never get less than the minimum shown.'
+              : 'El precio puede moverse un poco antes de ejecutarse; nunca recibirás menos del mínimo indicado.'
           }
           confirmLabel={en ? 'Confirm swap' : 'Confirmar cambio'}
           english={en}
           busy={busy}
-          busyLabel={en ? 'Confirm with your fingerprint' : 'Confirma con tu huella'}
+          busyLabel={en ? 'Confirm on your device…' : 'Confirma en tu dispositivo…'}
           error={error}
           onCancel={() => setReviewing(false)}
           onConfirm={() => {

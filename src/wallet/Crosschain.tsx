@@ -1,25 +1,33 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { parseUnits, type Hex } from 'viem';
+import { formatUnits, parseUnits, type Address, type Hex } from 'viem';
 import { crosschainCalls, crosschainFee } from '@gatopago/shared/crosschain';
 import { walletNetwork } from '@gatopago/shared/networks';
 import { NavigationLink } from '../consumer/NavigationLink';
-import { BackHeader, Field, MoneyPanel } from '../consumer/Primitives';
+import { BackHeader, MoneyPanel, TransactionActions } from '../consumer/Primitives';
+import { AmountInput, SelectMenu } from '../consumer/SelectMenu';
 import { CrosschainTimeline } from '../consumer/CrosschainTimeline';
 import { ConfirmDetails, ConfirmSheet, SigningDetails } from '../consumer/PaymentSheets';
 import { StageOverlay } from '../consumer/StageOverlay';
 import { TxResult } from '../consumer/TxResult';
 import { localizedPath } from '../consumer/routes';
 import type { ClientSettings } from '../lib/settings';
-import { MeliSprite } from '../marketing/MeliSprite';
-import { networkName, USDC_DECIMALS } from './account';
+import { cctpNetwork, networkName, USDC_DECIMALS } from './account';
 import { send } from './operations';
-import { formatUsdc, useBalances } from './balances';
+import { formatBalance, formatUsdc, useBalances } from './balances';
 import { failureMessage } from './messages';
 import type { Session } from './session';
+import { crosschainFromStellar, crosschainToStellar, stellarArrived } from './stellar';
 
-type Move = { from: string; to: string; amount: bigint; fee: bigint };
+/** A crossing; `calls` burn on an EVM network, `null` when it leaves from Stellar. */
+type Move = {
+  from: string;
+  to: string;
+  amount: bigint;
+  fee: bigint;
+  calls: readonly { to: Address; data: Hex }[] | null;
+};
 
 /** Moves the user's own USDC between networks with Circle's CCTP, by default to the home network. */
 export function Crosschain({
@@ -31,13 +39,15 @@ export function Crosschain({
   session: Session;
   english: boolean;
 }) {
-  const { balances, refresh } = useBalances(settings, session);
+  const { balances, stellar, stellarUsdc, refresh } = useBalances(settings, session);
+  const stellarId = stellar ? settings.stellar!.network : null;
+  const balanceOf = (id: string) => (id === stellarId ? stellarUsdc : balances[id]);
   const others = settings.networks.filter((id) => id !== settings.homeNetwork);
   const [from, setFrom] = useState(others[0] ?? settings.homeNetwork);
   const [to, setTo] = useState(settings.homeNetwork);
   const [amount, setAmount] = useState('');
   const [review, setReview] = useState<Move | null>(null);
-  const [moved, setMoved] = useState<{ hash: Hex; move: Move } | null>(null);
+  const [moved, setMoved] = useState<{ hash: string; move: Move } | null>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
 
@@ -49,52 +59,73 @@ export function Crosschain({
       .finally(() => setBusy(false));
   }
 
+  const value = /^(\d+\.?\d{0,6}|\.\d{1,6})$/.test(amount) ? parseUnits(amount, USDC_DECIMALS) : 0n;
+  const available = balanceOf(from);
+  const enough = typeof available !== 'bigint' || value <= available;
+  const locked = busy || review !== null;
+
   function prepare(event: FormEvent) {
     event.preventDefault();
     perform(async () => {
-      const value = parseUnits(amount.replace(',', '.'), USDC_DECIMALS);
       if (value <= 0n || from === to) throw new Error('INVALID_AMOUNT');
-      if (value > (balances[from] ?? 0n)) throw new Error('INSUFFICIENT_FUNDS');
-      const fee = await crosschainFee(walletNetwork(from), walletNetwork(to), value);
+      if (value > (balanceOf(from) ?? 0n)) throw new Error('INSUFFICIENT_FUNDS');
+      const fee = await crosschainFee(cctpNetwork(from), cctpNetwork(to), value);
       if (fee >= value) throw new Error('CCTP_AMOUNT_BELOW_FEE');
-      setReview({ from, to, amount: value, fee });
+      const move = { from, to, amount: value, fee };
+      setReview({
+        ...move,
+        calls:
+          from === stellarId
+            ? null
+            : to === stellarId
+              ? await crosschainToStellar(settings, session, move)
+              : crosschainCalls({
+                  from: walletNetwork(from),
+                  to: walletNetwork(to),
+                  amount: value,
+                  recipient: session.wallet.address,
+                  maxFee: fee,
+                }),
+      });
     });
   }
 
-  const callsFor = (move: Move) =>
-    crosschainCalls({
-      from: walletNetwork(move.from),
-      to: walletNetwork(move.to),
-      amount: move.amount,
-      recipient: session.wallet.address,
-      maxFee: move.fee,
-    });
-
   function confirm(move: Move) {
     perform(async () => {
-      setMoved({ hash: await send(settings, session, move.from, callsFor(move)), move });
+      let hash: string;
+      if (!move.calls) hash = await crosschainFromStellar(settings, session, move);
+      else {
+        hash = await send(settings, session, move.from, move.calls);
+        // Wallet Core delivers burns toward Stellar; the timeline reports it again if this is lost.
+        if (move.to === stellarId)
+          void stellarArrived(settings, session, move.from, hash).catch(() => undefined);
+      }
+      setMoved({ hash, move });
       setReview(null);
       setAmount('');
       refresh();
     });
   }
 
-  const select = (value: string, onChange: (value: string) => void) => (id: string) => (
-    <select
-      id={id}
-      className="meli-field"
-      value={value}
-      disabled={busy || review !== null}
-      onChange={(event) => onChange(event.target.value)}
-    >
-      {settings.networks.map((network) => (
-        <option key={network} value={network}>
-          {networkName(network)}
-          {typeof balances[network] === 'bigint' ? ` · ${formatUsdc(balances[network])} USDC` : ''}
-        </option>
-      ))}
-    </select>
-  );
+  const networks = [...settings.networks, ...(stellarId ? [stellarId] : [])].map((id) => {
+    const balance = balanceOf(id);
+    return {
+      value: id,
+      label: networkName(id),
+      description: typeof balance === 'bigint' ? `${formatBalance(balance, en)} USDC` : undefined,
+      tone: 'info' as const,
+    };
+  });
+  // Choosing the other side's network swaps them: origin and destination are never the same.
+  const choose = (side: 'from' | 'to', id: string) => {
+    if (side === 'from') {
+      if (id === to) setTo(from);
+      setFrom(id);
+    } else {
+      if (id === from) setFrom(to);
+      setTo(id);
+    }
+  };
 
   return (
     <>
@@ -111,7 +142,7 @@ export function Crosschain({
         <TxResult
           state="pending"
           lead={en ? 'On its way' : 'En camino'}
-          amount={formatUsdc(moved.move.amount)}
+          amount={formatUsdc(moved.move.amount, en)}
           unit="USDC"
           body={`${networkName(moved.move.from)} → ${networkName(moved.move.to)}`}
         >
@@ -122,61 +153,158 @@ export function Crosschain({
               hash={moved.hash}
               english={en}
               onDelivered={refresh}
+              delivery={
+                moved.move.to === stellarId
+                  ? () => stellarArrived(settings, session, moved.move.from, moved.hash)
+                  : undefined
+              }
             />
           </div>
           <NavigationLink href={localizedPath('/app', en)} className="btn btn-primary btn-block">
-            {en ? 'Back to home' : 'Volver a Inicio'}
+            {en ? 'Go to home' : 'Ir al inicio'}
           </NavigationLink>
           <button type="button" className="btn-text mt-1 w-full" onClick={() => setMoved(null)}>
             {en ? 'Move more' : 'Mover más'}
           </button>
         </TxResult>
       ) : (
-        <MoneyPanel className="mb-6">
-          <form onSubmit={prepare} aria-busy={busy}>
-            <Field label={en ? 'From' : 'Desde'}>{select(from, setFrom)}</Field>
-            <Field label={en ? 'To' : 'Hacia'}>{select(to, setTo)}</Field>
-            <Field label={en ? 'Amount (USDC)' : 'Monto (USDC)'}>
-              {(id) => (
-                <input
-                  id={id}
-                  required
-                  inputMode="decimal"
-                  pattern="[0-9]+([.,][0-9]{1,6})?"
-                  className="w-full border-0 bg-transparent py-2 font-mono text-[40px] font-semibold text-text outline-none placeholder:text-text-faint/40"
-                  placeholder="0.00"
-                  value={amount}
-                  disabled={busy || review !== null}
-                  onChange={(event) => setAmount(event.target.value)}
-                />
-              )}
-            </Field>
-            {typeof balances[from] === 'bigint' && balances[from] > 0n ? (
-              <button
-                type="button"
-                className="mb-4 min-h-11 text-[12px] text-info underline"
-                disabled={busy || review !== null}
-                onClick={() => setAmount(formatUsdc(balances[from]!).replaceAll(',', ''))}
+        <form onSubmit={prepare} aria-busy={busy} className="flex flex-1 flex-col">
+          <MoneyPanel className="mb-2">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className="text-[13px] text-text-muted">{en ? 'From' : 'Desde'}</span>
+              {typeof available === 'bigint' && available > 0n ? (
+                <button
+                  type="button"
+                  className="text-[12px] text-text-faint"
+                  disabled={locked}
+                  onClick={() => setAmount(formatUnits(available, USDC_DECIMALS))}
+                >
+                  {en
+                    ? `Balance: ${formatBalance(available, en)} · Move all`
+                    : `Saldo: ${formatBalance(available, en)} · Mover todo`}
+                </button>
+              ) : null}
+            </div>
+            <SelectMenu
+              label={en ? 'Network it leaves from' : 'Red de origen'}
+              showLabel={false}
+              value={from}
+              options={networks}
+              onChange={(id) => choose('from', id)}
+              english={en}
+              disabled={locked}
+              className="mb-4"
+            />
+            <AmountInput
+              name="amount"
+              aria-label={en ? 'Amount in USDC' : 'Monto en USDC'}
+              placeholder="0"
+              value={amount}
+              onChange={setAmount}
+              disabled={locked}
+              className="tabular w-full bg-transparent font-display text-[34px] leading-none text-text placeholder:text-text-faint"
+            />
+          </MoneyPanel>
+
+          <div className="relative z-10 -my-1 flex justify-center">
+            <button
+              type="button"
+              disabled={locked}
+              onClick={() => {
+                setFrom(to);
+                setTo(from);
+                setAmount('');
+              }}
+              aria-label={en ? 'Flip networks' : 'Invertir redes'}
+              className="meli-square-action h-10 w-10 bg-surface text-text"
+            >
+              <svg
+                aria-hidden="true"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                {en ? 'Move everything' : 'Mover todo'}
-              </button>
-            ) : null}
-            <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-              {busy ? (en ? 'Checking…' : 'Comprobando…') : en ? 'Review' : 'Revisar'}
+                <path d="m7 4 0 16" />
+                <path d="m3 8 4-4 4 4" />
+                <path d="m17 20 0-16" />
+                <path d="m13 16 4 4 4-4" />
+              </svg>
             </button>
-          </form>
-        </MoneyPanel>
+          </div>
+
+          <MoneyPanel className="mt-2 mb-5">
+            <span className="mb-3 block text-[13px] text-text-muted">{en ? 'To' : 'Hacia'}</span>
+            <SelectMenu
+              label={en ? 'Network it arrives on' : 'Red de destino'}
+              showLabel={false}
+              value={to}
+              options={networks}
+              onChange={(id) => choose('to', id)}
+              english={en}
+              disabled={locked}
+            />
+            <p className="mt-3 text-[12px] leading-relaxed text-text-faint">
+              {en
+                ? 'It arrives in your same account. Circle charges a small fee, which you will see before confirming.'
+                : 'Llega a tu misma cuenta. Circle cobra una pequeña comisión, que verás antes de confirmar.'}
+            </p>
+          </MoneyPanel>
+
+          {!enough ? (
+            <p role="status" className="mb-4 text-center text-[13px] text-danger">
+              {en ? 'Not enough balance on that network.' : 'No te alcanza el saldo en esa red.'}
+            </p>
+          ) : null}
+
+          <TransactionActions
+            hint={
+              <>
+                {en
+                  ? `Your balance lives on ${networkName(settings.homeNetwork)}. To receive from another network, share `
+                  : `Tu saldo vive en ${networkName(settings.homeNetwork)}. Para recibir desde otra red, comparte `}
+                <NavigationLink href={localizedPath('/receive', en)} className="underline">
+                  {en ? 'your address' : 'tu dirección'}
+                </NavigationLink>
+                {en ? ': it is the same on every network.' : ': es la misma en todas las redes.'}
+              </>
+            }
+          >
+            <button
+              type="submit"
+              className="btn btn-primary btn-block"
+              disabled={busy || value <= 0n || !enough}
+            >
+              {busy
+                ? en
+                  ? 'Checking…'
+                  : 'Comprobando…'
+                : en
+                  ? 'Review move'
+                  : 'Revisar movimiento'}
+            </button>
+          </TransactionActions>
+        </form>
       )}
       {review ? (
         <ConfirmSheet
           title={en ? 'Confirm the move' : 'Confirma el movimiento'}
           amountLabel={en ? 'You will move' : 'Vas a mover'}
-          amount={formatUsdc(review.amount)}
+          amount={formatUsdc(review.amount, en)}
           unit="USDC"
           warning={
-            en
+            (en
               ? 'Your USDC leaves this network and Circle delivers it to your same account on the destination. GatoPago covers gas.'
-              : 'Tus USDC salen de esta red y Circle los entrega en tu misma cuenta en el destino. GatoPago cubre el gas.'
+              : 'Tus USDC salen de esta red y Circle los entrega en tu misma cuenta en el destino. GatoPago cubre el gas.') +
+            (review.from === stellarId
+              ? en
+                ? ' The first time from Stellar you confirm twice: once to let Circle move your USDC.'
+                : ' La primera vez desde Stellar confirmas dos veces: una para que Circle pueda mover tus USDC.'
+              : '')
           }
           confirmLabel={en ? 'Confirm and move' : 'Confirmar y mover'}
           english={en}
@@ -196,31 +324,21 @@ export function Crosschain({
               [en ? 'To' : 'Hacia', networkName(review.to)],
               [
                 en ? 'Circle transfer fee' : 'Comisión de Circle',
-                `${en ? 'up to' : 'hasta'} ${formatUsdc(review.fee)} USDC`,
+                `${en ? 'up to' : 'hasta'} ${formatUsdc(review.fee, en)} USDC`,
               ],
             ]}
           />
-          <SigningDetails
-            settings={settings}
-            wallet={session.wallet}
-            networkId={review.from}
-            calls={callsFor(review)}
-            english={en}
-          />
+          {review.calls ? (
+            <SigningDetails
+              settings={settings}
+              wallet={session.wallet}
+              networkId={review.from}
+              calls={review.calls}
+              english={en}
+            />
+          ) : null}
         </ConfirmSheet>
       ) : null}
-      <div className="flex items-center gap-4">
-        <MeliSprite variant="body-courier" className="w-20 shrink-0" />
-        <p className="text-[12px] leading-relaxed text-text-muted">
-          {en
-            ? `Your balance lives on ${networkName(settings.homeNetwork)}. To receive from another network, share `
-            : `Tu saldo vive en ${networkName(settings.homeNetwork)}. Para recibir desde otra red, comparte `}
-          <NavigationLink href={localizedPath('/receive', en)} className="underline">
-            {en ? 'your address' : 'tu dirección'}
-          </NavigationLink>
-          {en ? ': it is the same on every network.' : ': es la misma en todas las redes.'}
-        </p>
-      </div>
     </>
   );
 }
