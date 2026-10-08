@@ -57,6 +57,11 @@ const messages: Record<string, [es: string, en: string]> = {
     'Tu operación sigue en proceso. Revisa Actividad en un momento antes de repetirla.',
     'Your operation is still in progress. Check Activity in a moment before repeating it.',
   ],
+  // A coin other than USDC lives on one network: there is nothing to bring from another.
+  INSUFFICIENT_COIN: [
+    'No te alcanza el saldo de esa moneda.',
+    'You do not have enough of that coin.',
+  ],
   INSUFFICIENT_FUNDS: [
     'No te alcanza el saldo. Si está repartido entre redes, júntalo en “Entre redes”.',
     'Your balance is not enough. If it is spread across networks, gather it in “Between networks”.',
@@ -73,6 +78,10 @@ const messages: Record<string, [es: string, en: string]> = {
   STELLAR_RECIPIENT_CANNOT_RECEIVE: [
     'Esa cuenta de Stellar no acepta USDC todavía: debe activar USDC (trustline) primero.',
     'That Stellar account does not accept USDC yet: it must add USDC (a trustline) first.',
+  ],
+  STELLAR_ACCOUNT_INACTIVE: [
+    'Esa cuenta de Stellar no existe o todavía no está activa: no puede recibir XLM.',
+    'That Stellar account does not exist or is not active yet: it cannot receive XLM.',
   ],
   STELLAR_SIGNER_PENDING: [
     'La llave de este dispositivo aún no firma en Stellar. Sincronízala en Seguridad desde un dispositivo que ya firme allí.',
@@ -113,6 +122,22 @@ const messages: Record<string, [es: string, en: string]> = {
   OPERATION_PENDING: [
     'Tu operación anterior sigue en proceso. Revisa Actividad en un momento antes de repetirla.',
     'Your previous operation is still in progress. Check Activity in a moment before repeating it.',
+  ],
+  VAULT_UNAVAILABLE: [
+    'Tu llave no permite guardar datos cifrados en este dispositivo, así que tu equipo queda guardado solo aquí.',
+    'Your key cannot keep encrypted data on this device, so your team stays saved here only.',
+  ],
+  VAULT_ELSEWHERE: [
+    'Tu equipo guardado se abre con otra de tus llaves. Entra con esa llave para verlo aquí.',
+    'Your saved team opens with another of your keys. Sign in with that key to see it here.',
+  ],
+  VAULT_UNREADABLE: [
+    'No pudimos abrir tu equipo guardado con esta llave. Tu dinero no se ve afectado.',
+    'We could not open your saved team with this key. Your money is not affected.',
+  ],
+  STORAGE_UNAVAILABLE: [
+    'No se envió nada: tu navegador no deja que GatoPago guarde datos en este sitio, y los necesitamos para que un envío nunca salga dos veces. Permite el almacenamiento del sitio (o sal del modo privado) y vuelve a intentar.',
+    'Nothing was sent: your browser does not let GatoPago store data on this site, and we need it so a payment never goes out twice. Allow site storage (or leave private browsing) and try again.',
   ],
   PREVIOUS_OPERATION_CONFIRMED: [
     'Tu operación anterior ya se confirmó. Revisa Actividad antes de volver a enviarla.',

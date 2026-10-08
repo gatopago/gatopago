@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useAction } from './useAction';
 import { isAddressEqual, parseUnits } from 'viem';
 import { walletNetwork } from '@gatopago/shared/networks';
 import { paymentCalls } from '@gatopago/shared/payments';
@@ -21,7 +22,7 @@ import { ScreenLoading } from '../consumer/Skeleton';
 import { StageOverlay } from '../consumer/StageOverlay';
 import { TxResult } from '../consumer/TxResult';
 import type { ClientSettings } from '../lib/settings';
-import { networkName, USDC_DECIMALS } from './account';
+import { networkName, shortAddress, USDC_DECIMALS } from './account';
 import {
   payWithAccount,
   payWithBrowserWallet,
@@ -30,7 +31,7 @@ import {
   type Intent,
   type Plan,
 } from './flow';
-import { formatBalance, formatUsdc, totalUsdc, useBalances } from './balances';
+import { formatBalance, formatUsdc, useBalances } from './balances';
 import { failureMessage } from './messages';
 import { currentSession, subscribeSession, type Session } from './session';
 
@@ -56,12 +57,24 @@ export function Checkout({
       .catch((failure: unknown) => setError(failureMessage(failure, en)));
   }, [settings, id, en]);
 
-  // A payment that crosses networks settles once Circle mints to the merchant: check every 5 s.
+  // A payment that crosses networks settles once Circle mints to the merchant: check again 5 s
+  // after each answer, while the page is visible. A failed check just waits for the next one;
+  // leaving the page cancels the one in flight.
   const processing = intent?.status === 'processing';
   useEffect(() => {
     if (!processing) return;
-    const timer = setInterval(() => void readCheckout(settings, id).then(setIntent), 5000);
-    return () => clearInterval(timer);
+    const leaving = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const check = async () => {
+      if (!document.hidden)
+        await readCheckout(settings, id, leaving.signal).then(setIntent, () => undefined);
+      if (!leaving.signal.aborted) timer = setTimeout(check, 5000);
+    };
+    timer = setTimeout(check, 5000);
+    return () => {
+      leaving.abort();
+      clearTimeout(timer);
+    };
   }, [processing, settings, id]);
 
   return (
@@ -92,10 +105,7 @@ export function Checkout({
 }
 
 const merchantLabel = (intent: Intent) =>
-  intent.merchant?.name ??
-  (intent.merchant
-    ? `${intent.merchant.address.slice(0, 6)}…${intent.merchant.address.slice(-4)}`
-    : '');
+  intent.merchant?.name ?? (intent.merchant ? shortAddress(intent.merchant.address) : '');
 
 function Request({
   intent,
@@ -343,11 +353,13 @@ function Balance({
   english: boolean;
 }) {
   const { balances } = useBalances(settings, session);
-  const total = totalUsdc(balances, settings.networks);
-  if (typeof total !== 'bigint') return null;
+  // USDC lives on the home network, as everywhere in the app. Nothing is said about other networks:
+  // a payment comes from one that covers it on its own (`planAccountPayment`).
+  const available = balances[settings.homeNetwork];
+  if (typeof available !== 'bigint') return null;
   return (
     <p className="mt-3 text-[12px] text-text-faint">
-      {en ? 'Your balance' : 'Tu saldo'}: {formatBalance(total, en)} USDC
+      {en ? 'Your balance' : 'Tu saldo'}: {formatBalance(available, en)} USDC
     </p>
   );
 }
@@ -367,16 +379,7 @@ function AccountPay({
 }) {
   const { balances, refresh } = useBalances(settings, session);
   const [plan, setPlan] = useState<Plan | null>(null);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState('');
-
-  function perform(action: () => Promise<void>) {
-    setBusy(true);
-    setError('');
-    action()
-      .catch((failure: unknown) => setError(failureMessage(failure, en)))
-      .finally(() => setBusy(false));
-  }
+  const { busy, error, run: perform } = useAction(en);
 
   const amount = parseUnits(intent.amount, USDC_DECIMALS);
   return (
@@ -479,8 +482,8 @@ function WalletPay({
   onPaid: (intent: Intent) => void;
 }) {
   const [network, setNetwork] = useState(settings.homeNetwork);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   if (!hasWallet)
     return (
       <div className="mt-6">

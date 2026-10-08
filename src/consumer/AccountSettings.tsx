@@ -7,9 +7,8 @@ import { disablePush, enablePush, pushEnabled, pushSupported } from '../wallet/p
 import { signOut, type Session } from '../wallet/session';
 import { NavigationLink as Link } from './NavigationLink';
 import { BackHeader } from './Primitives';
-import { setAdvanced, useAdvanced } from '../wallet/preferences';
 import { SettingsSection } from './SettingsSection';
-import { BellIcon, EyeIcon } from './Icons';
+import { BellIcon } from './Icons';
 
 const GlobeIcon = () => (
   <svg
@@ -29,7 +28,7 @@ const GlobeIcon = () => (
   </svg>
 );
 
-/** `/settings`: notifications, view, language and sign out. Security has its own place in the menu. */
+/** `/settings`: notifications, language and sign out. Security has its own place in the menu. */
 export function AccountSettings({
   settings,
   session,
@@ -39,13 +38,12 @@ export function AccountSettings({
   session: Session;
   english: boolean;
 }) {
-  const advanced = useAdvanced();
   const router = useRouter();
   const suffix = en ? '?lang=en' : '';
   const [pushAvailable, setPushAvailable] = useState(false);
   const [pushOn, setPushOn] = useState(() => typeof window !== 'undefined' && pushEnabled());
-  const [pushBusy, setPushBusy] = useState(false),
-    [pushFailed, setPushFailed] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushFailed, setPushFailed] = useState(false);
   useEffect(() => {
     void pushSupported(settings).then(setPushAvailable);
   }, [settings]);
@@ -125,41 +123,6 @@ export function AccountSettings({
             </div>
           </SettingsSection>
         ) : null}
-        <SettingsSection
-          title={en ? 'View' : 'Vista'}
-          tone="neutral"
-          icon={<EyeIcon hidden={false} />}
-        >
-          <div className="p-5">
-            <div
-              className="seg-track seg-track-block"
-              role="group"
-              aria-label={en ? 'View' : 'Vista'}
-            >
-              {[false, true].map((option) => (
-                <button
-                  key={String(option)}
-                  type="button"
-                  className="seg-item"
-                  aria-pressed={advanced === option}
-                  data-active={advanced === option}
-                  onClick={() => setAdvanced(option)}
-                >
-                  {option ? (en ? 'Advanced' : 'Avanzada') : en ? 'Simple' : 'Simple'}
-                </button>
-              ))}
-            </div>
-            <p className="mt-3 text-[12px] leading-relaxed text-text-muted">
-              {advanced
-                ? en
-                  ? 'You also see networks, the balance on each one, moving between networks and technical details.'
-                  : 'También ves las redes, el saldo en cada una, el paso entre redes y los detalles técnicos.'
-                : en
-                  ? 'You see your coins and GatoPago takes care of the networks.'
-                  : 'Ves tus monedas y GatoPago se encarga de las redes.'}
-            </p>
-          </div>
-        </SettingsSection>
         <SettingsSection title={en ? 'Language' : 'Idioma'} tone="neutral" icon={<GlobeIcon />}>
           <div className="p-5">
             <nav className="seg-track seg-track-block" aria-label={en ? 'Language' : 'Idioma'}>

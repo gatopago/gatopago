@@ -192,38 +192,6 @@
   color: #0b0b0f;
   font-size: 1rem;
 }
-.account-initialization {
-  border-top: 2px solid #d3c6ba;
-  margin-top: 1.5rem;
-  padding-top: 0.75rem;
-}
-.initialization-review {
-  border-left: 3px solid #247bb0;
-  padding-left: 0.8rem;
-  margin-top: 1rem;
-}
-.account-initialization li {
-  line-height: 1.5;
-  margin: 0.65rem 0;
-}
-.account-initialization code {
-  overflow-wrap: anywhere;
-  font-size: 0.85rem;
-}
-.security-actions {
-  border: 0;
-  margin: 0;
-  padding: 0;
-  min-width: 0;
-}
-.security-actions legend {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
 .auth-content label:not([class]) {
   display: block;
   font-weight: 650;
@@ -257,12 +225,6 @@
 .auth-error button {
   padding: 0.6rem;
   cursor: pointer;
-}
-.auth-local {
-  background: #eee3c2;
-  border: 1px solid #866614;
-  padding: 0.65rem;
-  font-size: 0.8rem;
 }
 .auth-challenge {
   min-height: 3rem;

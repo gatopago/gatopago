@@ -40,8 +40,8 @@ export function ChargeScreen({
   const { profile } = useProfile();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [link, setLink] = useState<Link | null>(null);
   const [charges, setCharges] = useState<Intent[] | null>(null);

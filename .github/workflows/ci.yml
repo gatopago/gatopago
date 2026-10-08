@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      CI: "true"
+      CI: 'true'
       GATOPAGO_WEB_ORIGIN: https://gatopago.com
       GATOPAGO_API_ORIGIN: https://api.gatopago.com
       GATOPAGO_WALLET_NETWORKS: eip155:421614,eip155:43113,eip155:10143
@@ -21,6 +21,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test

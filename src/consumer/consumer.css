@@ -74,17 +74,6 @@
   background: var(--color-cat-500);
   box-shadow: 14px 0 0 var(--color-cat-700);
 }
-.consumer-ui .meli-menu-profile {
-  display: grid;
-  grid-template-columns: 42px 1fr auto;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  padding: 10px 12px;
-  border: 2px solid var(--color-text);
-  background: var(--color-surface);
-  box-shadow: 4px 4px 0 var(--color-border);
-}
 .consumer-ui .meli-menu-row {
   display: grid;
   min-height: 62px;
@@ -121,156 +110,6 @@
 }
 .consumer-ui .meli-menu-row:hover {
   background: var(--color-cat-50);
-}
-.consumer-ui .meli-growth-card {
-  display: grid;
-  min-height: 154px;
-  grid-template-columns: minmax(0, 1fr) 88px;
-  align-items: center;
-  gap: 12px;
-  overflow: hidden;
-  padding: 20px;
-}
-.consumer-ui .meli-growth-card .meli-sprite {
-  width: 96px;
-  max-width: none;
-  transform: translateY(12px);
-}
-.consumer-ui .meli-segments {
-  display: flex;
-  border: 1px solid var(--color-border);
-  background: var(--color-paper-2);
-  padding: 4px;
-  gap: 2px;
-}
-.consumer-ui .meli-segments button {
-  min-height: 44px;
-  flex: 1;
-  font-size: 13px;
-  font-weight: 580;
-}
-.consumer-ui .meli-segments button[aria-pressed='true'] {
-  background: var(--color-cat-500);
-  font-weight: 700;
-  box-shadow: inset 0 -3px 0 var(--color-cat-700);
-}
-.consumer-ui .meli-qr-card {
-  width: fit-content;
-  margin: 24px auto;
-  padding: 12px;
-  border: 2px solid var(--color-text);
-  background: #fff;
-  box-shadow: 6px 6px 0 var(--color-cat-700);
-}
-.consumer-ui .meli-qr-card svg {
-  display: block;
-  max-width: 100%;
-  height: auto;
-}
-.consumer-ui .money-panel {
-  display: grid;
-  gap: 16px;
-  min-width: 0;
-}
-.consumer-ui .money-panel h3 {
-  font-size: 24px;
-  line-height: 1.2;
-}
-.consumer-ui .money-panel p {
-  font-size: 14px;
-  line-height: 1.55;
-}
-.consumer-ui .money-panel dl {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px 16px;
-  margin: 0;
-}
-.consumer-ui .money-panel dt {
-  color: var(--color-text-muted);
-  font-size: 13px;
-}
-.consumer-ui .money-panel dd {
-  margin: 0;
-  text-align: right;
-  overflow-wrap: anywhere;
-  font-weight: 650;
-}
-.consumer-ui .money-panel ol {
-  display: grid;
-  gap: 8px;
-  padding-left: 22px;
-  margin: 0;
-  list-style: decimal;
-  font-size: 14px;
-}
-.consumer-ui .money-panel label {
-  display: grid;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 650;
-}
-.consumer-ui .money-panel input,
-.consumer-ui .money-panel select {
-  width: 100%;
-  min-width: 0;
-  min-height: 48px;
-  padding: 10px 12px;
-  border: 2px solid var(--color-text);
-  border-radius: 8px;
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-.consumer-ui .money-panel .btn {
-  margin: 0;
-  white-space: normal;
-  height: auto;
-  line-height: 1.35;
-}
-.consumer-ui .money-panel details {
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid var(--color-text-muted);
-  border-radius: 8px;
-  font-size: 13px;
-}
-.consumer-ui .money-panel summary {
-  min-height: 24px;
-  cursor: pointer;
-}
-.consumer-ui .money-panel details[open] p {
-  margin-top: 12px;
-}
-.consumer-ui .money-panel [role='alert'] {
-  padding: 12px;
-  border-left: 3px solid var(--color-cat-500);
-}
-.consumer-ui .money-receipt {
-  padding-top: 16px;
-  border-top: 1px solid var(--color-text-muted);
-}
-.consumer-ui .money-source {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 20px;
-  margin-bottom: 24px;
-  padding: 12px 0;
-  border: 0;
-}
-.consumer-ui .money-source legend {
-  font-size: 14px;
-  font-weight: 650;
-}
-.consumer-ui .money-source label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-}
-.consumer-ui .money-source input {
-  width: 20px;
-  height: 20px;
-  accent-color: var(--color-cat-500);
 }
 
 .consumer-ui {
@@ -589,19 +428,6 @@
   display: block;
   width: 100%;
   height: auto;
-}
-.consumer-ui .wallet-setup-header {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.75rem;
-}
-.consumer-ui .wallet-setup-copy {
-  flex: 1;
-  min-width: 0;
-}
-.consumer-ui .wallet-setup-mascot {
-  width: clamp(4rem, 20vw, 5rem);
-  flex: 0 0 clamp(4rem, 20vw, 5rem);
 }
 
 :where(.consumer-ui) .meli-sprite {
@@ -1069,24 +895,6 @@
   box-shadow: 3px 3px 0 rgb(11 11 15 / 0.12);
   content: '';
 }
-.consumer-ui .finance-inset {
-  border: 1px solid var(--color-border);
-  padding: 14px 16px;
-  background: var(--color-paper-2);
-}
-.consumer-ui .meli-growth-rail {
-  height: 10px;
-  background: rgb(255 248 240 / 0.12);
-}
-.consumer-ui .meli-growth-rail > span {
-  display: block;
-  width: 6%;
-  height: 100%;
-  background: #71d5a1;
-  box-shadow:
-    4px 0 0 #0b0b0f,
-    8px 0 0 var(--color-cat-500);
-}
 .consumer-ui .meli-balance-card-app .select-menu-trigger {
   border-color: rgb(255 248 240 / 0.16);
   background: rgb(255 248 240 / 0.08);
@@ -1179,9 +987,6 @@
 .consumer-ui .meli-motion-deliver {
   animation: meli-deliver 1.7s ease-in-out infinite;
 }
-.consumer-ui .meli-motion-peek {
-  animation: meli-peek 3.8s ease-in-out infinite;
-}
 .consumer-ui .meli-motion-purr {
   animation: purr 680ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -1206,17 +1011,6 @@
     transform: translate3d(360%, 0, 0);
   }
 }
-@keyframes meli-peek {
-  0%,
-  42%,
-  100% {
-    transform: translate3d(0, 0, 0) rotate(0);
-  }
-  48%,
-  62% {
-    transform: translate3d(4px, 0, 0) rotate(1deg);
-  }
-}
 @keyframes meli-deliver {
   0%,
   100% {
@@ -1227,12 +1021,6 @@
   }
 }
 /* V2 primitives (parmelia-links client, d57fa62). */
-.consumer-ui .type-linear {
-  font-variation-settings: var(--recursive-linear);
-}
-.consumer-ui .type-casual {
-  font-variation-settings: var(--recursive-casual);
-}
 .consumer-ui .type-mono,
 .consumer-ui .tabular {
   font-variation-settings: var(--recursive-mono);
@@ -1251,29 +1039,6 @@
     background-color 140ms ease,
     color 140ms ease,
     box-shadow 160ms var(--ease-press);
-}
-.consumer-ui .finance-summary-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 13px;
-  line-height: 1.45;
-}
-.consumer-ui .finance-summary-row + .finance-summary-row {
-  margin-top: 8px;
-}
-.consumer-ui .pixel-corner {
-  clip-path: polygon(
-    0 0,
-    calc(100% - 8px) 0,
-    calc(100% - 8px) 8px,
-    100% 8px,
-    100% 100%,
-    8px 100%,
-    8px calc(100% - 8px),
-    0 calc(100% - 8px)
-  );
 }
 .consumer-ui .seg-track {
   display: inline-flex;
@@ -1339,32 +1104,6 @@
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
-.consumer-ui .meli-login-stage {
-  position: relative;
-  display: grid;
-  width: 100%;
-  max-width: 350px;
-  place-items: center;
-  overflow: hidden;
-  border: 2px solid var(--color-text);
-  background:
-    linear-gradient(90deg, transparent 31px, rgb(11 11 15 / 0.045) 32px),
-    linear-gradient(transparent 31px, rgb(11 11 15 / 0.045) 32px), var(--color-cat-50);
-  background-size: 32px 32px;
-  box-shadow: 8px 8px 0 var(--color-cat-700);
-}
-.consumer-ui .meli-login-stage > span {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 10px;
-  height: 10px;
-  background: var(--color-cat-500);
-  box-shadow: -14px 14px 0 var(--color-pending);
-}
-.consumer-ui .meli-login-stage .meli-sprite {
-  filter: drop-shadow(5px 5px 0 rgb(207 52 51 / 0.2));
-}
 .consumer-ui .meli-chip {
   display: inline-flex;
   min-height: 28px;
@@ -1386,10 +1125,6 @@
   flex: none;
   background: currentColor;
   content: '';
-}
-.consumer-ui .token-icon,
-.consumer-ui .keep-round {
-  border-radius: 999px !important;
 }
 
 .consumer-ui .scan-line {

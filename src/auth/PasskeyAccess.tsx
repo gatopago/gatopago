@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useAction } from '../wallet/useAction';
 import type { ClientSettings } from '../lib/settings';
 import { api } from '../wallet/api';
-import { failureMessage } from '../wallet/messages';
 import { findAnyWallet, newAccountWallet } from '../wallet/passkey';
 import { forgetWallet, knownWallet, type Wallet } from '../wallet/session';
 import { signIn } from '../wallet/signIn';
@@ -36,13 +36,12 @@ export function PasskeyAccess({
       ? ''
       : (new URLSearchParams(location.hash.slice(1)).get('invite') ?? ''),
   );
-  const [name, setName] = useState(''),
-    [username, setUsername] = useState('');
+  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [known, setKnown] = useState(() => (typeof window === 'undefined' ? null : knownWallet()));
   /** A passkey created for sign-up, kept so that retrying does not create another one. */
   const [created, setCreated] = useState<Wallet | null>(null);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState('');
+  const { busy, error, setError, run: perform } = useAction(en);
   /**
    * Whether Wallet Core asks new accounts for an invitation now (`INVITE_ONLY`): `null` until it
    * answers, so the field never shows only to disappear.
@@ -67,15 +66,6 @@ export function PasskeyAccess({
   useEffect(() => {
     if (settings.mera) void import('../wallet/mera');
   }, [settings.mera]);
-
-  function perform(action: () => Promise<void>) {
-    if (busy) return;
-    setBusy(true);
-    setError('');
-    action()
-      .catch((failure: unknown) => setError(failureMessage(failure, en)))
-      .finally(() => setBusy(false));
-  }
 
   function enter(wallet: Wallet | null) {
     perform(async () => {

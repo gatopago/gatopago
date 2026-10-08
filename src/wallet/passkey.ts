@@ -1,23 +1,14 @@
-import { Base64, P256, PublicKey, WebAuthnP256 } from 'ox';
-import type { WebAuthnClient } from '@category-labs/mera';
-import {
-  bytesToHex,
-  concat,
-  getAddress,
-  hexToBytes,
-  sha256,
-  stringToHex,
-  type Address,
-  type Hex,
-} from 'viem';
+import { WebAuthnP256 } from 'ox';
+import { bytesToHex, hexToBytes, type Address, type Hex } from 'viem';
 import { createWebAuthnCredential } from 'viem/account-abstraction';
 import { walletContracts } from '@gatopago/shared/networks';
 import {
-  gatopagoAccountFactoryAbi,
-  keyOwner,
-  ownersAfter,
-  passkeyOwner,
-} from '@gatopago/shared/wallet';
+  capturingWebAuthnClient,
+  isPrfUnavailable,
+  passkeyAccount,
+  type PasskeyAssertion,
+} from '@gatopago/shared/passkey';
+import { gatopagoAccountFactoryAbi, keyOwner, passkeyOwner } from '@gatopago/shared/wallet';
 import type { ClientSettings } from '../lib/settings';
 import { api, ApiError, type Approvals } from './api';
 import { publicClient } from './account';
@@ -84,31 +75,11 @@ export async function findWallet(settings: ClientSettings): Promise<Wallet> {
 }
 
 /** The account a passkey assertion belongs to, as one of its passkey owners, or null. */
-async function assertedWallet(
-  settings: ClientSettings,
-  { id, metadata, signature, raw }: Awaited<ReturnType<typeof WebAuthnP256.sign>>,
-): Promise<Wallet | null> {
-  const candidates = recoverPublicKeys(metadata, signature);
-  const handle = (raw.response as AuthenticatorAssertionResponse).userHandle;
-  const backupOf =
-    handle?.byteLength === 20 ? getAddress(bytesToHex(new Uint8Array(handle))) : null;
-
-  for (const publicKey of candidates) {
-    const owner = passkeyOwner(walletContracts.webAuthnVerifier, publicKey);
-    const address = backupOf ?? (await accountOf(settings, [owner]));
-    const account = await approvals(settings, address);
-    if (!account) continue;
-    // Before its first approval the server only knows the address, which derives from [owner].
-    const initialOwners = account.initial_owners ?? (backupOf ? [] : [owner]);
-    const owners = ownersAfter(
-      initialOwners,
-      account.approvals.map((approval) => approval.call),
-    );
-    if (owners.some((value) => value.toLowerCase() === owner.toLowerCase()))
-      return { credentialId: id, publicKey, address, initialOwners };
-  }
-  return null;
-}
+const assertedWallet = (settings: ClientSettings, assertion: PasskeyAssertion) =>
+  passkeyAccount(assertion, {
+    accountOf: (owners) => accountOf(settings, owners),
+    approvals: (address) => approvals(settings, address),
+  });
 
 /** The account a Mera key owns: the same address on any device that has the passkey. */
 async function meraWallet(
@@ -126,80 +97,8 @@ async function meraWallet(
   };
 }
 
-/**
- * A WebAuthn client for Mera that also keeps, from the same ceremony, what GatoPago needs when
- * the passkey itself signs: a new passkey's public key, or the assertion it can be recovered from.
- */
-function capturingClient(): {
-  client: WebAuthnClient;
-  seen: {
-    created?: { id: string; publicKey: Hex };
-    asserted?: Awaited<ReturnType<typeof WebAuthnP256.sign>>;
-  };
-} {
-  const seen: ReturnType<typeof capturingClient>['seen'] = {};
-  const prf = (salt: Uint8Array) => ({ prf: { eval: { first: salt as Uint8Array<ArrayBuffer> } } });
-  const outputs = (raw: unknown) => {
-    const results = (raw as PublicKeyCredential).getClientExtensionResults().prf;
-    const first = results?.results?.first;
-    return {
-      enabled: results?.enabled === true,
-      prfOutput: first ? new Uint8Array(first as ArrayBuffer) : undefined,
-    };
-  };
-  const rawId = (raw: unknown) => new Uint8Array((raw as PublicKeyCredential).rawId);
-  return {
-    seen,
-    client: {
-      async createCredential(request) {
-        // P-256 only (ox's default), so the passkey can also own the account itself.
-        const credential = await WebAuthnP256.createCredential({
-          rp: request.rp,
-          user: request.user,
-          challenge: request.challenge,
-          timeout: request.timeout,
-          attestation: request.attestation,
-          authenticatorSelection: {
-            residentKey: request.residentKey,
-            requireResidentKey: true,
-            userVerification: request.userVerification,
-          },
-          extensions: prf(request.prfSalt),
-        });
-        seen.created = {
-          id: credential.id,
-          publicKey: PublicKey.toHex(credential.publicKey, { includePrefix: false }),
-        };
-        const { enabled, prfOutput } = outputs(credential.raw);
-        return {
-          credentialId: rawId(credential.raw),
-          prfEnabled: enabled,
-          ...(prfOutput ? { prfOutput } : {}),
-        };
-      },
-      async getCredential(request) {
-        const assertion = await WebAuthnP256.sign({
-          rpId: request.rpId,
-          challenge: bytesToHex(request.challenge),
-          userVerification: request.userVerification,
-          credentialId: request.allowCredential
-            ? Base64.fromBytes(request.allowCredential.credentialId, { url: true, pad: false })
-            : undefined,
-          extensions: prf(request.prfSalt),
-        });
-        seen.asserted = assertion;
-        const { prfOutput } = outputs(assertion.raw);
-        return { credentialId: rawId(assertion.raw), ...(prfOutput ? { prfOutput } : {}) };
-      },
-    },
-  };
-}
-
 /** A passkey created for sign-up whose ceremony did not finish: a retry reuses it. */
 let unfinished: { id: string; publicKey: Hex } | null = null;
-
-const prfMissing = (error: unknown) =>
-  error instanceof Error && 'code' in error && error.code === 'PRF_UNAVAILABLE';
 
 /**
  * Creates the passkey of a new account and the wallet that owns it. With Mera on and PRF
@@ -211,7 +110,7 @@ export async function newAccountWallet(settings: ClientSettings, name: string): 
   if (!settings.mera) return newWallet(settings, name);
   const [{ createPasskeyWithPrfOutput, getPasskeyPrfOutput }, { openMeraSession }] =
     await Promise.all([import('@category-labs/mera'), import('./mera')]);
-  const { client, seen } = capturingClient();
+  const { client, seen } = capturingWebAuthnClient();
   const rp = { id: settings.passkeyRpId, name: 'GatoPago' };
   try {
     const created = unfinished
@@ -231,7 +130,7 @@ export async function newAccountWallet(settings: ClientSettings, name: string): 
   } catch (error) {
     const passkey = unfinished ?? seen.created;
     if (!passkey) throw error;
-    if (!prfMissing(error)) {
+    if (!isPrfUnavailable(error)) {
       unfinished = passkey;
       throw error;
     }
@@ -252,7 +151,7 @@ export async function findAnyWallet(settings: ClientSettings): Promise<Wallet> {
     import('@category-labs/mera'),
     import('./mera'),
   ]);
-  const { client, seen } = capturingClient();
+  const { client, seen } = capturingWebAuthnClient();
   let mera: Wallet | null = null;
   try {
     const { credentialId, prfOutput } = await getPasskeyPrfOutput({
@@ -264,26 +163,11 @@ export async function findAnyWallet(settings: ClientSettings): Promise<Wallet> {
     if (await approvals(settings, mera.address)) return mera;
     endMeraSession();
   } catch (error) {
-    if (!seen.asserted || !prfMissing(error)) throw error;
+    if (!seen.asserted || !isPrfUnavailable(error)) throw error;
   }
   const wallet = await assertedWallet(settings, seen.asserted!);
   if (wallet) return wallet;
   throw new ApiError(404, mera ? 'ACCOUNT_NOT_FOUND' : 'PASSKEY_WITHOUT_PRF');
-}
-
-/** The two P-256 public keys (64-byte hex) a WebAuthn assertion signature can come from. */
-export function recoverPublicKeys(
-  metadata: { authenticatorData: Hex; clientDataJSON: string },
-  signature: { r: bigint; s: bigint },
-): Hex[] {
-  const payload = sha256(
-    concat([metadata.authenticatorData, sha256(stringToHex(metadata.clientDataJSON))]),
-  );
-  return [0, 1].map((yParity) =>
-    PublicKey.toHex(P256.recoverPublicKey({ payload, signature: { ...signature, yParity } }), {
-      includePrefix: false,
-    }),
-  );
 }
 
 async function accountOf(settings: ClientSettings, owners: readonly Hex[]): Promise<Address> {

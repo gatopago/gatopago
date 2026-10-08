@@ -256,3 +256,16 @@ describe('sharing exports', () => {
     expect(share).toHaveBeenCalledWith({ text: options.text, url: undefined });
   });
 });
+
+describe('movement amounts', () => {
+  it('reads each coin with its decimals: USDC and AUSD in 6, XLM in 7, native coins in 18', async () => {
+    const { decimalsOf } = await import('../src/wallet/activity');
+    const movement = (network: string, currency: string) =>
+      ({ network, currency }) as Parameters<typeof decimalsOf>[0];
+    expect(decimalsOf(movement('stellar:testnet', 'USDC'))).toBe(6);
+    expect(decimalsOf(movement('stellar:testnet', 'XLM'))).toBe(7);
+    expect(decimalsOf(movement('eip155:10143', 'AUSD'))).toBe(6);
+    expect(decimalsOf(movement('eip155:10143', 'MON'))).toBe(18);
+    expect(decimalsOf(movement('eip155:421614', 'ETH'))).toBe(18);
+  });
+});

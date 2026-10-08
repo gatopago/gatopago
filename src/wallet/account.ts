@@ -40,6 +40,9 @@ export const isStellar = (networkId: string) => networkId.startsWith('stellar:')
 export const cctpNetwork = (networkId: string): CctpNetwork =>
   isStellar(networkId) ? stellarNetwork(networkId) : walletNetwork(networkId);
 
+/** An address as people read it, by its ends: `0x1234…abcd` (a Stellar key too). */
+export const shortAddress = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
+
 export function networkName(networkId: string): string {
   return isStellar(networkId)
     ? stellarNetwork(networkId).name

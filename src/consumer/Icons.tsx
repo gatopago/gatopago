@@ -18,13 +18,6 @@ function Icon({ children, size = 20 }: { children: ReactNode; size?: number }) {
   );
 }
 
-export function ReceiveIcon() {
-  return (
-    <Icon>
-      <path d="M12 5v14m7-7-7 7-7-7" />
-    </Icon>
-  );
-}
 export function SendIcon() {
   return (
     <Icon>

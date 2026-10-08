@@ -55,9 +55,9 @@ export function ProfileProvider({
   children: ReactNode;
 }) {
   const [profile, setStoredProfile] = useState<Profile | null>(() =>
-      rememberedProfile(session.wallet.address),
-    ),
-    [error, setError] = useState('');
+    rememberedProfile(session.wallet.address),
+  );
+  const [error, setError] = useState('');
   const setProfile = useCallback((value: Profile) => {
     setStoredProfile(value);
     try {

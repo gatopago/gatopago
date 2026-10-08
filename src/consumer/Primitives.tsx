@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, type ReactNode, type Ref } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { NavigationLink } from './NavigationLink';
 import { localizedPath } from './routes';
 import { BackIcon, ChevronIcon } from './Icons';
@@ -138,18 +138,6 @@ export function NoticeCard({
           <div className="mt-0.5 text-[12px] leading-relaxed text-text-muted">{children}</div>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-export function Field({ label, children }: { label: string; children: (id: string) => ReactNode }) {
-  const id = useId();
-  return (
-    <div className="mb-4">
-      <label htmlFor={id} className="mb-2 block text-[13px] text-text-muted">
-        {label}
-      </label>
-      {children(id)}
     </div>
   );
 }

@@ -1,22 +1,22 @@
 'use client';
 
+import { walletAssets } from '@gatopago/shared/assets';
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { formatUnits } from 'viem';
 import { walletNetwork } from '@gatopago/shared/networks';
 import { EyeIcon, RefreshIcon, RequestIcon, ScanIcon, SendIcon, SwapIcon } from '../consumer/Icons';
 import { RecentActivity } from '../consumer/ActivityScreen';
+import { ElsewhereNote } from '../consumer/ElsewhereNote';
 import { MeliSprite } from '../marketing/MeliSprite';
 import { balanceHidden, rememberBalanceHidden } from '../consumer/PaymentSheets';
 import { TokenSelect } from '../consumer/TokenSelect';
-import { assetBalance, walletAssets } from '@gatopago/shared/assets';
-import { useAdvanced } from './preferences';
 import { Skeleton } from '../consumer/Skeleton';
 import { NavigationLink } from '../consumer/NavigationLink';
 import { localizedPath } from '../consumer/routes';
 import type { ClientSettings } from '../lib/settings';
 import { networkName } from './account';
-import { formatBalance, plus, totalUsdc, useBalances } from './balances';
+import { formatBalance, useBalances } from './balances';
 import type { Session } from './session';
 
 const CardInterestSheet = dynamic(() =>
@@ -32,9 +32,8 @@ export function Home({
   session: Session;
   english: boolean;
 }) {
-  const { balances, natives, saved, holding, stellar, stellarUsdc, refreshing, refresh } =
-    useBalances(settings, session);
-  const stellarId = stellar ? settings.stellar!.network : null;
+  const { balances, saved, holding, refreshing, refresh } = useBalances(settings, session);
+  const home = settings.homeNetwork;
   const [hidden, setHidden] = useState(balanceHidden);
   const savedValues = settings.networks
     .filter((id) => walletNetwork(id).aave)
@@ -45,35 +44,23 @@ export function Home({
       ? savedValues.reduce<bigint>((sum, value) => sum + (value ?? 0n), 0n)
       : null;
   const growingText = hidden ? '••••' : growing === null ? '—' : formatBalance(growing, en);
-  const advanced = useAdvanced();
-  const assets = walletAssets(settings.networks);
-  const [currency, setCurrency] = useState('all/USDC');
-  const [cardOpen, setCardOpen] = useState(false),
-    [cardSaved, setCardSaved] = useState(false);
-  // `all/<coin>` is a coin across networks; `<network>/<coin>` exists only in the advanced view.
-  const [selectedNetwork, symbol] = (advanced ? currency : currency.replace(/^[^/]+/, 'all')).split(
-    '/',
-  );
-  const native = symbol !== 'USDC';
-  const asset = assets.find((item) => item.symbol === symbol) ?? assets[0];
-  const loaded =
-    settings.networks.every((id) => balances[id] !== undefined) && stellarUsdc !== undefined;
-  // USDC on Stellar counts with the rest; other coins live only on EVM networks.
-  const coinBalance = (item: (typeof assets)[number]) =>
+  // XLM joins the list when Stellar is on, on its own network like every other coin.
+  const assets = walletAssets(settings.networks, settings.stellar?.network);
+  // USDC is one balance, on the home network. Every other coin is listed on its own network (ETH on
+  // Arbitrum, AVAX on Avalanche…): it cannot cross networks the way USDC does.
+  const coins = assets.flatMap((item) =>
     item.symbol === 'USDC'
-      ? plus(assetBalance(item, holding), stellarUsdc)
-      : assetBalance(item, holding);
-  const total = plus(totalUsdc(balances, settings.networks), stellarUsdc);
-  const failed = Object.values(balances).some((value) => value === null) || stellarUsdc === null;
-  const shownBalance =
-    selectedNetwork === 'all'
-      ? coinBalance(asset)
-      : selectedNetwork === stellarId
-        ? stellarUsdc
-        : (() => {
-            const held = asset.holdings.find(({ networkId }) => networkId === selectedNetwork);
-            return held ? holding(held) : null;
-          })();
+      ? [{ item, held: item.holdings.find(({ networkId }) => networkId === home)! }]
+      : item.holdings.map((held) => ({ item, held })),
+  );
+  const [currency, setCurrency] = useState(`${home}/USDC`);
+  const [cardOpen, setCardOpen] = useState(false);
+  const [cardSaved, setCardSaved] = useState(false);
+  const { item: asset, held } =
+    coins.find(({ item, held }) => `${held.networkId}/${item.symbol}` === currency) ?? coins[0];
+  const native = asset.symbol !== 'USDC';
+  const shownBalance = holding(held);
+  const loaded = balances[home] !== undefined;
   const format = (item: (typeof assets)[number], value: bigint | null | undefined) => {
     if (hidden) return '••••';
     if (typeof value !== 'bigint') return '—';
@@ -83,71 +70,25 @@ export function Home({
           maximumFractionDigits: 6,
         });
   };
-  // Every coin GatoPago supports: the ones the account holds first, then the empty ones, quieter.
-  // CTK is Agora's test token, not a coin to keep.
-  const listed = (item: (typeof assets)[number]) => item.symbol !== 'CTK';
-  const empty = (value: bigint | null | undefined) => value === 0n;
-  const heldFirst = <T extends { muted: boolean; symbol: string }>(items: T[]) =>
-    [...items].sort(
+  // USDC first, then the coins the account holds, then the empty ones, quieter.
+  const tokens = coins
+    .map(({ item, held }) => ({
+      value: `${held.networkId}/${item.symbol}`,
+      symbol: item.symbol,
+      label: networkName(held.networkId),
+      balance: format(item, holding(held)),
+      muted: holding(held) === 0n,
+    }))
+    .sort(
       (a, b) =>
         Number(a.symbol !== 'USDC') - Number(b.symbol !== 'USDC') ||
         Number(a.muted) - Number(b.muted),
     );
-  // Simple view: each coin once. Advanced view: USDC in total, then every coin on each network.
-  const tokens = [
-    ...(advanced
-      ? [
-          {
-            value: 'all/USDC',
-            symbol: 'USDC',
-            label: en ? 'All networks' : 'Todas las redes',
-            balance: format(assets[0], total),
-          },
-        ]
-      : heldFirst(
-          assets.filter(listed).map((item) => ({
-            value: `all/${item.symbol}`,
-            symbol: item.symbol,
-            label: item.name,
-            balance: format(item, coinBalance(item)),
-            muted: empty(coinBalance(item)),
-          })),
-        )),
-    ...(advanced
-      ? heldFirst(
-          assets.filter(listed).flatMap((item) =>
-            item.holdings.map((held) => ({
-              value: `${held.networkId}/${item.symbol}`,
-              symbol: item.symbol,
-              label: networkName(held.networkId),
-              trigger: `${item.symbol} · ${networkName(held.networkId)}`,
-              balance: format(item, holding(held)),
-              muted: empty(holding(held)),
-            })),
-          ),
-        )
-      : []),
-    ...(advanced && stellarId
-      ? [
-          {
-            value: `${stellarId}/USDC`,
-            symbol: 'USDC',
-            label: networkName(stellarId),
-            trigger: `USDC · ${networkName(stellarId)}`,
-            balance: format(assets[0], stellarUsdc),
-          },
-        ]
-      : []),
-  ];
   const actions = [
     { href: '/charge', label: en ? 'Request' : 'Cobrar', icon: RequestIcon },
     { href: '/send', label: en ? 'Send' : 'Enviar', icon: SendIcon },
     { href: '/swap', label: en ? 'Swap' : 'Cambiar', icon: SwapIcon },
     { href: '/scan', label: en ? 'Scan' : 'Escanear', icon: ScanIcon },
-  ];
-  const elsewhere = [
-    ...settings.networks.filter((id) => id !== settings.homeNetwork && (balances[id] ?? 0n) > 0n),
-    ...(stellarId && (stellarUsdc ?? 0n) > 0n ? [stellarId] : []),
   ];
   return (
     <>
@@ -160,7 +101,7 @@ export function Home({
           >
             {en ? 'Available' : 'Disponible'}
           </h2>
-          <div className="flex min-w-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             <TokenSelect value={currency} options={tokens} onChange={setCurrency} english={en} />
             <button
               type="button"
@@ -207,11 +148,11 @@ export function Home({
           </p>
         )}
         <div className="mt-3 flex items-center justify-between gap-3 text-[12px] text-text-faint">
-          {/* The selector already says the coin and, in the advanced view, the network. Only a coin
-              that is not your dollar balance needs a word. */}
+          {/* The selector already says the coin and its network. Only a coin that is not your dollar
+              balance needs a word. */}
           <span className="min-w-0 truncate">
             {native
-              ? asset.holdings.some(({ token }) => token !== null)
+              ? held.token !== null
                 ? en
                   ? 'Kept apart from your USDC'
                   : 'Aparte de tus USDC'
@@ -232,10 +173,10 @@ export function Home({
             <span>
               {!loaded || refreshing
                 ? en
-                  ? 'Updating'
+                  ? 'Refreshing'
                   : 'Actualizando'
                 : en
-                  ? 'Update'
+                  ? 'Refresh'
                   : 'Actualizar'}
             </span>
           </button>
@@ -252,37 +193,20 @@ export function Home({
             <strong className="font-mono">{growingText} USDC</strong>
           </NavigationLink>
         ) : null}
-        {(native ? natives[selectedNetwork] === null : failed) ? (
+        {shownBalance === null ? (
           <p className="mt-4 text-[12px] text-text-muted">
             {en
-              ? 'We could not read every network, so part of your balance may be missing. Your money is safe.'
-              : 'No pudimos leer todas las redes y puede faltar parte de tu saldo. Tu dinero está a salvo.'}{' '}
+              ? 'We could not read this balance right now. Your money is safe.'
+              : 'No pudimos leer este saldo ahora. Tu dinero está a salvo.'}{' '}
             <button type="button" className="underline" onClick={refresh}>
               {en ? 'Retry' : 'Reintentar'}
             </button>
           </p>
         ) : null}
       </section>
-      {advanced && !native && elsewhere.length > 0 ? (
-        <NavigationLink
-          href={localizedPath('/crosschain', en)}
-          className="interactive-surface mt-4 flex items-center gap-3 border border-pending bg-pending/8 px-4 py-3 text-left"
-        >
-          <span className="min-w-0 flex-1">
-            <strong className="block text-[13px] text-pending">
-              {en ? 'Bring your balance together' : 'Junta tu saldo en un solo lugar'}
-            </strong>
-            <small className="mt-0.5 block text-[12px] leading-snug text-text-muted">
-              {en
-                ? `You have USDC on ${elsewhere.map(networkName).join(', ')}. Move it to ${networkName(settings.homeNetwork)} to use it all.`
-                : `Tienes USDC en ${elsewhere.map(networkName).join(', ')}. Pásalo a ${networkName(settings.homeNetwork)} para usarlo todo.`}
-            </small>
-          </span>
-          <span aria-hidden="true" className="font-mono text-pending">
-            →
-          </span>
-        </NavigationLink>
-      ) : null}
+      {native ? null : (
+        <ElsewhereNote settings={settings} session={session} english={en} className="mt-3 px-1" />
+      )}
       <div className="meli-quick-grid mt-5">
         {actions.map((item) => (
           <NavigationLink

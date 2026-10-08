@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { MeliSprite } from '../marketing/MeliSprite';
-import { useAdvanced } from '../wallet/preferences';
 import { BackHeader, OptionCard, TabHeader } from './Primitives';
 
 const icon = (children: ReactNode) => (
@@ -31,8 +30,6 @@ const receiveIcon = icon(
 /** `/move`, as in V2: receive, send or swap; receiving then chooses a request or the account. */
 export function MoveMenu({ english: en }: { english: boolean }) {
   const receiving = useSearchParams().get('flow') === 'receive';
-  // Moving between networks is for the advanced view: the simple one never shows networks.
-  const advanced = useAdvanced();
 
   if (receiving)
     return (
@@ -156,25 +153,23 @@ export function MoveMenu({ english: en }: { english: boolean }) {
             </>,
           )}
         />
-        {advanced ? (
-          <OptionCard
-            href="/crosschain"
-            english={en}
-            tone="pending"
-            title={en ? 'Between networks' : 'Entre redes'}
-            description={
-              en ? 'Move your USDC from one network to another' : 'Pasa tus USDC de una red a otra'
-            }
-            icon={icon(
-              <>
-                <path d="M7 7h11l-3-3" />
-                <path d="m18 7-3 3" />
-                <path d="M17 17H6l3 3" />
-                <path d="m6 17 3-3" />
-              </>,
-            )}
-          />
-        ) : null}
+        <OptionCard
+          href="/crosschain"
+          english={en}
+          tone="pending"
+          title={en ? 'Between networks' : 'Entre redes'}
+          description={
+            en ? 'Move your USDC from one network to another' : 'Pasa tus USDC de una red a otra'
+          }
+          icon={icon(
+            <>
+              <path d="M7 7h11l-3-3" />
+              <path d="m18 7-3 3" />
+              <path d="M17 17H6l3 3" />
+              <path d="m6 17 3-3" />
+            </>,
+          )}
+        />
       </div>
     </>
   );

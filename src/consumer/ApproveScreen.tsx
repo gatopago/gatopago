@@ -68,8 +68,8 @@ export function ApproveScreen({
   const [state, setState] = useState<'reading' | 'ready' | 'approved' | 'expired'>(
     request ? 'reading' : 'expired',
   );
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
   useEffect(() => {

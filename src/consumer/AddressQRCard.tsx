@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { shortAddress } from '../wallet/account';
 
 /** V2's address QR with its copy row, shared by every "show my address" surface. */
 export function AddressQRCard({
@@ -43,9 +44,7 @@ export function AddressQRCard({
         }
         className="interactive-surface flex w-full items-center justify-between gap-2 border-2 border-text bg-surface px-4 py-3 shadow-[4px_4px_0_var(--color-border)]"
       >
-        <span className="truncate font-mono text-[13px] text-text">
-          {`${address.slice(0, 6)}…${address.slice(-4)}`}
-        </span>
+        <span className="truncate font-mono text-[13px] text-text">{shortAddress(address)}</span>
         <span className="shrink-0 text-[12px] font-semibold text-cat-300">
           {copied ? (en ? 'Copied ✓' : 'Copiada ✓') : en ? 'Copy address' : 'Copiar dirección'}
         </span>

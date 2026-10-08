@@ -35,11 +35,11 @@ export function EarnScreen({
   const { balances, saved, refresh } = useBalances(settings, session);
   const [apy, setApy] = useState<number | null>(null);
   const [action, setAction] = useState<Action>('deposit');
-  const [amount, setAmount] = useState(''),
-    [all, setAll] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [all, setAll] = useState(false);
   const [review, setReview] = useState<Review | null>(null);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const [done, setDone] = useState<Review | null>(null);
 
   // The rate is read once per visit, from Aave's own reserve data.
@@ -196,14 +196,6 @@ export function EarnScreen({
             {en ? 'Use all' : 'Usar todo'}
           </button>
         </div>
-        {action === 'deposit' ? (
-          <ElsewhereNote
-            balances={balances}
-            networkId={networkId}
-            english={en}
-            className="-mt-1 mb-3"
-          />
-        ) : null}
         <AmountInput
           name="amount"
           aria-label={en ? 'Amount in USDC' : 'Monto en USDC'}
@@ -215,6 +207,10 @@ export function EarnScreen({
           }}
           className="tabular mb-2 w-full bg-transparent font-display text-[34px] leading-none text-text placeholder:text-text-faint"
         />
+        {/* Below the amount: "Available" stays next to the field it describes. */}
+        {action === 'deposit' ? (
+          <ElsewhereNote settings={settings} session={session} english={en} className="mb-3" />
+        ) : null}
         {error && !review ? (
           <p role="alert" className="mb-3 text-center text-[13px] text-danger">
             {error}

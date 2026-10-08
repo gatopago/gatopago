@@ -12,14 +12,14 @@ import { networkName } from './account';
 import { refreshBalances } from './balances';
 import { failureMessage } from './messages';
 import { send } from './operations';
-import { useAdvanced } from './preferences';
 import type { Session } from './session';
 import { stellarAccount } from './stellar';
 
 /**
- * `/receive`, as in V2: coin, QR and the warnings a wallet or exchange needs. The simple view
- * chooses a coin and receives on the network that holds it (the home network for USDC); the
- * advanced one picks the network first. On testnets, a coin with a faucet (AUSD) can be requested.
+ * `/receive`, as in V2: coin, QR and the warnings a wallet or exchange needs. The coin comes first:
+ * each one lives on its own network (AVAX on Avalanche…), so choosing it chooses the network. Only
+ * USDC can arrive on several, so it alone asks which one: the home network comes chosen, and
+ * Stellar shows its own address when it is on. On testnets, a coin with a faucet can be requested.
  */
 export function Receive({
   settings,
@@ -30,9 +30,8 @@ export function Receive({
   session: Session;
   english: boolean;
 }) {
-  const advanced = useAdvanced();
-  const [chosenNetwork, setNetworkId] = useState(settings.homeNetwork);
   const [symbol, setSymbol] = useState('USDC');
+  const [usdcNetwork, setUsdcNetwork] = useState(settings.homeNetwork);
   const [requested, setRequested] = useState<'busy' | 'done' | string | null>(null);
   // Stellar receives USDC at the account's own Stellar address, from Wallet Core.
   const [stellar, setStellar] = useState<string | null>(null);
@@ -47,63 +46,21 @@ export function Receive({
       active = false;
     };
   }, [settings, session]);
-  const stellarId = advanced && stellar ? settings.stellar!.network : null;
-  if (chosenNetwork === stellarId)
-    return (
-      <>
-        <BackHeader title={en ? 'Receive' : 'Recibir'} english={en} to="/move?flow=receive" />
-        <div className="mb-5 flex items-center gap-2">
-          <SelectMenu
-            label={en ? 'Network' : 'Red'}
-            showLabel={false}
-            value={chosenNetwork}
-            options={networkOptions()}
-            onChange={setNetworkId}
-            english={en}
-            className="min-w-0 flex-1"
-          />
-        </div>
-        <MoneyPanel className="mb-4">
-          <AddressQRCard address={stellar!} english={en} />
-        </MoneyPanel>
-        <NoticeCard
-          tone="warning"
-          title={
-            en
-              ? `Only USDC, only on ${networkName(chosenNetwork)}`
-              : `Solo USDC y solo por ${networkName(chosenNetwork)}`
-          }
-        >
-          {en
-            ? 'This address (C…) is your Stellar smart account. Send from a Stellar wallet that accepts contract addresses; most exchanges do not yet.'
-            : 'Esta dirección (C…) es tu cuenta inteligente en Stellar. Envía desde una wallet de Stellar que acepte direcciones de contrato; la mayoría de los exchanges todavía no.'}
-        </NoticeCard>
-      </>
-    );
-  const coins = walletAssets(advanced ? [chosenNetwork] : settings.networks);
+  const stellarId = stellar ? settings.stellar!.network : null;
+  // XLM, when Stellar is on, lives only there: it is received at the Stellar account, like USDC on
+  // Stellar.
+  const coins = walletAssets(settings.networks, settings.stellar?.network);
   const coin = coins.find((item) => item.symbol === symbol) ?? coins[0];
-  const held = advanced
-    ? coin.holdings[0]
-    : (coin.holdings.find(({ networkId }) => networkId === settings.homeNetwork) ??
-      coin.holdings[0]);
-  const networkId = held.networkId;
-  const { chain } = walletNetwork(networkId);
+  const usdc = coin.symbol === 'USDC';
+  const held = usdc
+    ? (coin.holdings.find(({ networkId }) => networkId === usdcNetwork) ?? coin.holdings[0])
+    : coin.holdings[0];
+  const onStellar =
+    (usdc && usdcNetwork === stellarId) || held.networkId === settings.stellar?.network;
+  const networkId = onStellar ? settings.stellar!.network : held.networkId;
   const network = networkName(networkId);
-  const faucet = chain.testnet ? held.faucet : undefined;
-
-  function networkOptions() {
-    return [...settings.networks, ...(stellarId ? [stellarId] : [])].map((id) => ({
-      value: id,
-      label: networkName(id),
-      description:
-        id === settings.homeNetwork
-          ? en
-            ? 'Recommended: your main network'
-            : 'Recomendada: tu red principal'
-          : undefined,
-      tone: 'info' as const,
-    }));
-  }
+  const chainId = onStellar ? undefined : walletNetwork(networkId).chain.id;
+  const faucet = !onStellar && walletNetwork(networkId).chain.testnet ? held.faucet : undefined;
 
   function requestTestCoins() {
     if (!faucet) return;
@@ -121,32 +78,17 @@ export function Receive({
       <BackHeader title={en ? 'Receive' : 'Recibir'} english={en} to="/move?flow=receive" />
       <p className="mb-5 text-[14px] leading-relaxed text-text-muted">
         {en
-          ? 'Share your address to receive from another wallet or an exchange.'
-          : 'Comparte tu dirección para recibir desde otra wallet o un exchange.'}
+          ? 'Choose the coin, then share your address with the wallet or exchange that sends it.'
+          : 'Elige la moneda y comparte tu dirección con la wallet o el exchange que te la envía.'}
       </p>
       <div className="mb-5 flex items-center gap-2">
-        {advanced ? (
-          <SelectMenu
-            label={en ? 'Network' : 'Red'}
-            showLabel={false}
-            value={chosenNetwork}
-            options={networkOptions()}
-            onChange={(id) => {
-              setNetworkId(id);
-              setSymbol('USDC');
-              setRequested(null);
-            }}
-            english={en}
-            className="min-w-0 flex-1"
-          />
-        ) : null}
         <TokenSelect
           value={coin.symbol}
           label={en ? 'Currency' : 'Moneda'}
           options={coins.map((item) => ({
             value: item.symbol,
             symbol: item.symbol,
-            label: item.name,
+            label: item.symbol === 'USDC' ? item.name : networkName(item.holdings[0].networkId),
           }))}
           onChange={(value) => {
             setSymbol(value);
@@ -154,9 +96,47 @@ export function Receive({
           }}
           english={en}
         />
+        {usdc ? (
+          <SelectMenu
+            label={en ? 'Network' : 'Red'}
+            showLabel={false}
+            value={onStellar ? stellarId! : held.networkId}
+            options={[...settings.networks, ...(stellarId ? [stellarId] : [])].map((id) => ({
+              value: id,
+              label: networkName(id),
+              description:
+                id === settings.homeNetwork
+                  ? en
+                    ? 'Recommended: your main network'
+                    : 'Recomendada: tu red principal'
+                  : undefined,
+              tone: 'info' as const,
+            }))}
+            onChange={(id) => {
+              setUsdcNetwork(id);
+              setRequested(null);
+            }}
+            english={en}
+            className="min-w-0 flex-1"
+          />
+        ) : (
+          <p className="min-w-0 flex-1 truncate px-1 text-[14px] text-text-muted">
+            {en ? `On ${network}` : `Por ${network}`}
+          </p>
+        )}
       </div>
       <MoneyPanel className="mb-4">
-        <AddressQRCard address={session.wallet.address} chainId={chain.id} english={en} />
+        {onStellar && !stellar ? (
+          <p className="py-8 text-center text-[13px] text-text-muted">
+            {en ? 'Preparing your Stellar address…' : 'Preparando tu dirección de Stellar…'}
+          </p>
+        ) : (
+          <AddressQRCard
+            address={onStellar ? stellar! : session.wallet.address}
+            chainId={chainId}
+            english={en}
+          />
+        )}
       </MoneyPanel>
       <NoticeCard
         tone="warning"
@@ -166,9 +146,13 @@ export function Receive({
             : `Solo ${coin.symbol} y solo por ${network}`
         }
       >
-        {en
-          ? `In the exchange, choose ${coin.symbol} and the ${network} network before pasting the address. On another network, the money may not reach your account.`
-          : `En el exchange, elige ${coin.symbol} y la red ${network} antes de pegar la dirección. Por otra red, el dinero puede no llegar a tu cuenta.`}
+        {onStellar
+          ? en
+            ? 'This address (C…) is your Stellar smart account. Send from a Stellar wallet that accepts contract addresses; most exchanges do not yet.'
+            : 'Esta dirección (C…) es tu cuenta inteligente en Stellar. Envía desde una wallet de Stellar que acepte direcciones de contrato; la mayoría de los exchanges todavía no.'
+          : en
+            ? `In the exchange or wallet that sends it, choose ${coin.symbol} and the same network you see here, ${network}. On another network, the money can be lost.`
+            : `En el exchange o la wallet que te lo envía, elige ${coin.symbol} y la misma red que ves aquí, ${network}. Por otra red, el dinero puede perderse.`}
       </NoticeCard>
       {faucet ? (
         <div className="mt-4">

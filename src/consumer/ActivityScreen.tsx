@@ -6,7 +6,6 @@ import { formatUnits } from 'viem';
 import type { ClientSettings } from '../lib/settings';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { MeliSprite } from '../marketing/MeliSprite';
-import { networkName } from '../wallet/account';
 import {
   decimalsOf,
   type Movement,
@@ -16,7 +15,6 @@ import {
 } from '../wallet/activity';
 import type { Session } from '../wallet/session';
 import { balanceHidden, Receipt } from './PaymentSheets';
-import { useAdvanced } from '../wallet/preferences';
 import { SelectMenu } from './SelectMenu';
 import { TabHeader } from './Primitives';
 import { RowSkeletonList } from './Skeleton';
@@ -219,7 +217,7 @@ function periodBounds(period: Period, from: string, to: string) {
 }
 
 /**
- * `/statement`, V2's full activity: quick periods, a custom range, and currency, network and type
+ * `/statement`, V2's full activity across networks: quick periods, a custom range and type
  * filters. Filters live in the URL, so a filtered view can be shared and back/forward walk them.
  */
 export function ActivityScreen({
@@ -248,15 +246,6 @@ export function ActivityScreen({
   );
   const from = params.get('from') ?? '';
   const to = params.get('to') ?? '';
-  // The simple view never filters by network: it shows every movement as one history.
-  const advanced = useAdvanced();
-  // Stellar movements come with the rest when it is on.
-  const requested = params.get('network');
-  const chosenNetwork =
-    requested && (settings.networks.includes(requested) || requested === settings.stellar?.network)
-      ? requested
-      : 'all';
-  const network = advanced ? chosenNetwork : 'all';
   const type = pick<TypeFilter>(
     'type',
     TYPES.map(([value]) => value),
@@ -279,12 +268,11 @@ export function ActivityScreen({
       const when = movement.timestamp * 1000;
       if (start && when < start.getTime()) return false;
       if (end && when > end.getTime()) return false;
-      if (network !== 'all' && movement.network !== network) return false;
       if (type === 'swap') return movement.kind === 'swap';
       if (type !== 'all' && movement.direction !== type) return false;
       return true;
     });
-  }, [movements, period, from, to, network, type]);
+  }, [movements, period, from, to, type]);
 
   return (
     <>
@@ -315,8 +303,7 @@ export function ActivityScreen({
           </button>
         ))}
       </div>
-      {/* Side by side only where both names fit; the simple view has just the period. */}
-      <div className={`mb-3 grid gap-2 ${advanced ? 'min-[420px]:grid-cols-2' : ''}`}>
+      <div className="mb-3">
         <SelectMenu
           label={en ? 'Period' : 'Período'}
           showLabel={false}
@@ -328,23 +315,6 @@ export function ActivityScreen({
           english={en}
           className="min-w-0"
         />
-        {advanced ? (
-          <SelectMenu
-            label={en ? 'Network' : 'Red'}
-            showLabel={false}
-            value={network}
-            options={[
-              { value: 'all', label: en ? 'All networks' : 'Todas las redes' },
-              ...[
-                ...settings.networks,
-                ...(settings.stellar ? [settings.stellar.network] : []),
-              ].map((id) => ({ value: id, label: networkName(id) })),
-            ]}
-            onChange={(value) => setFilter({ network: value })}
-            english={en}
-            className="min-w-0"
-          />
-        ) : null}
       </div>
       {period === 'custom' ? (
         <div className="mb-3 flex gap-2.5">
@@ -394,10 +364,10 @@ export function ActivityScreen({
             {filtered.length}{' '}
             {filtered.length === 1
               ? en
-                ? 'movement'
+                ? 'transaction'
                 : 'movimiento'
               : en
-                ? 'movements'
+                ? 'transactions'
                 : 'movimientos'}
           </p>
           <div className="meli-paper-card flex flex-col">

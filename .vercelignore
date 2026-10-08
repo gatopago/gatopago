@@ -24,8 +24,6 @@ logs/
 *.dpapi
 secrets*
 credentials*
-!src/wallet/credentials.ts
-!test/credentials.test.ts
 service-account*
 service_account*
 *-firebase-adminsdk-*

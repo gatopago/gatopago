@@ -15,7 +15,7 @@ import type { ClientSettings } from '../lib/settings';
 import { publicClient, USDC_DECIMALS } from './account';
 import { onMovement } from './push';
 import type { Session } from './session';
-import { knownStellarAccount, stellarAccount, stellarBalance } from './stellar';
+import { knownStellarAccount, stellarAccount, stellarBalance, stellarXlmBalance } from './stellar';
 
 const multicall3Abi = parseAbi(['function getEthBalance(address) view returns (uint256)']);
 
@@ -30,8 +30,8 @@ interface Snapshot {
   saved: Readonly<Record<string, bigint | null>>;
   /** Other configured coins (AUSD), per network and token address. */
   tokens: Readonly<Record<string, Readonly<Record<Address, bigint | null>>>>;
-  /** The Stellar account and its USDC: `null` when Stellar is off, `undefined` until read. */
-  stellar: { account: string; usdc: bigint | null } | null | undefined;
+  /** The Stellar account, its USDC and XLM: `null` when Stellar is off, `undefined` until read. */
+  stellar: { account: string; usdc: bigint | null; xlm: bigint | null } | null | undefined;
   refreshing: boolean;
 }
 
@@ -172,13 +172,17 @@ class Balances {
     if (this.settings.stellar && !known) return;
     const account = await known?.catch(() => null);
     const stellar = account
-      ? {
-          account: account.account,
-          usdc: await stellarBalance(this.settings, account.account).catch(() => null),
-        }
+      ? await Promise.all([
+          stellarBalance(this.settings, account.account).catch(() => null),
+          stellarXlmBalance(this.settings, account.account).catch(() => null),
+        ]).then(([usdc, xlm]) => ({ account: account.account, usdc, xlm }))
       : null;
     const current = this.snapshot.stellar;
-    if (current === stellar || (current && stellar && current.usdc === stellar.usdc)) return;
+    if (
+      current === stellar ||
+      (current && stellar && current.usdc === stellar.usdc && current.xlm === stellar.xlm)
+    )
+      return;
     this.set({ ...this.snapshot, stellar });
   }
 }
@@ -215,27 +219,25 @@ export function useBalances(settings: ClientSettings, session: Session) {
     balances: snapshot.usdc,
     natives: snapshot.native,
     saved: snapshot.saved,
-    /** The balance of one holding of a coin (`walletAssets`): USDC, a token or the native coin. */
+    /**
+     * The balance of one holding of a coin (`walletAssets`): USDC, a token or the native coin,
+     * Stellar's (XLM) included.
+     */
     holding: (holding: WalletHolding) =>
-      holding.token === null
-        ? snapshot.native[holding.networkId]
-        : isAddressEqual(holding.token, walletNetwork(holding.networkId).usdc)
-          ? snapshot.usdc[holding.networkId]
-          : snapshot.tokens[holding.networkId]?.[holding.token],
-    /** The Stellar account and its USDC, `null` when Stellar is off. */
+      holding.networkId === settings.stellar?.network
+        ? stellar?.xlm
+        : holding.token === null
+          ? snapshot.native[holding.networkId]
+          : isAddressEqual(holding.token, walletNetwork(holding.networkId).usdc)
+            ? snapshot.usdc[holding.networkId]
+            : snapshot.tokens[holding.networkId]?.[holding.token],
+    /** The Stellar account, its USDC and XLM, `null` when Stellar is off. */
     stellar,
     /** USDC on Stellar to add to totals: zero when Stellar is off. */
     stellarUsdc: stellar === null ? 0n : stellar?.usdc,
     refreshing: snapshot.refreshing,
     refresh: () => void store.refresh(true),
   };
-}
-
-/** A sum shown only when both parts are known: `undefined` while reading, `null` if unreadable. */
-export function plus(a: bigint | null | undefined, b: bigint | null | undefined) {
-  if (a === undefined || b === undefined) return undefined;
-  if (a === null || b === null) return null;
-  return a + b;
 }
 
 /** A total is shown only when every configured network has a known balance. */

@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Address } from 'viem';
 import type { ReceiptData } from '../consumer/PaymentSheets';
 import type { ClientSettings } from '../lib/settings';
-import { walletNetwork } from '@gatopago/shared/networks';
-import { USDC_DECIMALS } from './account';
+import { walletNetwork, XLM_DECIMALS } from '@gatopago/shared/networks';
+import { shortAddress, USDC_DECIMALS } from './account';
 import { api } from './api';
 import { failureMessage } from './messages';
 import { onMovement } from './push';
@@ -129,8 +129,6 @@ export function useActivity(settings: ClientSettings, session: Session, en: bool
   return { movements, hasMore: cursor !== null, loadingMore, loadMore, error };
 }
 
-const shortAddress = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
-
 /** V2's row presentation: who first, then what happened. */
 export function presentMovement(movement: Movement, en: boolean) {
   const sent = movement.direction === 'sent';
@@ -204,13 +202,17 @@ export function presentMovement(movement: Movement, en: boolean) {
   return { title, detail };
 }
 
-/** Decimals of the coin a movement moved: USDC's, or a configured token's (AUSD). */
+/**
+ * Decimals of the coin a movement moved: USDC's, a configured token's (AUSD), the network's own
+ * coin's (ETH, AVAX, MON) or XLM's.
+ */
 export function decimalsOf(movement: Movement) {
-  if (movement.currency === 'USDC' || !movement.network.startsWith('eip155:')) return USDC_DECIMALS;
-  return (
-    walletNetwork(movement.network).tokens?.find(({ symbol }) => symbol === movement.currency)
-      ?.decimals ?? USDC_DECIMALS
-  );
+  if (movement.currency === 'USDC') return USDC_DECIMALS;
+  if (!movement.network.startsWith('eip155:'))
+    return movement.currency === 'XLM' ? XLM_DECIMALS : USDC_DECIMALS;
+  const { chain, tokens } = walletNetwork(movement.network);
+  if (movement.currency === chain.nativeCurrency.symbol) return chain.nativeCurrency.decimals;
+  return tokens?.find(({ symbol }) => symbol === movement.currency)?.decimals ?? USDC_DECIMALS;
 }
 
 export function movementReceipt(movement: Movement, en: boolean): ReceiptData {

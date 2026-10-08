@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import { formatUnits, keccak256, type Address, type Hex } from 'viem';
 import { walletNetwork } from '@gatopago/shared/networks';
 import { CatGlyph } from '../marketing/CatGlyph';
-import { explorerUrl, gatopagoAccount, networkName } from '../wallet/account';
+import { explorerUrl, gatopagoAccount, networkName, shortAddress } from '../wallet/account';
 import type { ClientSettings } from '../lib/settings';
 import type { Wallet } from '../wallet/session';
 import { downloadCard, shareCard } from './exportCard';
@@ -306,8 +306,7 @@ export function rememberBalanceHidden(hidden: boolean) {
   }
 }
 
-const short = (value: string) =>
-  value.startsWith('0x') ? `${value.slice(0, 6)}…${value.slice(-4)}` : value;
+const short = (value: string) => (value.startsWith('0x') ? shortAddress(value) : value);
 
 const receiptAmount = (receipt: ReceiptData, en: boolean) =>
   Number(formatUnits(receipt.amount, receipt.decimals)).toLocaleString(en ? 'en' : 'es', {

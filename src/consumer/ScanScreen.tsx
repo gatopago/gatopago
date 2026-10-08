@@ -32,10 +32,10 @@ export default function ScanScreen({
   const router = useRouter();
   const [view, setView] = useState<'scan' | 'myqr'>('scan');
   const [scanned, setScanned] = useState<Scanned | null>(null);
-  const [error, setError] = useState(''),
-    [camera, setCamera] = useState(false),
-    [busy, setBusy] = useState(true),
-    [reading, setReading] = useState(false);
+  const [error, setError] = useState('');
+  const [camera, setCamera] = useState(false);
+  const [busy, setBusy] = useState(true);
+  const [reading, setReading] = useState(false);
   const video = useRef<HTMLVideoElement>(null),
     stream = useRef<MediaStream | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);

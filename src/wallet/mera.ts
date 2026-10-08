@@ -7,10 +7,8 @@ import {
   type Secp256k1SigningSession,
 } from '@category-labs/mera';
 import { toViemAccount } from '@category-labs/mera/viem';
-import { HDKey } from '@scure/bip32';
-import { entropyToMnemonic, mnemonicToSeedSync } from '@scure/bip39';
-import { wordlist } from '@scure/bip39/wordlists/english';
 import { bytesToHex, isAddressEqual, type Address, type LocalAccount } from 'viem';
+import { meraEvmKey, meraSeed, stellarKeyFromSeed } from '@gatopago/shared/passkey';
 import type { StellarKey } from '@gatopago/shared/stellar';
 import type { ClientSettings } from '../lib/settings';
 
@@ -23,9 +21,6 @@ import type { ClientSettings } from '../lib/settings';
  * asks again. A key copied while in memory keeps working until the account removes it: this is a
  * software key, unlike the passkey itself.
  */
-
-/** BIP-44 path of the first Ethereum account, as Mera's recipes derive it. */
-const PATH = "m/44'/60'/0'/0/0";
 
 let current: {
   credentialId: string;
@@ -55,20 +50,17 @@ export async function openMeraSession(
   prfOutput: Uint8Array,
 ): Promise<LocalAccount> {
   endMeraSession();
-  const seed = mnemonicToSeedSync(entropyToMnemonic(prfOutput, wordlist));
+  const seed = meraSeed(prfOutput);
   prfOutput.fill(0);
   try {
-    const node = HDKey.fromMasterSeed(seed).derive(PATH);
-    if (!node.privateKey) throw new Error('MERA_DERIVATION_FAILED');
-    const session = createSecp256k1SigningSession({ privateKey: node.privateKey });
-    node.wipePrivateData();
+    const privateKey = meraEvmKey(seed);
+    const session = createSecp256k1SigningSession({ privateKey });
+    privateKey.fill(0);
     let stellar: Ed25519SigningSession | null = null;
     if (settings.stellar) {
-      // Loaded only when Stellar is on: the Stellar SDK is large.
-      const { stellarKeyFromSeed } = await import('@gatopago/shared/stellar');
-      const privateKey = await stellarKeyFromSeed(seed);
-      stellar = createEd25519SigningSession({ privateKey });
-      privateKey.fill(0);
+      const stellarKey = await stellarKeyFromSeed(seed);
+      stellar = createEd25519SigningSession({ privateKey: stellarKey });
+      stellarKey.fill(0);
     }
     const account = toViemAccount(session);
     const idleMs = settings.meraSessionMinutes * 60_000;

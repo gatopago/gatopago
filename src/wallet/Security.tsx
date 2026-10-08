@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAction } from './useAction';
 import { encodeFunctionData, type Hex } from 'viem';
 import { walletContracts } from '@gatopago/shared/networks';
 import {
@@ -54,8 +55,7 @@ export function Security({
       : passkeyOwner(walletContracts.webAuthnVerifier, wallet.publicKey)
   ).toLowerCase();
   const [state, setState] = useState<State | null>(null);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState('');
+  const { busy, error, setError, run } = useAction(en);
   const [dialog, setDialog] = useState<{ remove: Hex } | null>(null);
 
   const [revision, setRevision] = useState(0);
@@ -71,22 +71,14 @@ export function Security({
     return () => {
       active = false;
     };
-  }, [settings, session, en, revision]);
+  }, [settings, session, en, revision, setError]);
 
   function perform(action: () => Promise<void>) {
-    setBusy(true);
-    setError('');
-    action()
-      .then(() => {
-        setDialog(null);
-        setRevision((value) => value + 1);
-      })
-      .catch((failure: unknown) => {
-        setError(failureMessage(failure, en));
-        // A change may have applied on some networks: show where it stands on each.
-        setRevision((value) => value + 1);
-      })
-      .finally(() => setBusy(false));
+    void run(action).then((done) => {
+      if (done) setDialog(null);
+      // Read the keys again either way: a change may have applied on some networks only.
+      setRevision((value) => value + 1);
+    });
   }
 
   /**

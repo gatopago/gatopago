@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { walletAssets } from '@gatopago/shared/assets';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useAction } from '../wallet/useAction';
 import { useSearchParams } from 'next/navigation';
 import { isAddress, isAddressEqual, parseUnits, type Address, type Hex } from 'viem';
 import { walletNetwork } from '@gatopago/shared/networks';
@@ -14,16 +16,21 @@ import {
   type Payout,
 } from '@gatopago/shared/rules';
 import type { ClientSettings } from '../lib/settings';
-import { networkName, USDC_DECIMALS } from '../wallet/account';
+import { networkName, shortAddress, USDC_DECIMALS } from '../wallet/account';
 import { api, type Recipient } from '../wallet/api';
 import { formatBalance, formatUsdc, useBalances } from '../wallet/balances';
-import { failureMessage } from '../wallet/messages';
 import { send } from '../wallet/operations';
-import { walletAssets } from '@gatopago/shared/assets';
+import { failureMessage } from '../wallet/messages';
+import {
+  openVault,
+  readVaultRecord,
+  vaultState,
+  writeVaultRecord,
+  type VaultState,
+} from '../wallet/vault';
 import { ElsewhereNote } from './ElsewhereNote';
 import { RecipientShortcuts } from './RecipientShortcuts';
 import { TokenSelect } from './TokenSelect';
-import { useAdvanced } from '../wallet/preferences';
 import type { Session } from '../wallet/session';
 import { NavigationLink } from './NavigationLink';
 import {
@@ -35,7 +42,6 @@ import {
 } from './PaymentSheets';
 import { BackHeader, MoneyPanel, TransactionActions } from './Primitives';
 import { localizedPath } from './routes';
-import { SelectMenu } from './SelectMenu';
 import { StageOverlay } from './StageOverlay';
 
 /** One person in the team: their @username or address, a fixed amount and a share (%). */
@@ -65,24 +71,31 @@ interface Review {
   total: bigint;
 }
 
-const short = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
 const teamKey = (account: Address) => `gatopago.team.${account.toLowerCase()}`;
 const units = (value: string, decimals: number) =>
   parseUnits(value.replace(',', '.') || '0', decimals);
 /** A percentage as typed ("12,5") in basis points. */
 const basisPoints = (value: string) => Math.round(Number(value.replace(',', '.') || '0') * 100);
 
-/** The team paid last from this device, so paying it again is one review away. */
-function rememberedTeam(account: Address): Member[] {
-  try {
-    const saved = JSON.parse(localStorage.getItem(teamKey(account)) ?? 'null');
-    if (Array.isArray(saved) && saved.length > 0)
-      return saved.map((member: Partial<Member>, id: number) => ({
+/** A team as it is saved: who, and how much or what share. */
+type SavedMember = Pick<Member, 'who' | 'amount' | 'share'>;
+const plainTeam = (team: Member[]): SavedMember[] =>
+  team.map(({ who, amount, share }) => ({ who, amount, share }));
+const members = (list: unknown): Member[] | null =>
+  Array.isArray(list) && list.length > 0
+    ? list.map((member: Partial<Member>, id: number) => ({
         id,
         who: member.who ?? '',
         amount: member.amount ?? '',
         share: member.share ?? '',
-      }));
+      }))
+    : null;
+
+/** The team paid last from this device, until it is saved in the vault (then only there). */
+function rememberedTeam(account: Address): Member[] {
+  try {
+    const team = members(JSON.parse(localStorage.getItem(teamKey(account)) ?? 'null'));
+    if (team) return team;
   } catch {
     // Nothing remembered.
   }
@@ -91,12 +104,18 @@ function rememberedTeam(account: Address): Member[] {
 
 function rememberTeam(account: Address, team: Member[]) {
   try {
-    localStorage.setItem(
-      teamKey(account),
-      JSON.stringify(team.map(({ who, amount, share }) => ({ who, amount, share }))),
-    );
+    localStorage.setItem(teamKey(account), JSON.stringify(plainTeam(team)));
   } catch {
     // The payment does not depend on it.
+  }
+}
+
+/** Once the team lives in the vault, nothing about it stays on this device's disk. */
+function forgetTeam(account: Address) {
+  try {
+    localStorage.removeItem(teamKey(account));
+  } catch {
+    // Nothing to forget.
   }
 }
 
@@ -130,20 +149,60 @@ export function TeamScreen({
   const [team, setTeam] = useState<Member[]>(() => rememberedTeam(account));
   const [splitting, setSplitting] = useState(params.get('split') ?? '');
   const [saveShare, setSaveShare] = useState('');
-  // The simple view pays on the home network, where the balance lives.
-  const advanced = useAdvanced();
-  const [chosenNetwork, setNetworkId] = useState(settings.homeNetwork);
-  const networkId = chosen
-    ? chosen.holdings[0].networkId
-    : advanced
-      ? chosenNetwork
-      : settings.homeNetwork;
+  // It pays from the home network, where USDC lives; another coin, from its own network.
+  const networkId = chosen ? chosen.holdings[0].networkId : settings.homeNetwork;
   const [source, setSource] = useState<Source>('available');
   const [reference, setReference] = useState(params.get('reference') ?? '');
   const [review, setReview] = useState<Review | null>(null);
   const [receipt, setReceipt] = useState<(ReceiptData & { review: Review }) | null>(null);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState('');
+  const { busy, error, run: perform } = useAction(en);
+  // The team saved in the vault, readable with the passkey on any device. `null` while asking;
+  // `off` when Wallet Core cannot say (then the team stays on this device, as before).
+  const [vault, setVault] = useState<VaultState | 'off' | null>(null);
+  const [vaultBusy, setVaultBusy] = useState(false);
+  const [vaultNote, setVaultNote] = useState('');
+  useEffect(() => {
+    let active = true;
+    vaultState(settings, session)
+      .then(async (state) => {
+        if (!active) return;
+        setVault(state);
+        // Already open in this session: the saved team comes in without asking for anything.
+        if (state === 'open') {
+          const team = members(await readVaultRecord(settings, session, 'team'));
+          if (active && team) setTeam(team);
+          forgetTeam(account);
+        }
+      })
+      .catch(() => {
+        if (active) setVault('off');
+      });
+    return () => {
+      active = false;
+    };
+  }, [settings, session, account]);
+
+  /** Opens the vault (one prompt; the first time it creates it), then brings or saves the team. */
+  function withVault(then: () => Promise<void>) {
+    setVaultBusy(true);
+    setVaultNote('');
+    openVault(settings, session)
+      .then(async () => {
+        setVault('open');
+        await then();
+        forgetTeam(account);
+      })
+      .catch((failure: unknown) => setVaultNote(failureMessage(failure, en)))
+      .finally(() => setVaultBusy(false));
+  }
+  const bringTeam = () =>
+    withVault(async () => {
+      const team = members(await readVaultRecord(settings, session, 'team'));
+      if (team) setTeam(team);
+    });
+  const named = team.filter(({ who }) => who.trim());
+  const saveTeam = () =>
+    withVault(() => writeVaultRecord(settings, session, 'team', plainTeam(named)));
 
   const network = walletNetwork(networkId);
   // Savings (Aave) hold USDC only.
@@ -165,14 +224,6 @@ export function TeamScreen({
     }
   })();
 
-  function perform(action: () => Promise<void>) {
-    setBusy(true);
-    setError('');
-    action()
-      .catch((failure: unknown) => setError(failureMessage(failure, en)))
-      .finally(() => setBusy(false));
-  }
-
   const update = (id: number, change: Partial<Member>) =>
     setTeam((current) =>
       current.map((member) => (member.id === id ? { ...member, ...change } : member)),
@@ -183,7 +234,7 @@ export function TeamScreen({
     const found: { to: Address; label: string }[] = [];
     for (const member of filled) {
       const who = member.who.trim();
-      if (isAddress(who)) found.push({ to: who, label: short(who) });
+      if (isAddress(who)) found.push({ to: who, label: shortAddress(who) });
       else {
         const recipient = await api<Recipient>(
           settings.apiOrigin,
@@ -245,7 +296,10 @@ export function TeamScreen({
         if (next.total === 0n) throw new Error('INVALID_AMOUNT');
       }
       if ((funds ?? 0n) < next.total) throw new Error('INSUFFICIENT_FUNDS');
-      rememberTeam(account, filled);
+      // Where the team lives: in the vault when it is open, on this device while there is none.
+      if (vault === 'open')
+        void writeVaultRecord(settings, session, 'team', plainTeam(filled)).catch(() => undefined);
+      else if (vault !== 'locked' && vault !== 'elsewhere') rememberTeam(account, filled);
       setReview(next);
     });
   }
@@ -381,6 +435,36 @@ export function TeamScreen({
               ? 'Their GatoPago @username or a 0x address.'
               : 'Su @usuario de GatoPago o una dirección 0x.'}
           </p>
+          {vault === 'locked' ? (
+            <div className="mb-3 flex items-center justify-between gap-3 border border-border bg-surface px-3 py-2">
+              <p className="min-w-0 text-[13px]">
+                {en ? 'You have a saved team.' : 'Tienes un equipo guardado.'}
+              </p>
+              <button
+                type="button"
+                disabled={vaultBusy || busy}
+                onClick={bringTeam}
+                className="min-h-11 shrink-0 px-1 text-[13px] font-semibold text-cat-700 underline underline-offset-2 disabled:opacity-50"
+              >
+                {vaultBusy
+                  ? en
+                    ? 'Confirm on your device…'
+                    : 'Confirma en tu dispositivo…'
+                  : en
+                    ? 'Bring my team'
+                    : 'Traer mi equipo'}
+              </button>
+            </div>
+          ) : vault === 'elsewhere' ? (
+            <p className="mb-3 text-[12px] leading-relaxed text-text-muted">
+              {failureMessage(new Error('VAULT_ELSEWHERE'), en)}
+            </p>
+          ) : null}
+          {vaultNote ? (
+            <p role="alert" className="mb-3 text-[12px] leading-relaxed text-pending">
+              {vaultNote}
+            </p>
+          ) : null}
           <RecipientShortcuts
             settings={settings}
             session={session}
@@ -497,6 +581,26 @@ export function TeamScreen({
               {en ? '+ Add a person' : '+ Agregar persona'}
             </button>
           ) : null}
+          {vault === 'new' && named.length > 0 ? (
+            <button
+              type="button"
+              disabled={vaultBusy || busy}
+              onClick={saveTeam}
+              className="mt-1 block min-h-11 text-left text-[13px] font-semibold text-cat-700 underline underline-offset-2 disabled:opacity-50"
+            >
+              {vaultBusy
+                ? en
+                  ? 'Confirm on your device…'
+                  : 'Confirma en tu dispositivo…'
+                : en
+                  ? 'Save this team on all my devices'
+                  : 'Guardar este equipo en todos mis dispositivos'}
+            </button>
+          ) : vault === 'open' ? (
+            <p className="mt-2 text-[12px] text-growth">
+              ✓ {en ? 'Saved on all your devices' : 'Guardado en todos tus dispositivos'}
+            </p>
+          ) : null}
           {mode === 'shares' && canSave ? (
             <div className="mt-4 flex items-center gap-2">
               <label htmlFor="team-save" className="min-w-0 flex-1 text-[14px]">
@@ -578,35 +682,15 @@ export function TeamScreen({
           <p className="text-[12px] leading-relaxed text-text-muted">
             {from === 'savings'
               ? en
-                ? 'What is in Grow keeps earning interest: only what the payments add up to leaves it.'
-                : 'Lo que tienes en Crecer sigue ganando intereses: solo sale lo que suman los pagos.'
+                ? 'What is in Grow keeps earning interest: only what the payments add up to leaves it'
+                : 'Lo que tienes en Crecer sigue ganando intereses: solo sale lo que suman los pagos'
               : en
-                ? `From the ${symbol} you have available.`
-                : `Desde los ${symbol} que tienes disponibles.`}{' '}
-            {typeof funds === 'bigint' ? `(${formatBalance(funds, en)} ${symbol})` : null}
+                ? `From the ${symbol} you have available`
+                : `Desde los ${symbol} que tienes disponibles`}
+            {typeof funds === 'bigint' ? ` (${formatBalance(funds, en)} ${symbol})` : null}.
           </p>
           {from === 'available' && !chosen ? (
-            <ElsewhereNote
-              balances={balances}
-              networkId={networkId}
-              english={en}
-              className="mt-2"
-            />
-          ) : null}
-          {advanced && !chosen && settings.networks.length > 1 ? (
-            <SelectMenu
-              label={en ? 'Network' : 'Red'}
-              value={networkId}
-              options={settings.networks.map((id) => ({
-                value: id,
-                label: networkName(id),
-                tone: 'info' as const,
-              }))}
-              onChange={setNetworkId}
-              english={en}
-              disabled={busy}
-              className="mt-4"
-            />
+            <ElsewhereNote settings={settings} session={session} english={en} className="mt-2" />
           ) : null}
         </MoneyPanel>
         <TransactionActions>

@@ -1,14 +1,22 @@
 import {
+  BaseError,
   createWalletClient,
   custom,
   erc20Abi,
   parseUnits,
+  UserRejectedRequestError,
   type Address,
   type EIP1193Provider,
   type Hex,
 } from 'viem';
 import { walletNetwork } from '@gatopago/shared/networks';
-import { paymentCalls, paymentRouterAbi, type Payment } from '@gatopago/shared/payments';
+import {
+  paymentCalls,
+  paymentPermit,
+  paymentRouterAbi,
+  payWithPermitCall,
+  type Payment,
+} from '@gatopago/shared/payments';
 import type { ClientSettings } from '../lib/settings';
 import { publicClient } from './account';
 import { api } from './api';
@@ -40,8 +48,8 @@ export interface Plan {
   signature: Hex;
 }
 
-export const readCheckout = (settings: ClientSettings, id: string) =>
-  api<Intent>(settings.apiOrigin, `/checkout/v1/${id}`);
+export const readCheckout = (settings: ClientSettings, id: string, signal?: AbortSignal) =>
+  api<Intent>(settings.apiOrigin, `/checkout/v1/${id}`, { signal });
 
 async function authorize(settings: ClientSettings, id: string, payer: Address, network: string) {
   const authorization = await api<{
@@ -111,7 +119,14 @@ export async function payWithAccount(
   );
 }
 
-/** Pays from a browser wallet (EIP-1193): approve, then pay, on `network`. */
+/** How long a payment permit stays valid, in seconds: enough to confirm the transaction. */
+const PERMIT_SECONDS = 1800n;
+
+/**
+ * Pays from a browser wallet (EIP-1193) on `network`: the wallet signs an EIP-2612 permit for
+ * exactly the total (no gas) and pays in one transaction, leaving no allowance behind. A wallet
+ * that cannot sign it approves and then pays, in two transactions. Rejecting the signature cancels.
+ */
 export async function payWithBrowserWallet(
   settings: ClientSettings,
   intent: Intent,
@@ -137,23 +152,47 @@ export async function payWithBrowserWallet(
     ]);
     return { maxFeePerGas: (block.baseFeePerGas ?? 0n) * 2n + tip, maxPriorityFeePerGas: tip };
   };
-  const approval = await wallet.writeContract({
-    ...(await fees()),
-    account: payer,
-    address: usdc,
-    abi: erc20Abi,
-    functionName: 'approve',
-    args: [walletNetwork(network).paymentRouter, plan.total],
-  });
-  await client.waitForTransactionReceipt({ hash: approval });
-  const hash = await wallet.writeContract({
-    ...(await fees()),
-    account: payer,
-    address: walletNetwork(network).paymentRouter,
-    abi: paymentRouterAbi,
-    functionName: 'pay',
-    args: [plan.payment, plan.signature],
-  });
+  const target = walletNetwork(network);
+  const deadline = BigInt(Math.floor(Date.now() / 1000)) + PERMIT_SECONDS;
+  const permit = await wallet
+    .signTypedData({
+      account: payer,
+      ...(await paymentPermit(client, target, { owner: payer, value: plan.total, deadline })),
+    })
+    .catch((error: unknown) => {
+      if (
+        error instanceof BaseError &&
+        error.walk((cause) => cause instanceof UserRejectedRequestError)
+      )
+        throw error;
+      return null;
+    });
+  let hash: Hex;
+  if (permit)
+    hash = await wallet.sendTransaction({
+      ...(await fees()),
+      account: payer,
+      ...payWithPermitCall(target, plan.payment, plan.signature, { deadline, signature: permit }),
+    });
+  else {
+    const approval = await wallet.writeContract({
+      ...(await fees()),
+      account: payer,
+      address: usdc,
+      abi: erc20Abi,
+      functionName: 'approve',
+      args: [target.paymentRouter, plan.total],
+    });
+    await client.waitForTransactionReceipt({ hash: approval });
+    hash = await wallet.writeContract({
+      ...(await fees()),
+      account: payer,
+      address: target.paymentRouter,
+      abi: paymentRouterAbi,
+      functionName: 'pay',
+      args: [plan.payment, plan.signature],
+    });
+  }
   await client.waitForTransactionReceipt({ hash });
   return confirm(settings, intent.id, network, hash);
 }

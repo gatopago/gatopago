@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
+import { AddressQRCard } from './AddressQRCard';
 import { NavigationLink } from './NavigationLink';
 import { Sheet } from './Sheet';
 import { localizedPath } from './routes';
@@ -16,48 +15,13 @@ export function AccountDetailsSheet({
   english: boolean;
   onClose: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
-  const [error, setError] = useState('');
   return (
     <Sheet titleId="account-details-title" onClose={onClose}>
       <div className="sheet-handle mb-5" aria-hidden="true" />
       <h2 id="account-details-title" className="meli-kicker mb-3">
         {en ? 'Your account' : 'Tu cuenta'}
       </h2>
-      <div className="meli-qr-card">
-        <QRCodeSVG
-          value={address}
-          size={172}
-          level="M"
-          marginSize={4}
-          title={en ? 'Your address QR' : 'QR de tu dirección'}
-        />
-      </div>
-      <p className="mb-4 break-all text-center font-mono text-[12px]">{address}</p>
-      <button
-        type="button"
-        className="btn btn-primary btn-block"
-        onClick={async () => {
-          try {
-            await navigator.clipboard.writeText(address);
-            setCopied(true);
-            setError('');
-          } catch {
-            setError(
-              en
-                ? 'Select the address above to copy it.'
-                : 'Selecciona la dirección de arriba para copiarla.',
-            );
-          }
-        }}
-      >
-        {copied ? (en ? 'Copied' : 'Copiada') : en ? 'Copy address' : 'Copiar dirección'}
-      </button>
-      {error ? (
-        <p role="alert" className="mt-3 text-[12px] text-danger">
-          {error}
-        </p>
-      ) : null}
+      <AddressQRCard address={address} english={en} qrSize={172} />
       <p className="mt-4 text-center text-[12px] leading-relaxed text-text-muted">
         {en ? 'To receive from an exchange, use ' : 'Para recibir desde un exchange, usa '}
         <NavigationLink

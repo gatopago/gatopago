@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { useAction } from './useAction';
 import { useSearchParams } from 'next/navigation';
 import { formatUnits, isAddress, isAddressEqual, parseUnits, type Address, type Hex } from 'viem';
 import { BackHeader, MoneyPanel, TransactionActions } from '../consumer/Primitives';
@@ -11,9 +12,9 @@ import type { ClientSettings } from '../lib/settings';
 import { networkName, publicClient, USDC_DECIMALS } from './account';
 import { send } from './operations';
 import { api, type Recipient } from './api';
-import { formatBalance, formatUsdc, plus, totalUsdc, useBalances } from './balances';
+import { formatBalance, formatUsdc, useBalances } from './balances';
+import { ElsewhereNote } from '../consumer/ElsewhereNote';
 import { checkStellarRecipient, planStellarSend, sendOnStellar, stellarArrived } from './stellar';
-import { failureMessage } from './messages';
 import { reviewedRecipient } from '../consumer/qr';
 import {
   ConfirmDestination,
@@ -38,20 +39,24 @@ import { TokenSelect } from '../consumer/TokenSelect';
 /** A send: USDC (on its network or across through CCTP), or another coin on its own network. */
 type Review = EvmReview | StellarReview;
 
-/** USDC to a Stellar address: from the Stellar account, or burned on an EVM network (`calls`). */
+/**
+ * To a Stellar address: USDC from the Stellar account or burned on an EVM network (`calls`), or
+ * XLM (`coin`), which never leaves Stellar.
+ */
 type StellarReview = Omit<Transfer, 'recipient'> & {
   stellar: true;
   recipient: string;
   label: string;
   calls: readonly { to: Address; data: Hex }[] | null;
-  coin?: undefined;
+  coin?: { symbol: 'XLM'; token: null; decimals: number };
   settle?: undefined;
 };
 
 type EvmReview = Transfer & {
   stellar?: undefined;
   label: string;
-  coin?: { symbol: string; token: Address; decimals: number };
+  /** Another coin on its own network: a token, or the network's native coin (`token: null`). */
+  coin?: { symbol: string; token: Address | null; decimals: number };
   /** Settled through Agora Instant Settlement: what the recipient receives, quoted at a fixed price. */
   settle?: {
     symbol: string;
@@ -76,23 +81,25 @@ export function Send({
   const params = useSearchParams();
   const { balances, holding, stellar, stellarUsdc, refresh } = useBalances(settings, session);
   const stellarId = stellar ? settings.stellar!.network : null;
-  // USDC, or another dollar the wallet holds (AUSD): each lives on its own network.
-  const others = walletAssets(settings.networks).filter(
-    (asset) => asset.symbol !== 'USDC' && asset.holdings.every(({ token }) => token !== null),
+  // USDC, or another coin on its own network: a token (AUSD), a native coin (ETH, AVAX, MON) or,
+  // with Stellar on, XLM.
+  const others = walletAssets(settings.networks, settings.stellar?.network).filter(
+    (asset) => asset.symbol !== 'USDC',
   );
   const [coin, setCoin] = useState('USDC');
   const chosen = others.find((asset) => asset.symbol === coin);
   const symbol = chosen?.symbol ?? 'USDC';
+  // XLM goes only to Stellar addresses: never to a @username nor across networks.
+  const xlm = !!chosen && chosen.holdings[0].networkId === settings.stellar?.network;
   // Where the coin's network has Agora Instant Settlement, the recipient may receive another coin.
-  const settlementNetwork = chosen ? walletNetwork(chosen.holdings[0].networkId) : null;
-  const settleOptions = settlementNetwork?.instantSettlement
-    ? (settlementNetwork.tokens ?? []).filter((token) => token.symbol !== chosen!.symbol)
-    : [];
+  const settlementNetwork = chosen && !xlm ? walletNetwork(chosen.holdings[0].networkId) : null;
+  // Agora converts tokens, not the network's own coin.
+  const settleOptions =
+    settlementNetwork?.instantSettlement && chosen!.holdings[0].token !== null
+      ? (settlementNetwork.tokens ?? []).filter((token) => token.symbol !== chosen!.symbol)
+      : [];
   const [receiveAs, setReceiveAs] = useState('');
   const settleInto = settleOptions.find((token) => token.symbol === receiveAs);
-  const total = chosen
-    ? assetBalance(chosen, holding)
-    : plus(totalUsdc(balances, settings.networks), stellarUsdc);
   const requestedNetwork = params.get('chain') ? `eip155:${params.get('chain')}` : null;
   const initialNetwork =
     requestedNetwork && settings.networks.includes(requestedNetwork)
@@ -104,27 +111,49 @@ export function Send({
   );
   const [recipient, setRecipient] = useState(() => scanned || (params.get('username') ?? ''));
   const [networkId, setNetworkId] = useState(initialNetwork);
+  // USDC available where it is sent from: the home network, or the network chosen for an address.
+  const total = chosen
+    ? assetBalance(chosen, holding)
+    : networkId === stellarId
+      ? stellarUsdc
+      : balances[networkId];
+  const decimals = chosen?.decimals ?? USDC_DECIMALS;
+  const amountText = (value: bigint, places: number) =>
+    places === USDC_DECIMALS
+      ? formatBalance(value, en)
+      : Number(formatUnits(value, places)).toLocaleString(en ? 'en' : 'es', {
+          maximumFractionDigits: 6,
+        });
   const [amount, setAmount] = useState('');
   const [review, setReview] = useState<Review | null>(null);
   const [sent, setSent] = useState<{ hash: string; review: Review } | null>(null);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState('');
-
-  function perform(action: () => Promise<void>) {
-    setBusy(true);
-    setError('');
-    action()
-      .catch((failure: unknown) => setError(failureMessage(failure, en)))
-      .finally(() => setBusy(false));
-  }
+  const { busy, error, run: perform } = useAction(en);
 
   function prepare(event: FormEvent) {
     event.preventDefault();
     perform(async () => {
-      const value = parseUnits(amount.replace(',', '.'), chosen?.decimals ?? USDC_DECIMALS);
+      const value = parseUnits(amount.replace(',', '.'), decimals);
       if (value <= 0n) throw new Error('INVALID_AMOUNT');
       const text = recipient.trim();
+      if (xlm) {
+        await checkStellarRecipient(settings, text, 'XLM');
+        if (text === stellar?.account) throw new Error('SELF_TRANSFER');
+        if ((assetBalance(chosen!, holding) ?? 0n) < value) throw new Error('INSUFFICIENT_COIN');
+        const network = settings.stellar!.network;
+        setReview({
+          stellar: true,
+          from: network,
+          to: network,
+          recipient: text,
+          amount: value,
+          fee: 0n,
+          label: text,
+          calls: null,
+          coin: { symbol: 'XLM', token: null, decimals },
+        });
+        return;
+      }
       if (destination === 'address' && networkId === stellarId) {
         await checkStellarRecipient(settings, text);
         if (text === stellar!.account) throw new Error('SELF_TRANSFER');
@@ -155,23 +184,24 @@ export function Send({
       if (isAddressEqual(to, session.wallet.address)) throw new Error('SELF_TRANSFER');
       if (chosen) {
         const held = chosen.holdings[0];
-        if ((holding(held) ?? 0n) < value) throw new Error('INSUFFICIENT_FUNDS');
+        if ((holding(held) ?? 0n) < value) throw new Error('INSUFFICIENT_COIN');
         const network = walletNetwork(held.networkId);
         const reader = publicClient(settings, held.networkId);
-        const settle = settleInto
-          ? {
-              symbol: settleInto.symbol,
-              token: settleInto.address,
-              decimals: settleInto.decimals,
-              quote: await quoteSettlement(reader, network, {
-                tokenIn: held.token!,
-                tokenOut: settleInto.address,
-                amountIn: value,
-              }),
-              allowListed: await settlementAllowed(reader, network, session.wallet.address),
-              now: BigInt(Math.floor(Date.now() / 1000)),
-            }
-          : undefined;
+        const settle =
+          settleInto && held.token
+            ? {
+                symbol: settleInto.symbol,
+                token: settleInto.address,
+                decimals: settleInto.decimals,
+                quote: await quoteSettlement(reader, network, {
+                  tokenIn: held.token,
+                  tokenOut: settleInto.address,
+                  amountIn: value,
+                }),
+                allowListed: await settlementAllowed(reader, network, session.wallet.address),
+                now: BigInt(Math.floor(Date.now() / 1000)),
+              }
+            : undefined;
         setReview({
           from: held.networkId,
           to: held.networkId,
@@ -179,7 +209,7 @@ export function Send({
           amount: value,
           fee: 0n,
           label,
-          coin: { symbol: chosen.symbol, token: held.token!, decimals: chosen.decimals },
+          coin: { symbol: chosen.symbol, token: held.token, decimals: chosen.decimals },
           settle,
         });
         return;
@@ -198,16 +228,18 @@ export function Send({
         ? settlementCalls(walletNetwork(current.from), {
             account: session.wallet.address,
             allowListed: current.settle.allowListed,
-            tokenIn: current.coin.token,
+            tokenIn: current.coin.token!,
             tokenOut: current.settle.token,
             amountIn: current.amount,
             minOut: current.settle.quote,
             recipient: current.recipient,
             now: current.settle.now,
           })
-        : current.coin
-          ? payoutCalls(current.coin.token, [{ to: current.recipient, amount: current.amount }])
-          : transferCalls(current);
+        : current.coin?.token === null
+          ? [{ to: current.recipient, data: '0x' as Hex, value: current.amount }]
+          : current.coin
+            ? payoutCalls(current.coin.token, [{ to: current.recipient, amount: current.amount }])
+            : transferCalls(current);
 
   function confirm(current: Review) {
     perform(async () => {
@@ -217,7 +249,14 @@ export function Send({
         hash = await send(settings, session, current.from, current.calls);
         // Wallet Core delivers burns toward Stellar; the timeline reports it again if this is lost.
         void stellarArrived(settings, session, current.from, hash).catch(() => undefined);
-      } else hash = await sendOnStellar(settings, session, current.recipient, current.amount);
+      } else
+        hash = await sendOnStellar(
+          settings,
+          session,
+          current.recipient,
+          current.amount,
+          current.coin ? 'XLM' : 'USDC',
+        );
       setSent({ hash, review: current });
       setReceipt({
         kind: 'sent',
@@ -305,14 +344,24 @@ export function Send({
                   value={symbol}
                   label={en ? 'Currency' : 'Moneda'}
                   options={[
-                    { value: 'USDC', symbol: 'USDC', label: 'USD Coin' },
+                    { value: 'USDC', symbol: 'USDC', label: networkName(settings.homeNetwork) },
                     ...others.map((asset) => ({
                       value: asset.symbol,
                       symbol: asset.symbol,
-                      label: asset.name,
+                      label: networkName(asset.holdings[0].networkId),
                     })),
                   ]}
-                  onChange={setCoin}
+                  onChange={(value) => {
+                    setCoin(value);
+                    // XLM has no @username: it goes to a Stellar address.
+                    if (
+                      others.find((asset) => asset.symbol === value)?.holdings[0].networkId ===
+                      settings.stellar?.network
+                    ) {
+                      setDestination('address');
+                      setRecipient('');
+                    }
+                  }}
                   english={en}
                   disabled={busy}
                 />
@@ -354,36 +403,46 @@ export function Send({
             ) : null}
             <p className="mt-2 text-[12px] text-text-faint">
               {en ? 'Available' : 'Disponible'}:{' '}
-              {typeof total === 'bigint' ? formatBalance(total, en) : '—'} {symbol}
+              {typeof total === 'bigint' ? amountText(total, decimals) : '—'} {symbol}
             </p>
+            {chosen ? null : (
+              <ElsewhereNote
+                settings={settings}
+                session={session}
+                english={en}
+                className="mt-1 text-center"
+              />
+            )}
           </MoneyPanel>
           <MoneyPanel className="mb-5">
             <p className="mb-3 text-[13px] font-semibold">{en ? 'To whom?' : '¿A quién?'}</p>
-            <div className="seg-track seg-track-block mb-4">
-              {(['username', 'address'] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  className="seg-item"
-                  aria-pressed={destination === type}
-                  data-active={destination === type}
-                  onClick={() => {
-                    setDestination(type);
-                    setRecipient('');
-                    // A GatoPago account receives on the home network.
-                    if (type === 'username') setNetworkId(settings.homeNetwork);
-                  }}
-                >
-                  {type === 'address'
-                    ? en
-                      ? 'Address'
-                      : 'Dirección'
-                    : en
-                      ? '@username'
-                      : '@usuario'}
-                </button>
-              ))}
-            </div>
+            {xlm ? null : (
+              <div className="seg-track seg-track-block mb-4">
+                {(['username', 'address'] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    className="seg-item"
+                    aria-pressed={destination === type}
+                    data-active={destination === type}
+                    onClick={() => {
+                      setDestination(type);
+                      setRecipient('');
+                      // A GatoPago account receives on the home network.
+                      if (type === 'username') setNetworkId(settings.homeNetwork);
+                    }}
+                  >
+                    {type === 'address'
+                      ? en
+                        ? 'Address'
+                        : 'Dirección'
+                      : en
+                        ? '@username'
+                        : '@usuario'}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="relative">
               {destination === 'username' ? (
                 <span
@@ -404,7 +463,7 @@ export function Send({
                     ? en
                       ? 'username'
                       : 'usuario'
-                    : networkId === stellarId
+                    : xlm || networkId === stellarId
                       ? 'G… / C…'
                       : '0x…'
                 }
@@ -431,13 +490,17 @@ export function Send({
               />
             ) : null}
             <p className="mt-3 text-[12px] leading-relaxed text-text-muted">
-              {destination === 'username'
+              {xlm
                 ? en
-                  ? 'Their GatoPago username. It arrives instantly, with no fees.'
-                  : 'Su usuario de GatoPago. Le llega al instante y sin comisión.'
-                : en
-                  ? 'Paste the address and choose its network. For an exchange, make sure it accepts USDC on that network.'
-                  : 'Pega la dirección y elige su red. Si es de un exchange, confirma que acepte USDC en esa red.'}
+                  ? 'A Stellar address (G… or C…). XLM is sent only within Stellar.'
+                  : 'Una dirección de Stellar (G… o C…). XLM se envía solo dentro de Stellar.'
+                : destination === 'username'
+                  ? en
+                    ? 'Their GatoPago username. It arrives instantly, with no fees.'
+                    : 'Su usuario de GatoPago. Le llega al instante y sin comisión.'
+                  : en
+                    ? 'Paste the address and choose its network. For an exchange, make sure it accepts USDC on that network.'
+                    : 'Pega la dirección y elige su red. Si es de un exchange, confirma que acepte USDC en esa red.'}
             </p>
             {destination === 'address' && !chosen ? (
               <SelectMenu
@@ -484,7 +547,11 @@ export function Send({
         <ConfirmSheet
           title={en ? 'Confirm your send' : 'Confirma tu envío'}
           amountLabel={en ? 'You will send' : 'Vas a enviar'}
-          amount={formatUsdc(review.amount, en)}
+          amount={
+            review.coin
+              ? amountText(review.amount, review.coin.decimals)
+              : formatUsdc(review.amount, en)
+          }
           unit={review.coin?.symbol ?? 'USDC'}
           warning={
             en

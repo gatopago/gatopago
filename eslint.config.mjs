@@ -8,7 +8,16 @@ import globals from 'globals';
 export default defineConfig([
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  globalIgnores(['.next/**', 'node_modules/**', 'output/**', '.playwright-cli/**', 'next-env.d.ts', 'public/**', '!public/', '!public/sw.js']),
+  globalIgnores([
+    '.next/**',
+    'node_modules/**',
+    'output/**',
+    '.playwright-cli/**',
+    'next-env.d.ts',
+    'public/**',
+    '!public/',
+    '!public/sw.js',
+  ]),
   { files: ['public/sw.js'], languageOptions: { globals: globals.serviceworker } },
   {
     files: ['**/*.{ts,tsx,mjs}'],

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useAction } from './useAction';
 import { formatUnits, parseUnits, type Address, type Hex } from 'viem';
 import { crosschainCalls, crosschainFee } from '@gatopago/shared/crosschain';
 import { walletNetwork } from '@gatopago/shared/networks';
@@ -16,7 +18,6 @@ import type { ClientSettings } from '../lib/settings';
 import { cctpNetwork, networkName, USDC_DECIMALS } from './account';
 import { send } from './operations';
 import { formatBalance, formatUsdc, useBalances } from './balances';
-import { failureMessage } from './messages';
 import type { Session } from './session';
 import { crosschainFromStellar, crosschainToStellar, stellarArrived } from './stellar';
 
@@ -43,21 +44,20 @@ export function Crosschain({
   const stellarId = stellar ? settings.stellar!.network : null;
   const balanceOf = (id: string) => (id === stellarId ? stellarUsdc : balances[id]);
   const others = settings.networks.filter((id) => id !== settings.homeNetwork);
-  const [from, setFrom] = useState(others[0] ?? settings.homeNetwork);
+  // "Bring it" (the note about USDC on other networks) names where it comes from.
+  const requested = useSearchParams().get('from');
+  const [from, setFrom] = useState(
+    requested &&
+      requested !== settings.homeNetwork &&
+      (settings.networks.includes(requested) || requested === settings.stellar?.network)
+      ? requested
+      : (others[0] ?? settings.homeNetwork),
+  );
   const [to, setTo] = useState(settings.homeNetwork);
   const [amount, setAmount] = useState('');
   const [review, setReview] = useState<Move | null>(null);
   const [moved, setMoved] = useState<{ hash: string; move: Move } | null>(null);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState('');
-
-  function perform(action: () => Promise<void>) {
-    setBusy(true);
-    setError('');
-    action()
-      .catch((failure: unknown) => setError(failureMessage(failure, en)))
-      .finally(() => setBusy(false));
-  }
+  const { busy, error, run: perform } = useAction(en);
 
   const value = /^(\d+\.?\d{0,6}|\.\d{1,6})$/.test(amount) ? parseUnits(amount, USDC_DECIMALS) : 0n;
   const available = balanceOf(from);
@@ -175,7 +175,7 @@ export function Crosschain({
               {typeof available === 'bigint' && available > 0n ? (
                 <button
                   type="button"
-                  className="text-[12px] text-text-faint"
+                  className="-my-3 py-3 text-[12px] text-text-faint"
                   disabled={locked}
                   onClick={() => setAmount(formatUnits(available, USDC_DECIMALS))}
                 >
@@ -250,7 +250,7 @@ export function Crosschain({
             />
             <p className="mt-3 text-[12px] leading-relaxed text-text-faint">
               {en
-                ? 'It arrives in your same account. Circle charges a small fee, which you will see before confirming.'
+                ? 'It arrives in your own account. Circle charges a small fee, which you will see before confirming.'
                 : 'Llega a tu misma cuenta. Circle cobra una pequeña comisión, que verás antes de confirmar.'}
             </p>
           </MoneyPanel>

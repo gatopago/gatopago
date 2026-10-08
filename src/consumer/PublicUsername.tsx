@@ -22,10 +22,10 @@ export function PublicUsername({
   settings: ClientSettings;
   english: boolean;
 }) {
-  const [recipient, setRecipient] = useState<Recipient | null>(null),
-    [error, setError] = useState(''),
-    [copied, setCopied] = useState(false),
-    [copyError, setCopyError] = useState('');
+  const [recipient, setRecipient] = useState<Recipient | null>(null);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState('');
   useEffect(() => {
     const controller = new AbortController();
     api<Recipient>(settings.apiOrigin, `recipients/${username}`, { signal: controller.signal })

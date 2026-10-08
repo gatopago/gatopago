@@ -58,13 +58,12 @@ describe('Next migration inventory', () => {
     expect(consumerRoutes).not.toHaveProperty('/pay/demo-cafe-norte');
     expect(parseConsumerQr('/pay/demo-cafe-norte', 'https://gatopago.com')).toBeNull();
   });
-  it('offers the V2 Move choices and paying a team; networks only in the advanced view', () => {
+  it('offers the V2 Move choices, paying a team and moving between networks', () => {
     const html = renderToStaticMarkup(createElement(MoveMenu, { english: false }));
-    for (const path of ['/move?flow=receive', '/send', '/team', '/swap'])
+    // One view for everyone: USDC lives on the home network, and between networks brings it there.
+    for (const path of ['/move?flow=receive', '/send', '/team', '/swap', '/crosschain'])
       expect(html).toContain(`href="${path.replace('&', '&amp;')}"`);
-    // Rendered without a stored preference: the simple view, which never shows networks.
-    expect(html).not.toContain('href="/crosschain"');
-    expect(html.match(/meli-path-card-app/g)).toHaveLength(4);
+    expect(html.match(/meli-path-card-app/g)).toHaveLength(5);
   });
   it('explains permanent loss of access without presenting a recovery form', () => {
     for (const english of [true, false]) {

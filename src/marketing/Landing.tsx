@@ -27,8 +27,8 @@ export function Landing({ lang }: { lang: 'es' | 'en' }) {
     },
     body: JSON.stringify({
       amount: "18.00",
-      currency: "USDC",
-      reference: "cafe-norte"
+      description: "Order 1042",
+      metadata: { order_id: "1042" }
     })
   }
 );

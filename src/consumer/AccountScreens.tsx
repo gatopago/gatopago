@@ -21,7 +21,7 @@ export function RecoveryScreen({ english: en }: { english: boolean }) {
           {(en
             ? [
                 'Check your password manager and other devices.',
-                'One authorized key is sufficient to spend and administer the account.',
+                'One authorized key is enough to spend from and manage the account.',
                 'If every authorized key is lost, access is lost permanently. GatoPago, support and email cannot reset it.',
               ]
             : [
@@ -43,7 +43,7 @@ export function RecoveryScreen({ english: en }: { english: boolean }) {
         </ol>
       </Panel>
       <h2 className="meli-kicker mb-3 px-1">
-        {en ? 'Frequent questions' : 'Preguntas frecuentes'}
+        {en ? 'Frequently asked questions' : 'Preguntas frecuentes'}
       </h2>
       <div className="meli-paper-card meli-paper-card--strong divide-y divide-border px-5 py-2">
         <Faq question={en ? 'What is your access key?' : '¿Qué es tu llave de acceso?'}>

@@ -46,12 +46,12 @@ export function SwapScreen({
   const [tokenIn, setTokenIn] = useState<SwapToken>('usdc');
   const [amount, setAmount] = useState('');
   const [quote, setQuote] = useState<SwapQuote | null>(null);
-  const [quoting, setQuoting] = useState(false),
-    [quoteError, setQuoteError] = useState('');
+  const [quoting, setQuoting] = useState(false);
+  const [quoteError, setQuoteError] = useState('');
   const [details, setDetails] = useState(false);
   const [reviewing, setReviewing] = useState(false);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const [done, setDone] = useState<{ quote: SwapQuote; hash: `0x${string}` } | null>(null);
 
   const tokenOut: SwapToken = tokenIn === 'usdc' ? 'native' : 'usdc';
@@ -166,7 +166,7 @@ export function SwapScreen({
           {typeof balanceIn === 'bigint' ? (
             <button
               type="button"
-              className="text-[12px] text-text-faint"
+              className="-my-3 py-3 text-[12px] text-text-faint"
               onClick={() => setAmount(formatUnits(balanceIn, decimals(tokenIn)))}
             >
               {en
@@ -193,7 +193,7 @@ export function SwapScreen({
           />
         </div>
         {tokenIn === 'usdc' ? (
-          <ElsewhereNote balances={balances} networkId={networkId} english={en} className="mt-3" />
+          <ElsewhereNote settings={settings} session={session} english={en} className="mt-3" />
         ) : null}
       </MoneyPanel>
 

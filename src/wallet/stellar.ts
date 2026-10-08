@@ -67,6 +67,9 @@ async function server(settings: ClientSettings) {
   return stellarServer(network(settings), settings.stellar!.rpcUrl);
 }
 
+/** The coins the Stellar account holds and sends: USDC, and XLM, the network's own. */
+export type StellarCoin = 'USDC' | 'XLM';
+
 /** USDC of a Stellar address in 6 decimals, like every network. */
 export async function stellarBalance(settings: ClientSettings, owner: string): Promise<bigint> {
   const { fromStellarUnits, stellarUsdcBalance } = await sdk();
@@ -75,15 +78,33 @@ export async function stellarBalance(settings: ClientSettings, owner: string): P
   );
 }
 
+/** XLM of a Stellar address, in its 7 decimals. */
+export async function stellarXlmBalance(settings: ClientSettings, owner: string): Promise<bigint> {
+  const lib = await sdk();
+  return lib.stellarBalance(
+    await server(settings),
+    network(settings),
+    network(settings).xlm,
+    owner,
+  );
+}
+
 /**
- * Checks that USDC can be sent to `recipient` on Stellar: a valid address, and for an account
- * (`G…`) one with a USDC trustline. Otherwise the payment would fail or, through CCTP, stay unminted.
+ * Checks that `coin` can be sent to `recipient` on Stellar: a valid address, and for an account
+ * (`G…`) one that can hold it (a USDC trustline; for XLM, that it exists). Otherwise the payment
+ * would fail or, through CCTP, stay unminted.
  */
-export async function checkStellarRecipient(settings: ClientSettings, recipient: string) {
+export async function checkStellarRecipient(
+  settings: ClientSettings,
+  recipient: string,
+  coin: StellarCoin = 'USDC',
+) {
   const { isStellarAddress } = await sdk();
   if (!isStellarAddress(recipient)) throw new Error('INVALID_STELLAR_ADDRESS');
-  await stellarBalance(settings, recipient).catch(() => {
-    throw new Error('STELLAR_RECIPIENT_CANNOT_RECEIVE');
+  await (coin === 'XLM' ? stellarXlmBalance : stellarBalance)(settings, recipient).catch(() => {
+    throw new Error(
+      coin === 'XLM' ? 'STELLAR_ACCOUNT_INACTIVE' : 'STELLAR_RECIPIENT_CANNOT_RECEIVE',
+    );
   });
 }
 
@@ -161,20 +182,32 @@ export async function crosschainToStellar(
   });
 }
 
-/** Pays `amount` of the account's Stellar USDC to `recipient` on Stellar. */
+/**
+ * Pays `amount` of the account's Stellar `coin` to `recipient` on Stellar: USDC in 6 decimals, like
+ * every network, or XLM in its 7.
+ */
 export const sendOnStellar = (
   settings: ClientSettings,
   session: Session,
   recipient: string,
   amount: bigint,
+  coin: StellarCoin = 'USDC',
 ) =>
   sendStellar(settings, session, (stellar, account) =>
-    stellar.transferOperation(
-      network(settings),
-      account,
-      recipient,
-      stellar.toStellarUnits(amount),
-    ),
+    coin === 'XLM'
+      ? stellar.transferOperation(
+          network(settings),
+          account,
+          recipient,
+          amount,
+          network(settings).xlm,
+        )
+      : stellar.transferOperation(
+          network(settings),
+          account,
+          recipient,
+          stellar.toStellarUnits(amount),
+        ),
   );
 
 /**

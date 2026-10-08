@@ -1841,11 +1841,6 @@ body:has(.meli-landing) {
     transform: rotate(2deg);
   }
 }
-
-:where(.meli-landing) [data-copy-payment].is-copied {
-  --button-bg: var(--meli-growth);
-  --button-color: var(--meli-ink);
-}
 .meli-grow {
   overflow: hidden;
 }

@@ -11,8 +11,6 @@ export interface TokenOption {
   balance?: string;
   /** Listed but empty: shown quieter, below the coins the account holds. */
   muted?: boolean;
-  /** What the closed selector shows, when the symbol alone is not enough ("USDC · Arbitrum"). */
-  trigger?: string;
 }
 
 export function TokenSelect({
@@ -46,7 +44,7 @@ export function TokenSelect({
         aria-expanded={open}
       >
         <TokenIcon symbol={selected.symbol} />
-        <span className="min-w-0 truncate">{selected.trigger ?? selected.symbol}</span>
+        <span className="min-w-0 truncate">{selected.symbol}</span>
         <svg
           aria-hidden="true"
           width="14"

@@ -74,7 +74,7 @@ convenience:
 ## Development
 
 Node 24 and pnpm 11. Copy `.env.example` to `.env.local` and point `GATOPAGO_API_ORIGIN` at a
-running Wallet Core.
+running Wallet Core. `ox` stays at the version viem pins: a newer one would ship twice in the bundle.
 
 ```sh
 pnpm install --frozen-lockfile
