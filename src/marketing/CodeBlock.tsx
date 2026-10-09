@@ -1,5 +1,6 @@
 'use client';
 
+import { copyText } from '../lib/clipboard';
 import { useState } from 'react';
 
 /** A code sample with its language and a copy button. */
@@ -21,7 +22,7 @@ export function CodeBlock({
           type="button"
           className="min-h-9 px-3 font-sans text-[12px] font-semibold text-[#fff8f0] hover:text-cat-500"
           onClick={() =>
-            void navigator.clipboard.writeText(code).then(() => {
+            void copyText(code).then(() => {
               setCopied(true);
               setTimeout(() => setCopied(false), 2000);
             })

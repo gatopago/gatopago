@@ -1,5 +1,6 @@
 'use client';
 
+import { copyText } from '../lib/clipboard';
 import { useEffect, useState } from 'react';
 import type { ClientSettings } from '../lib/settings';
 import { networkName } from '../wallet/account';
@@ -79,7 +80,7 @@ export function PublicUsername({
                 className="auth-secondary btn btn-ghost btn-block"
                 onClick={async () => {
                   try {
-                    await navigator.clipboard.writeText(recipient.address);
+                    await copyText(recipient.address);
                     setCopied(true);
                     setCopyError('');
                   } catch {

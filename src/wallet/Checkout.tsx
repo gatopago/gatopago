@@ -1,5 +1,6 @@
 'use client';
 
+import { copyText } from '../lib/clipboard';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useAction } from './useAction';
 import { isAddressEqual, parseUnits } from 'viem';
@@ -331,7 +332,7 @@ function CopyCheckoutLink({ english: en }: { english: boolean }) {
         type="button"
         className="btn btn-ghost btn-block"
         onClick={() =>
-          void navigator.clipboard?.writeText(location.href).then(() => {
+          void copyText(location.href).then(() => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
           })
