@@ -1,5 +1,6 @@
 'use client';
 
+import { copyText } from '../lib/clipboard';
 import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { formatUnits, parseUnits } from 'viem';
@@ -196,7 +197,7 @@ export function ChargeScreen({
                   url: link.url,
                 });
                 if (result !== 'unsupported') return;
-                await navigator.clipboard.writeText(link.url);
+                await copyText(link.url);
                 setNotice(en ? 'Link copied' : 'Link copiado');
               })
             }
@@ -224,9 +225,7 @@ export function ChargeScreen({
               type="button"
               className="btn btn-ghost flex-1"
               onClick={() =>
-                void navigator.clipboard
-                  .writeText(link.url)
-                  .then(() => setNotice(en ? 'Link copied' : 'Link copiado'))
+                void copyText(link.url).then(() => setNotice(en ? 'Link copied' : 'Link copiado'))
               }
             >
               {en ? 'Copy link' : 'Copiar link'}

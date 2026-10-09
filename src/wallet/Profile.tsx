@@ -1,5 +1,6 @@
 'use client';
 
+import { copyText } from '../lib/clipboard';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { walletNetwork } from '@gatopago/shared/networks';
 import { BackHeader, NoticeCard } from '../consumer/Primitives';
@@ -97,7 +98,7 @@ function ProfileEditor({
   const [copied, setCopied] = useState<'link' | 'address' | null>(null);
   const link = profile.username ? `${settings.webOrigin}/@${profile.username}` : null;
   function copy(value: string, what: 'link' | 'address') {
-    void navigator.clipboard.writeText(value).then(() => {
+    void copyText(value).then(() => {
       setCopied(what);
       setTimeout(() => setCopied(null), 2000);
     });

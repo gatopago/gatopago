@@ -1,5 +1,6 @@
 'use client';
 
+import { copyText } from '../lib/clipboard';
 import { useEffect, useState } from 'react';
 import type { ClientSettings } from '../lib/settings';
 import { CatGlyph } from '../marketing/CatGlyph';
@@ -98,7 +99,7 @@ export function ContactsScreen({
       await navigator.share({ title: 'GatoPago', text, url }).catch(() => undefined);
       return;
     }
-    await navigator.clipboard.writeText(url);
+    await copyText(url);
     setNotice({ error: false, text: en ? 'Invite link copied' : 'Link de invitación copiado' });
   }
 
@@ -143,11 +144,9 @@ export function ContactsScreen({
           <button
             type="button"
             onClick={() =>
-              void navigator.clipboard
-                .writeText(invites.code!)
-                .then(() =>
-                  setNotice({ error: false, text: en ? 'Code copied' : 'Código copiado' }),
-                )
+              void copyText(invites.code!).then(() =>
+                setNotice({ error: false, text: en ? 'Code copied' : 'Código copiado' }),
+              )
             }
             className="relative z-1 mt-3.5 flex items-center gap-2.5 border border-border bg-surface-2 px-3.5 py-2"
           >

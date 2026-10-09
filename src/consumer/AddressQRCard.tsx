@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { copyText } from '../lib/clipboard';
 import { shortAddress } from '../wallet/account';
 
 /** V2's address QR with its copy row, shared by every "show my address" surface. */
@@ -17,6 +18,7 @@ export function AddressQRCard({
   qrSize?: number;
 }) {
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   return (
     <>
       <div
@@ -37,10 +39,14 @@ export function AddressQRCard({
       <button
         type="button"
         onClick={() =>
-          void navigator.clipboard?.writeText(address).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          })
+          void copyText(address).then(
+            () => {
+              setCopyFailed(false);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            },
+            () => setCopyFailed(true),
+          )
         }
         className="interactive-surface flex w-full items-center justify-between gap-2 border-2 border-text bg-surface px-4 py-3 shadow-[4px_4px_0_var(--color-border)]"
       >
@@ -49,6 +55,16 @@ export function AddressQRCard({
           {copied ? (en ? 'Copied ✓' : 'Copiada ✓') : en ? 'Copy address' : 'Copiar dirección'}
         </span>
       </button>
+      {copyFailed && (
+        <div className="mt-3 border-2 border-border bg-surface px-4 py-3">
+          <p className="mb-1.5 text-[12px] text-text-muted">
+            {en
+              ? "Your browser didn't let us copy it. Hold the address to select and copy it:"
+              : 'Tu navegador no nos dejó copiarla. Mantén presionada la dirección para seleccionarla y copiarla:'}
+          </p>
+          <p className="font-mono text-[13px] break-all text-text select-all">{address}</p>
+        </div>
+      )}
     </>
   );
 }
