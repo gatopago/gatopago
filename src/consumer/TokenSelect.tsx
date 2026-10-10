@@ -4,6 +4,8 @@ import { useId, useRef, useState } from 'react';
 import { ChevronDownIcon } from './Icons';
 import { Sheet } from './Sheet';
 import { TokenIcon } from './TokenIcon';
+import { useTranslations } from 'next-intl';
+import { moveOptionFocus } from './listbox';
 
 interface TokenOption {
   value: string;
@@ -18,17 +20,16 @@ export function TokenSelect({
   value,
   options,
   onChange,
-  english: en,
   label,
   disabled = false,
 }: {
   value: string;
   options: TokenOption[];
   onChange: (value: string) => void;
-  english: boolean;
   label?: string;
   disabled?: boolean;
 }) {
+  const t = useTranslations('TokenSelect');
   const [open, setOpen] = useState(false);
   const titleId = useId();
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -40,7 +41,7 @@ export function TokenSelect({
         disabled={disabled}
         onClick={() => setOpen(true)}
         className="select-menu-trigger interactive-surface inline-flex h-10 min-w-[104px] max-w-full items-center justify-between gap-3 border border-border bg-surface px-2.5 text-left text-[13px]"
-        aria-label={label ?? (en ? 'Choose currency' : 'Elegir moneda')}
+        aria-label={label ?? t('chooseCurrency')}
         aria-haspopup="dialog"
         aria-expanded={open}
       >
@@ -52,12 +53,12 @@ export function TokenSelect({
         <Sheet titleId={titleId} onClose={() => setOpen(false)} variant="selector">
           <div className="mb-3 flex items-center justify-between gap-3 px-1">
             <h2 id={titleId} className="font-display text-[20px]">
-              {en ? 'Choose currency' : 'Elige una moneda'}
+              {t('chooseCurrencyTitle')}
             </h2>
             <button
               type="button"
               className="meli-square-action h-11 w-11"
-              aria-label={en ? 'Close' : 'Cerrar'}
+              aria-label={t('close')}
               data-sheet-close
             >
               <span aria-hidden="true">×</span>
@@ -74,22 +75,7 @@ export function TokenSelect({
                 role="option"
                 aria-selected={item.value === value}
                 className={`select-menu-option flex min-h-14 w-full items-center gap-3 border px-4 py-3 text-left ${item.value === value ? 'border-text bg-cat-500/15 shadow-[3px_3px_0_var(--color-cat-700)]' : 'border-border bg-surface'}`}
-                onKeyDown={(event) => {
-                  const next =
-                    event.key === 'ArrowDown'
-                      ? (index + 1) % options.length
-                      : event.key === 'ArrowUp'
-                        ? (index - 1 + options.length) % options.length
-                        : event.key === 'Home'
-                          ? 0
-                          : event.key === 'End'
-                            ? options.length - 1
-                            : null;
-                  if (next !== null) {
-                    event.preventDefault();
-                    optionRefs.current[next]?.focus();
-                  }
-                }}
+                onKeyDown={(event) => moveOptionFocus(event, index, optionRefs.current)}
                 data-sheet-close
                 onClick={() => {
                   onChange(item.value);

@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { formatUnits, parseUnits } from 'viem';
+import { formatUnits } from 'viem';
+import { exactUnits, tooPrecise } from '../lib/amount';
+import { useFailureMessage } from '../wallet/messages';
 import { aavePoolAbi, depositCalls, supplyApy, withdrawCalls } from '@gatopago/shared/earn';
 import { walletNetwork } from '@gatopago/shared/networks';
 import type { ClientSettings } from '../lib/settings';
@@ -16,20 +18,16 @@ import { ConfirmSheet, SigningDetails } from './PaymentSheets';
 import { MoneyPanel, TabHeader } from './Primitives';
 import { AmountInput } from './SelectMenu';
 import { TxResult } from './TxResult';
+import { useTranslations, useLocale } from 'next-intl';
 
 type Action = 'deposit' | 'withdraw';
 type Review = { action: Action; amount: bigint; all: boolean };
 
 /** `/earn`, V2's Grow: USDC supplied to Aave V3 from the account on the home network. */
-export function EarnScreen({
-  settings,
-  session,
-  english: en,
-}: {
-  settings: ClientSettings;
-  session: Session;
-  english: boolean;
-}) {
+export function EarnScreen({ settings, session }: { settings: ClientSettings; session: Session }) {
+  const messageFor = useFailureMessage();
+  const locale = useLocale();
+  const t = useTranslations('Earn');
   const networkId = settings.homeNetwork;
   const network = walletNetwork(networkId);
   const { balances, saved, refresh } = useBalances(settings, session);
@@ -40,7 +38,7 @@ export function EarnScreen({
   const [all, setAll] = useState(false);
   const [review, setReview] = useState<Review | null>(null);
   // One deposit or withdrawal at a time, even with a double tap.
-  const { busy, error, setError, run } = useAction(en);
+  const { busy, error, setError, run } = useAction();
   const [done, setDone] = useState<Review | null>(null);
 
   // The rate is read once per visit, from Aave's own reserve data.
@@ -68,13 +66,17 @@ export function EarnScreen({
   const available = balances[networkId];
   const savings = saved[networkId];
   const source = action === 'deposit' ? available : savings;
-  const value = /^(\d+\.?\d{0,6}|\.\d{1,6})$/.test(amount) ? parseUnits(amount, USDC_DECIMALS) : 0n;
+  const precision = tooPrecise(amount, USDC_DECIMALS)
+    ? messageFor(new Error('TOO_MANY_DECIMALS'))
+    : '';
+  const value =
+    !precision && /^(\d+\.?\d*|\.\d+)$/.test(amount) ? exactUnits(amount, USDC_DECIMALS) : 0n;
   const canContinue =
     typeof source === 'bigint' && source > 0n && (all || (value > 0n && value <= source));
   // While loading, a placeholder of the same size: the numbers arrive without moving the text.
   const shown = (balance: bigint | null | undefined) =>
     typeof balance === 'bigint' ? (
-      formatBalance(balance, en)
+      formatBalance(balance, locale)
     ) : balance === undefined ? (
       <span
         className="skeleton inline-block h-[0.8em] w-[4.5em] align-baseline"
@@ -84,20 +86,16 @@ export function EarnScreen({
       '—'
     );
   const rate =
-    typeof apy === 'number'
-      ? apy.toLocaleString(en ? 'en' : 'es', { maximumFractionDigits: 2 })
-      : null;
+    typeof apy === 'number' ? apy.toLocaleString(locale, { maximumFractionDigits: 2 }) : null;
 
   if (!network.aave)
     return (
       <>
-        <TabHeader title={en ? 'Grow' : 'Crecer'} />
+        <TabHeader title={t('grow')} />
         <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
           <MeliSprite variant="head-cautious" className="mb-5 w-24" />
           <p className="font-display text-[22px]">
-            {en
-              ? `Grow isn't available on ${networkName(networkId)}`
-              : `Crecer no está disponible en ${networkName(networkId)}`}
+            {t('growIsntAvailable', { networkId: networkName(networkId) })}
           </p>
         </div>
       </>
@@ -106,32 +104,20 @@ export function EarnScreen({
   if (done)
     return (
       <>
-        <TabHeader title={en ? 'Grow' : 'Crecer'} />
+        <TabHeader title={t('grow')} />
         <TxResult
           state="success"
-          lead={
-            done.action === 'deposit'
-              ? en
-                ? 'Deposit complete'
-                : 'Depósito realizado'
-              : en
-                ? 'Withdrawal complete'
-                : 'Retiro realizado'
-          }
-          amount={formatUsdc(done.amount, en)}
+          lead={done.action === 'deposit' ? t('depositComplete') : t('withdrawalComplete')}
+          amount={formatUsdc(done.amount, locale)}
           unit="USDC"
-          body={
-            en
-              ? 'You will see it in your balance in a few seconds.'
-              : 'Lo verás reflejado en tu saldo en unos segundos.'
-          }
+          body={t('seeBalanceFewSeconds')}
         >
           <button
             type="button"
             className="btn btn-primary btn-block mt-6"
             onClick={() => setDone(null)}
           >
-            {en ? 'Done' : 'Listo'}
+            {t('done')}
           </button>
         </TxResult>
       </>
@@ -145,24 +131,17 @@ export function EarnScreen({
 
   return (
     <>
-      <TabHeader
-        title={en ? 'Grow' : 'Crecer'}
-        description={
-          en
-            ? 'Earn interest on the USDC you are not using and withdraw it whenever you want.'
-            : 'Gana intereses con los USDC que no estás usando y retíralos cuando quieras.'
-        }
-      />
+      <TabHeader title={t('grow')} description={t('earnInterestUsdcNot')} />
 
       <MoneyPanel className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
         <div className="min-w-0">
-          <p className="mb-2 text-[13px] text-text-muted">{en ? 'In Grow' : 'En Crecer'}</p>
+          <p className="mb-2 text-[13px] text-text-muted">{t('inGrow')}</p>
           <p className="type-mono text-[clamp(30px,9vw,38px)] font-bold leading-none">
             {shown(savings)} <span className="text-[0.5em]">USDC</span>
           </p>
           {rate ? (
             <p className="mt-3 inline-flex items-center gap-1.5 border border-growth bg-growth/10 px-2 py-1 text-[12px] font-semibold text-growth">
-              {rate}% {en ? 'a year' : 'anual'}
+              {t('ratePerYear', { rate })}
               <span className="font-normal text-text-muted">· variable</span>
             </p>
           ) : apy === undefined ? (
@@ -191,20 +170,13 @@ export function EarnScreen({
                 setAll(false);
               }}
             >
-              {next === 'deposit' ? (en ? 'Deposit' : 'Depositar') : en ? 'Withdraw' : 'Retirar'}
+              {next === 'deposit' ? t('deposit') : t('withdraw')}
             </button>
           ))}
         </div>
         <div className="mb-3 flex items-center justify-between">
           <span className="text-[13px] text-text-muted">
-            {action === 'deposit'
-              ? en
-                ? 'Available'
-                : 'Disponible'
-              : en
-                ? 'In Grow'
-                : 'En Crecer'}
-            : {shown(source)} USDC
+            {action === 'deposit' ? t('available') : t('inGrow')}: {shown(source)} USDC
           </span>
           <button
             type="button"
@@ -217,12 +189,12 @@ export function EarnScreen({
               setAll(action === 'withdraw');
             }}
           >
-            {en ? 'Use all' : 'Usar todo'}
+            {t('useAll')}
           </button>
         </div>
         <AmountInput
           name="amount"
-          aria-label={en ? 'Amount in USDC' : 'Monto en USDC'}
+          aria-label={t('amountUsdc')}
           placeholder="0"
           value={amount}
           onChange={(next) => {
@@ -233,11 +205,11 @@ export function EarnScreen({
         />
         {/* Below the amount: "Available" stays next to the field it describes. */}
         {action === 'deposit' ? (
-          <ElsewhereNote settings={settings} session={session} english={en} className="mb-3" />
+          <ElsewhereNote settings={settings} session={session} className="mb-3" />
         ) : null}
-        {error && !review ? (
+        {(error || precision) && !review ? (
           <p role="alert" className="mb-3 text-center text-[13px] text-danger">
-            {error}
+            {error || precision}
           </p>
         ) : null}
         <div className="pt-5">
@@ -250,32 +222,26 @@ export function EarnScreen({
               setReview({ action, amount: all && savings ? savings : value, all });
             }}
           >
-            {action === 'deposit'
-              ? en
-                ? 'Review deposit'
-                : 'Revisar depósito'
-              : en
-                ? 'Review withdrawal'
-                : 'Revisar retiro'}
+            {action === 'deposit' ? t('reviewDeposit') : t('reviewWithdrawal')}
           </button>
         </div>
       </MoneyPanel>
 
       <details className="meli-paper-card meli-paper-card--strong px-4 py-3">
         <summary className="min-h-11 cursor-pointer py-3 text-[13px] text-text-muted">
-          {en ? 'How it works and its risks' : 'Cómo funciona y sus riesgos'}
+          {t('howWorksRisks')}
         </summary>
         <dl className="grid gap-3 pt-4 text-[12px]">
           <div className="flex justify-between gap-4">
-            <dt className="text-text-faint">{en ? 'Protocol' : 'Protocolo'}</dt>
+            <dt className="text-text-faint">{t('protocol')}</dt>
             <dd>Aave V3</dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-text-faint">{en ? 'Network' : 'Red'}</dt>
+            <dt className="text-text-faint">{t('network')}</dt>
             <dd>{networkName(networkId)}</dd>
           </div>
           <div>
-            <dt className="mb-1 text-text-faint">{en ? 'Pool contract' : 'Contrato Pool'}</dt>
+            <dt className="mb-1 text-text-faint">{t('poolContract')}</dt>
             <dd className="break-all font-mono text-[11px]">{network.aave.pool}</dd>
             {network.chain.blockExplorers ? (
               <a
@@ -284,63 +250,28 @@ export function EarnScreen({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {en ? 'View in explorer' : 'Ver en explorador'} ↗
+                {t('viewExplorer')} ↗
               </a>
             ) : null}
           </div>
         </dl>
-        <p className="mt-5 mb-2 text-[12px] text-text-muted">
-          {en ? 'Good to know' : 'Antes de empezar'}
-        </p>
+        <p className="mt-5 mb-2 text-[12px] text-text-muted">{t('goodKnow')}</p>
         <ul className="flex list-disc flex-col gap-1 pb-2 pl-4 text-[12px] leading-relaxed text-text-faint">
-          <li>
-            {en
-              ? 'The rate is variable and not guaranteed.'
-              : 'La tasa es variable y no está garantizada.'}
-          </li>
-          <li>
-            {en
-              ? 'Your USDC is lent through Aave, a public protocol. Like any smart contract, it carries risk.'
-              : 'Tus USDC se prestan a través de Aave, un protocolo público. Como todo contrato inteligente, tiene riesgos.'}
-          </li>
-          <li>
-            {en
-              ? 'You can withdraw anytime, as long as Aave has liquidity (so far it always has, instantly).'
-              : 'Retiras cuando quieras, mientras Aave tenga liquidez (hasta ahora siempre la tuvo, al instante).'}
-          </li>
-          <li>
-            {en
-              ? 'The money is still yours: GatoPago never holds it.'
-              : 'El dinero sigue siendo tuyo: GatoPago nunca lo custodia.'}
-          </li>
+          <li>{t('rateVariableNotGuaranteed')}</li>
+          <li>{t('usdcLentThroughAave')}</li>
+          <li>{t('withdrawAnytimeLongAave')}</li>
+          <li>{t('moneyStillYoursGatopago')}</li>
         </ul>
       </details>
 
       {review ? (
         <ConfirmSheet
-          title={
-            review.action === 'deposit'
-              ? en
-                ? 'Confirm deposit'
-                : 'Confirmar depósito'
-              : en
-                ? 'Confirm withdrawal'
-                : 'Confirmar retiro'
-          }
-          amount={formatUsdc(review.amount, en)}
+          title={review.action === 'deposit' ? t('confirmDeposit') : t('confirmWithdrawal')}
+          amount={formatUsdc(review.amount, locale)}
           unit="USDC"
-          confirmLabel={
-            review.action === 'deposit'
-              ? en
-                ? 'Confirm deposit'
-                : 'Confirmar depósito'
-              : en
-                ? 'Confirm withdrawal'
-                : 'Confirmar retiro'
-          }
-          english={en}
+          confirmLabel={review.action === 'deposit' ? t('confirmDeposit') : t('confirmWithdrawal')}
           busy={busy}
-          busyLabel={en ? 'Confirm on your device…' : 'Confirma en tu dispositivo…'}
+          busyLabel={t('confirmDevice')}
           error={error}
           onCancel={() => setReview(null)}
           onConfirm={() =>
@@ -356,30 +287,17 @@ export function EarnScreen({
         >
           <p className="mb-3 text-center text-[13px] leading-relaxed text-text-muted">
             {review.action === 'deposit'
-              ? en
-                ? 'It moves from your balance to Grow, where it starts earning interest. You can withdraw it whenever you want.'
-                : 'Pasa de tu saldo a Crecer, donde empieza a ganar intereses. Puedes retirarlo cuando quieras.'
+              ? t('movesBalanceGrowWhere')
               : review.all
-                ? en
-                  ? 'You withdraw everything in Grow, interest included. The final amount may be a little higher.'
-                  : 'Retiras todo lo que tienes en Crecer, intereses incluidos. El monto final puede ser un poco mayor.'
-                : en
-                  ? 'It moves from Grow back to your balance, ready to use.'
-                  : 'Vuelve de Crecer a tu saldo, listo para usar.'}
+                ? t('withdrawEverythingGrowInterest')
+                : t('movesGrowBackBalance')}
           </p>
           {review.action === 'deposit' && rate ? (
             <p className="mb-5 text-center text-[12px] text-text-faint">
-              {en
-                ? `Today’s rate: ${rate}% a year. It is variable and not guaranteed.`
-                : `Tasa de hoy: ${rate}% anual. Es variable y no está garantizada.`}
+              {t('todaysRateYearVariable', { rate })}
             </p>
           ) : null}
-          <SigningDetails
-            wallet={session.wallet}
-            networkId={networkId}
-            calls={calls}
-            english={en}
-          />
+          <SigningDetails wallet={session.wallet} networkId={networkId} calls={calls} />
         </ConfirmSheet>
       ) : null}
     </>

@@ -1,9 +1,16 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { Landing } from '../src/marketing/Landing';
 import { consumerRoutes } from '../src/consumer/routes';
+import english from '../src/messages/en.json';
+import spanish from '../src/messages/es.json';
+
+/** The landing in `lang`, with its texts as the page reads them from the catalog. */
+const landing = (lang: 'es' | 'en') =>
+  renderToStaticMarkup(
+    createElement(Landing, { lang, copy: (lang === 'en' ? english : spanish).Landing }),
+  );
 
 vi.mock('../src/marketing/MeliSprite', () => ({
   MeliSprite: ({ variant }: { variant: string }) =>
@@ -14,7 +21,7 @@ describe('Complete product landing', () => {
   it.each(['es', 'en'] as const)(
     'keeps %s product sections, brand and accurate access facts',
     (lang) => {
-      const html = renderToStaticMarkup(createElement(Landing, { lang }));
+      const html = landing(lang);
       expect(html).toContain('src="/Logo_gatopago.svg"');
       expect(html).toContain('data-meli-variant="head-neutral"');
       expect(html).toContain('data-meli-variant="body-sitting"');
@@ -37,7 +44,7 @@ describe('Complete product landing', () => {
   it.each(['es', 'en'] as const)(
     'has no broken anchors or unavailable action links in %s',
     (lang) => {
-      const html = renderToStaticMarkup(createElement(Landing, { lang }));
+      const html = landing(lang);
       const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]));
       const links = [...html.matchAll(/\bhref="([^"]+)"/g)].map((match) => match[1]);
       // GatoPago Business, the merchant console, is its own site.
@@ -80,11 +87,9 @@ describe('Complete product landing', () => {
     },
   );
   it('links to an example payment request', () => {
-    const html = renderToStaticMarkup(createElement(Landing, { lang: 'es' }));
+    const html = landing('es');
     expect(html).toContain('Ver el cobro de ejemplo');
     expect(html).toContain('href="/pay/demo-cafe-norte"');
-    expect(readFileSync('src/marketing/DemoPayment.tsx', 'utf8').replace(/\s+/g, ' ')).toContain(
-      'Así ven tus clientes tus links de cobro',
-    );
+    expect(spanish.Demo.description).toContain('Así ven tus clientes tus links de cobro');
   });
 });

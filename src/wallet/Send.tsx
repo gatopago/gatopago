@@ -3,7 +3,9 @@
 import { useState, type FormEvent } from 'react';
 import { useAction } from './useAction';
 import { useSearchParams } from 'next/navigation';
-import { isAddress, isAddressEqual, parseUnits, type Address, type Hex } from 'viem';
+import { isAddress, isAddressEqual, type Address, type Hex } from 'viem';
+import { exactUnits, tooPrecise } from '../lib/amount';
+import { useFailureMessage } from './messages';
 import { BackHeader, MoneyPanel, TransactionActions } from '../consumer/Primitives';
 import { AmountInput, SelectMenu } from '../consumer/SelectMenu';
 import { RecipientShortcuts } from '../consumer/RecipientShortcuts';
@@ -36,6 +38,7 @@ import { walletNetwork } from '@gatopago/shared/networks';
 import { quoteSettlement, settlementAllowed, settlementCalls } from '@gatopago/shared/settlement';
 import { payoutCalls } from '@gatopago/shared/rules';
 import { TokenSelect } from '../consumer/TokenSelect';
+import { useTranslations, useLocale } from 'next-intl';
 
 /** A send: USDC (on its network or across through CCTP), or another coin on its own network. */
 type Review = EvmReview | StellarReview;
@@ -70,15 +73,10 @@ type EvmReview = Transfer & {
   };
 };
 
-export function Send({
-  settings,
-  session,
-  english: en,
-}: {
-  settings: ClientSettings;
-  session: Session;
-  english: boolean;
-}) {
+export function Send({ settings, session }: { settings: ClientSettings; session: Session }) {
+  const messageFor = useFailureMessage();
+  const locale = useLocale();
+  const t = useTranslations('Send');
   const params = useSearchParams();
   const { balances, holding, stellar, stellarUsdc, refresh } = useBalances(settings, session);
   const stellarId = stellar ? settings.stellar!.network : null;
@@ -90,7 +88,7 @@ export function Send({
   const [coin, setCoin] = useState('USDC');
   const chosen = others.find((asset) => asset.symbol === coin);
   const symbol = chosen?.symbol ?? 'USDC';
-  // XLM goes only to Stellar addresses: never to a @username nor across networks.
+  // XLM never leaves Stellar: it goes to a Stellar address, or to a @username's Stellar account.
   const xlm = !!chosen && chosen.holdings[0].networkId === settings.stellar?.network;
   // Where the coin's network has Agora Instant Settlement, the recipient may receive another coin.
   const settlementNetwork = chosen && !xlm ? walletNetwork(chosen.holdings[0].networkId) : null;
@@ -128,32 +126,51 @@ export function Send({
   const decimals = chosen?.decimals ?? USDC_DECIMALS;
   // A balance is shown cut (it never shows more than there is); what is sent, exactly.
   const balanceText = (value: bigint, places: number) =>
-    chosen ? formatHolding(value, places, en) : formatBalance(value, en);
+    chosen ? formatHolding(value, places, locale) : formatBalance(value, locale);
   const [amount, setAmount] = useState('');
+  const precision = tooPrecise(amount, decimals) ? messageFor(new Error('TOO_MANY_DECIMALS')) : '';
   const [review, setReview] = useState<Review | null>(null);
   const [sent, setSent] = useState<{ hash: string; review: Review } | null>(null);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
-  const { busy, error, run: perform } = useAction(en);
+  const { busy, error, run: perform } = useAction();
 
   function prepare(event: FormEvent) {
     event.preventDefault();
     perform(async () => {
-      const value = parseUnits(amount.replace(',', '.'), decimals);
+      const value = exactUnits(amount, decimals);
       if (value <= 0n) throw new Error('INVALID_AMOUNT');
       const text = recipient.trim();
+      const lookup = async () => {
+        const found = await api<Recipient>(
+          settings.apiOrigin,
+          `recipients/${encodeURIComponent(text.replace(/^@/, '').toLowerCase())}`,
+        );
+        return {
+          found,
+          label: `@${found.username}${found.display_name ? ` · ${found.display_name}` : ''}`,
+        };
+      };
       if (xlm) {
-        await checkStellarRecipient(settings, text, 'XLM');
-        if (text === stellar?.account) throw new Error('SELF_TRANSFER');
+        let to = text;
+        let label = text;
+        if (destination === 'username') {
+          const { found, label: named } = await lookup();
+          if (!found.stellar_address) throw new Error('STELLAR_RECIPIENT_UNAVAILABLE');
+          to = found.stellar_address;
+          label = named;
+        }
+        await checkStellarRecipient(settings, to, 'XLM');
+        if (to === stellar?.account) throw new Error('SELF_TRANSFER');
         if ((assetBalance(chosen!, holding) ?? 0n) < value) throw new Error('INSUFFICIENT_COIN');
         const network = settings.stellar!.network;
         setReview({
           stellar: true,
           from: network,
           to: network,
-          recipient: text,
+          recipient: to,
           amount: value,
           fee: 0n,
-          label: text,
+          label,
           calls: null,
           coin: { symbol: 'XLM', token: null, decimals },
         });
@@ -179,12 +196,9 @@ export function Send({
         to = text;
         label = text;
       } else {
-        const found = await api<Recipient>(
-          settings.apiOrigin,
-          `recipients/${encodeURIComponent(text.replace(/^@/, '').toLowerCase())}`,
-        );
+        const { found, label: named } = await lookup();
         to = found.address;
-        label = `@${found.username}${found.display_name ? ` · ${found.display_name}` : ''}`;
+        label = named;
       }
       if (isAddressEqual(to, session.wallet.address)) throw new Error('SELF_TRANSFER');
       if (chosen) {
@@ -287,30 +301,19 @@ export function Send({
 
   return (
     <>
-      <BackHeader title={en ? 'Send money' : 'Enviar dinero'} english={en} to="/move" />
-      <StageOverlay
-        label={
-          busy && !review && !sent
-            ? en
-              ? 'Preparing your transfer…'
-              : 'Preparando tu envío…'
-            : null
-        }
-      />
-      {error && !review ? (
+      <BackHeader title={t('sendMoney')} to="/move" />
+      <StageOverlay label={busy && !review && !sent ? t('preparingTransfer') : null} />
+      {(error || precision) && !review ? (
         <p className="auth-error" role="alert">
-          {error}
+          {error || precision}
         </p>
       ) : null}
       {sent && receipt ? (
         <ReceiptScreen
           receipt={receipt}
-          english={en}
           note={
             sent.review.from !== sent.review.to
-              ? en
-                ? `Arrives on ${networkName(sent.review.to)} within minutes.`
-                : `Llega a ${networkName(sent.review.to)} en unos minutos.`
+              ? t('arrivesWithinMinutes', { to: networkName(sent.review.to) })
               : undefined
           }
         >
@@ -320,7 +323,6 @@ export function Send({
                 from={sent.review.from}
                 to={sent.review.to}
                 hash={sent.hash}
-                english={en}
                 onDelivered={() => forgetCrossing(session.wallet.address, sent.hash)}
                 delivery={
                   sent.review.stellar
@@ -330,8 +332,11 @@ export function Send({
               />
             </div>
           ) : null}
-          <NavigationLink href={localizedPath('/app', en)} className="btn btn-ghost btn-block mt-4">
-            {en ? 'Go to home' : 'Ir al inicio'}
+          <NavigationLink
+            href={localizedPath('/app', locale)}
+            className="btn btn-ghost btn-block mt-4"
+          >
+            {t('goHome')}
           </NavigationLink>
           <button
             type="button"
@@ -342,7 +347,7 @@ export function Send({
               setAmount('');
             }}
           >
-            {en ? 'Send again' : 'Enviar otra vez'}
+            {t('sendAgain')}
           </button>
         </ReceiptScreen>
       ) : (
@@ -350,7 +355,7 @@ export function Send({
           <MoneyPanel className="mb-5 flex flex-col items-center">
             <AmountInput
               name="amount"
-              aria-label={en ? `Amount in ${symbol}` : `Monto en ${symbol}`}
+              aria-label={t('amount', { symbol })}
               placeholder="0"
               value={amount}
               disabled={busy}
@@ -361,7 +366,7 @@ export function Send({
               <div className="mt-3">
                 <TokenSelect
                   value={symbol}
-                  label={en ? 'Currency' : 'Moneda'}
+                  label={t('currency')}
                   options={[
                     { value: 'USDC', symbol: 'USDC', label: networkName(settings.homeNetwork) },
                     ...others.map((asset) => ({
@@ -370,18 +375,7 @@ export function Send({
                       label: networkName(asset.holdings[0].networkId),
                     })),
                   ]}
-                  onChange={(value) => {
-                    setCoin(value);
-                    // XLM has no @username: it goes to a Stellar address.
-                    if (
-                      others.find((asset) => asset.symbol === value)?.holdings[0].networkId ===
-                      settings.stellar?.network
-                    ) {
-                      setDestination('address');
-                      setRecipient('');
-                    }
-                  }}
-                  english={en}
+                  onChange={setCoin}
                   disabled={busy}
                 />
               </div>
@@ -393,9 +387,7 @@ export function Send({
             )}
             {settleOptions.length > 0 ? (
               <div className="mt-4 w-full max-w-[300px]">
-                <p className="mb-2 text-center text-[12px] text-text-muted">
-                  {en ? 'They receive' : 'Recibe en'}
-                </p>
+                <p className="mb-2 text-center text-[12px] text-text-muted">{t('theyReceiveOn')}</p>
                 <div className="seg-track seg-track-block">
                   {[chosen!.symbol, ...settleOptions.map((token) => token.symbol)].map((option) => (
                     <button
@@ -413,55 +405,40 @@ export function Send({
                 </div>
                 {settleInto ? (
                   <p className="mt-2 text-center text-[11px] leading-snug text-text-faint">
-                    {en
-                      ? `Agora converts it at a fixed price and it arrives as ${settleInto.symbol} in seconds.`
-                      : `Agora lo convierte a precio fijo y le llega en ${settleInto.symbol} en segundos.`}
+                    {t('agoraConvertsFixedPrice', { symbol: settleInto.symbol })}
                   </p>
                 ) : null}
               </div>
             ) : null}
             <p className="mt-2 text-[12px] text-text-faint">
-              {en ? 'Available' : 'Disponible'}:{' '}
-              {typeof total === 'bigint' ? balanceText(total, decimals) : '—'} {symbol}
+              {t('available')}: {typeof total === 'bigint' ? balanceText(total, decimals) : '—'}{' '}
+              {symbol}
             </p>
             {chosen ? null : (
-              <ElsewhereNote
-                settings={settings}
-                session={session}
-                english={en}
-                className="mt-1 text-center"
-              />
+              <ElsewhereNote settings={settings} session={session} className="mt-1 text-center" />
             )}
           </MoneyPanel>
           <MoneyPanel className="mb-5">
-            <p className="mb-3 text-[13px] font-semibold">{en ? 'To whom?' : '¿A quién?'}</p>
-            {xlm ? null : (
-              <div className="seg-track seg-track-block mb-4">
-                {(['username', 'address'] as const).map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    className="seg-item"
-                    aria-pressed={destination === type}
-                    data-active={destination === type}
-                    onClick={() => {
-                      setDestination(type);
-                      setRecipient('');
-                      // A GatoPago account receives on the home network.
-                      if (type === 'username') setNetworkId(settings.homeNetwork);
-                    }}
-                  >
-                    {type === 'address'
-                      ? en
-                        ? 'Address'
-                        : 'Dirección'
-                      : en
-                        ? '@username'
-                        : '@usuario'}
-                  </button>
-                ))}
-              </div>
-            )}
+            <p className="mb-3 text-[13px] font-semibold">{t('whom')}</p>
+            <div className="seg-track seg-track-block mb-4">
+              {(['username', 'address'] as const).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  className="seg-item"
+                  aria-pressed={destination === type}
+                  data-active={destination === type}
+                  onClick={() => {
+                    setDestination(type);
+                    setRecipient('');
+                    // A GatoPago account receives on the home network.
+                    if (type === 'username') setNetworkId(settings.homeNetwork);
+                  }}
+                >
+                  {type === 'address' ? t('address') : t('username')}
+                </button>
+              ))}
+            </div>
             <div className="relative">
               {destination === 'username' ? (
                 <span
@@ -476,12 +453,10 @@ export function Send({
                 autoComplete="off"
                 autoCapitalize="none"
                 spellCheck={false}
-                aria-label={destination === 'address' ? 'Wallet' : en ? 'Username' : 'Usuario'}
+                aria-label={destination === 'address' ? 'Wallet' : t('usernameLabel')}
                 placeholder={
                   destination === 'username'
-                    ? en
-                      ? 'username'
-                      : 'usuario'
+                    ? t('usernameWord')
                     : xlm || networkId === stellarId
                       ? 'G… / C…'
                       : '0x…'
@@ -502,28 +477,21 @@ export function Send({
               <RecipientShortcuts
                 settings={settings}
                 session={session}
-                english={en}
                 selected={[recipient]}
                 onPick={setRecipient}
                 className="mt-3"
               />
             ) : null}
             <p className="mt-3 text-[12px] leading-relaxed text-text-muted">
-              {xlm
-                ? en
-                  ? 'A Stellar address (G… or C…). XLM is sent only within Stellar.'
-                  : 'Una dirección de Stellar (G… o C…). XLM se envía solo dentro de Stellar.'
-                : destination === 'username'
-                  ? en
-                    ? 'Their GatoPago username. It arrives instantly, with no fees.'
-                    : 'Su usuario de GatoPago. Le llega al instante y sin comisión.'
-                  : en
-                    ? 'Paste the address and choose its network. For an exchange, make sure it accepts USDC on that network.'
-                    : 'Pega la dirección y elige su red. Si es de un exchange, confirma que acepte USDC en esa red.'}
+              {destination === 'username'
+                ? t('theirGatopagoUsernameArrives')
+                : xlm
+                  ? t('stellarAddressGC')
+                  : t('pasteAddressChooseNetwork')}
             </p>
             {destination === 'address' && !chosen ? (
               <SelectMenu
-                label={en ? 'Network of the address' : 'Red de la dirección'}
+                label={t('networkAddress')}
                 value={networkId}
                 options={[...settings.networks, ...(stellarId ? [stellarId] : [])].map((id) => ({
                   value: id,
@@ -531,7 +499,6 @@ export function Send({
                   network: id,
                 }))}
                 onChange={setNetworkId}
-                english={en}
                 disabled={busy}
                 className="mt-4"
               />
@@ -543,20 +510,14 @@ export function Send({
               className="btn btn-primary btn-block"
               disabled={busy || !recipient || !(Number(amount) > 0)}
             >
-              {busy
-                ? en
-                  ? 'Preparing…'
-                  : 'Preparando…'
-                : en
-                  ? 'Review transfer'
-                  : 'Revisar envío'}
+              {busy ? t('preparing') : t('reviewTransfer')}
             </button>
             {recipient && amount !== '' && !(Number(amount) > 0) ? (
               <p
                 role="status"
                 className="animate-fade-in mt-3 text-center text-[12px] text-text-faint"
               >
-                {en ? 'Enter an amount above zero.' : 'Ingresa un monto mayor a cero.'}
+                {t('enterAmountAboveZero')}
               </p>
             ) : null}
           </TransactionActions>
@@ -564,60 +525,41 @@ export function Send({
       )}
       {review ? (
         <ConfirmSheet
-          title={en ? 'Confirm your send' : 'Confirma tu envío'}
-          amountLabel={en ? 'You will send' : 'Vas a enviar'}
+          title={t('confirmSend')}
+          amountLabel={t('send')}
           amount={
             review.coin
-              ? formatAmount(review.amount, review.coin.decimals, en, 2)
-              : formatUsdc(review.amount, en)
+              ? formatAmount(review.amount, review.coin.decimals, locale, 2)
+              : formatUsdc(review.amount, locale)
           }
           unit={review.coin?.symbol ?? 'USDC'}
-          warning={
-            en
-              ? 'Check who receives it: a transfer cannot be undone. GatoPago pays the network fee.'
-              : 'Revisa quién lo recibe: un envío no se puede deshacer. GatoPago paga la comisión de red.'
-          }
-          confirmLabel={en ? 'Confirm and send' : 'Confirmar y enviar'}
-          english={en}
+          warning={t('checkWhoReceivesTransfer')}
+          confirmLabel={t('confirmAndSend')}
           busy={busy}
-          busyLabel={
-            en
-              ? 'Confirm on your device. Sending your money…'
-              : 'Confirma en tu dispositivo. Enviando tu dinero…'
-          }
+          busyLabel={t('confirmDeviceSendingMoney')}
           error={error}
           onConfirm={() => confirm(review)}
           onCancel={() => setReview(null)}
         >
-          <ConfirmDestination
-            label={review.label.split(' · ')[0]}
-            address={review.recipient}
-            english={en}
-          />
+          <ConfirmDestination label={review.label.split(' · ')[0]} address={review.recipient} />
           <ConfirmDetails
             rows={[
               ...(review.settle
                 ? ([
                     [
-                      en ? 'They receive' : 'Recibe',
-                      `${formatAmount(review.settle.quote, review.settle.decimals, en)} ${review.settle.symbol}`,
+                      t('theyReceive'),
+                      `${formatAmount(review.settle.quote, review.settle.decimals, locale)} ${review.settle.symbol}`,
                     ],
-                    [
-                      en ? 'Price' : 'Precio',
-                      en ? 'Fixed, no slippage (Agora)' : 'Fijo, sin deslizamiento (Agora)',
-                    ],
+                    [t('price'), t('fixedNoSlippageAgora')],
                   ] as const)
                 : []),
-              [en ? 'Network' : 'Red', networkName(review.to)],
+              [t('network'), networkName(review.to)],
               ...(review.from !== review.to
-                ? ([[en ? 'From' : 'Desde', networkName(review.from)]] as const)
+                ? ([[t('from'), networkName(review.from)]] as const)
                 : []),
               ...(review.fee > 0n
                 ? ([
-                    [
-                      en ? 'Circle transfer fee' : 'Comisión de Circle',
-                      `${en ? 'up to' : 'hasta'} ${formatUsdc(review.fee, en)} USDC`,
-                    ],
+                    [t('circleTransferFee'), t('upTo', { fee: formatUsdc(review.fee, locale) })],
                   ] as const)
                 : []),
             ]}
@@ -627,7 +569,6 @@ export function Send({
               wallet={session.wallet}
               networkId={review.from}
               calls={callsFor(review)}
-              english={en}
             />
           )}
         </ConfirmSheet>

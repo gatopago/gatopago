@@ -7,6 +7,7 @@ import { consumerRoutes, localizedPath, safeNext } from '../src/consumer/routes'
 import { parseConsumerQr, qrReviewPath, reviewedRecipient } from '../src/consumer/qr';
 import { RecoveryScreen } from '../src/consumer/AccountScreens';
 import { MoveMenu } from '../src/consumer/MoveMenu';
+import { withTexts } from './translations';
 
 vi.mock('../src/marketing/MeliSprite', () => ({
   MeliSprite: () => createElement('span', { 'aria-hidden': true }),
@@ -45,8 +46,8 @@ describe('Next migration inventory', () => {
     }
   });
   it('preserves existing query parameters and replaces the locale once', () => {
-    expect(localizedPath('/move?flow=receive&lang=es', true)).toBe('/move?flow=receive&lang=en');
-    expect(localizedPath('/move?flow=receive&lang=en', false)).toBe('/move?flow=receive');
+    expect(localizedPath('/move?flow=receive&lang=es', 'en')).toBe('/move?flow=receive&lang=en');
+    expect(localizedPath('/move?flow=receive&lang=en', 'es')).toBe('/move?flow=receive');
   });
   it.each(['/pay/[linkId]'])('does not revive the retired payment link API for %s', (path) => {
     expect(existsSync(resolve(`src/app/(es)${path}/page.tsx`))).toBe(false);
@@ -59,7 +60,7 @@ describe('Next migration inventory', () => {
     expect(parseConsumerQr('/pay/demo-cafe-norte', 'https://gatopago.com')).toBeNull();
   });
   it('offers the V2 Move choices, paying a team and moving between networks', () => {
-    const html = renderToStaticMarkup(createElement(MoveMenu, { english: false }));
+    const html = renderToStaticMarkup(withTexts(createElement(MoveMenu)));
     // One view for everyone: USDC lives on the home network, and between networks brings it there.
     for (const path of ['/move?flow=receive', '/send', '/team', '/swap', '/crosschain'])
       expect(html).toContain(`href="${path.replace('&', '&amp;')}"`);
@@ -67,7 +68,9 @@ describe('Next migration inventory', () => {
   });
   it('explains permanent loss of access without presenting a recovery form', () => {
     for (const english of [true, false]) {
-      const html = renderToStaticMarkup(createElement(RecoveryScreen, { english }));
+      const html = renderToStaticMarkup(
+        withTexts(createElement(RecoveryScreen), english ? 'en' : 'es'),
+      );
       expect(html).toContain(
         english ? 'access is lost permanently' : 'pierdes el acceso definitivamente',
       );

@@ -11,6 +11,7 @@ import { downloadCard, shareCard } from './exportCard';
 import { ChevronDownIcon } from './Icons';
 import { Sheet } from './Sheet';
 import { StageOverlay } from './StageOverlay';
+import { useLocale, useTranslations, type Locale } from 'next-intl';
 
 /**
  * V2's one confirm-before-signing sheet: every operation that moves money confirms through this
@@ -24,7 +25,6 @@ export function ConfirmSheet({
   warning,
   confirmLabel,
   paymentAction = false,
-  english: en,
   busy,
   busyLabel,
   error,
@@ -39,7 +39,6 @@ export function ConfirmSheet({
   warning?: string;
   confirmLabel: string;
   paymentAction?: boolean;
-  english: boolean;
   busy: boolean;
   /** Shown full screen while the passkey prompt and the operation run. */
   busyLabel: string;
@@ -48,6 +47,7 @@ export function ConfirmSheet({
   onCancel: () => void;
   children?: ReactNode;
 }) {
+  const t = useTranslations('PaymentSheets');
   return (
     <Sheet titleId="confirm-sheet-title" onClose={onCancel} busy={busy}>
       <h2 id="confirm-sheet-title" className="meli-kicker mb-5">
@@ -68,9 +68,7 @@ export function ConfirmSheet({
       {children}
       <p className="mb-5 border-l-4 border-info bg-info/8 px-3 py-2 text-[12px] leading-relaxed text-text-muted">
         {warning ? `${warning} ` : null}
-        {en
-          ? 'You confirm it with your fingerprint, face or device PIN.'
-          : 'Lo confirmas con tu huella, tu rostro o el PIN de tu dispositivo.'}
+        {t('confirmFingerprintFaceDevice')}
       </p>
       {error ? (
         <p className="auth-error mb-4" role="alert">
@@ -87,25 +85,18 @@ export function ConfirmSheet({
         {confirmLabel}
       </button>
       <button type="button" disabled={busy} data-sheet-close className="btn-text mt-1 w-full">
-        {en ? 'Cancel' : 'Cancelar'}
+        {t('cancel')}
       </button>
     </Sheet>
   );
 }
 
 /** Who receives, as V2's confirmation shows it: `@username` over its address, or the address. */
-export function ConfirmDestination({
-  label,
-  address,
-  english: en,
-}: {
-  label: string;
-  address: string;
-  english: boolean;
-}) {
+export function ConfirmDestination({ label, address }: { label: string; address: string }) {
+  const t = useTranslations('PaymentSheets');
   return (
     <div className="mb-3 border border-border bg-surface px-4 py-3">
-      <span className="mb-1 block text-[12px] text-text-muted">{en ? 'To' : 'Para'}</span>
+      <span className="mb-1 block text-[12px] text-text-muted">{t('to')}</span>
       {label === address ? (
         <span className="break-all font-mono text-[13px] text-text">{address}</span>
       ) : (
@@ -160,13 +151,12 @@ export function SigningDetails({
   wallet,
   networkId,
   calls,
-  english: en,
 }: {
   wallet: Wallet;
   networkId: string;
   calls: readonly { to: Address; data: Hex; value?: bigint }[];
-  english: boolean;
 }) {
+  const t = useTranslations('PaymentSheets');
   const [open, setOpen] = useState(false);
   const [details, setDetails] = useState<{ entryPoint: Address; action: Hex } | null>(null);
   // Read from the calls alone: showing them must not ask for the passkey (a Mera account would).
@@ -211,13 +201,7 @@ export function SigningDetails({
             </svg>
           </span>
           <span className="truncate text-[13px] text-text-muted">
-            {open
-              ? en
-                ? 'Hide technical details'
-                : 'Ocultar detalles técnicos'
-              : en
-                ? 'What am I signing?'
-                : '¿Qué estoy firmando?'}
+            {open ? t('hideTechnicalDetails') : t('whatAmISigning')}
           </span>
         </span>
         <ChevronDownIcon
@@ -227,27 +211,13 @@ export function SigningDetails({
       {open ? (
         <div className="animate-fade-in mt-2 border border-border bg-surface px-3.5">
           <p className="pt-3 pb-1 text-[11px] leading-relaxed text-cat-300">
-            {en
-              ? 'Your passkey signs exactly this operation, with the EIP-712 standard. Nobody else can authorize it.'
-              : 'Tu llave firma exactamente esta operación, con el estándar EIP-712. Nadie más puede autorizarla.'}
+            {t('passkeySignsExactlyOperation')}
           </p>
-          <SigningRow label={en ? 'Standard' : 'Estándar'} value="EIP-712 · ERC-4337" />
-          <SigningRow label={en ? 'Network' : 'Red'} value={`${chain.name} · ${chain.id}`} />
-          <SigningRow
-            label={en ? 'Authorizing account' : 'Cuenta que autoriza'}
-            value={wallet.address}
-            mono
-          />
-          <SigningRow
-            label={en ? 'Verifying contract' : 'Contrato verificador'}
-            value={details?.entryPoint ?? '…'}
-            mono
-          />
-          <SigningRow
-            label={en ? 'Action fingerprint' : 'Huella de la acción'}
-            value={details?.action ?? '…'}
-            mono
-          />
+          <SigningRow label={t('standard')} value="EIP-712 · ERC-4337" />
+          <SigningRow label={t('network')} value={`${chain.name} · ${chain.id}`} />
+          <SigningRow label={t('authorizingAccount')} value={wallet.address} mono />
+          <SigningRow label={t('verifyingContract')} value={details?.entryPoint ?? '…'} mono />
+          <SigningRow label={t('actionFingerprint')} value={details?.action ?? '…'} mono />
         </div>
       ) : null}
     </div>
@@ -293,8 +263,8 @@ export function rememberBalanceHidden(hidden: boolean) {
 
 const short = (value: string) => (value.startsWith('0x') ? shortAddress(value) : value);
 
-const receiptAmount = (receipt: ReceiptData, en: boolean) =>
-  formatAmount(receipt.amount, receipt.decimals, en, 2);
+const receiptAmount = (receipt: ReceiptData, locale: Locale) =>
+  formatAmount(receipt.amount, receipt.decimals, locale, 2);
 
 const receiptFile = (receipt: ReceiptData) =>
   `gatopago-${formatUnits(receipt.amount, receipt.decimals)}-${receipt.currency}.png`;
@@ -302,18 +272,18 @@ const receiptFile = (receipt: ReceiptData) =>
 /** V2's receipt paper (the one with the check), the node exported as an image. */
 function ReceiptCard({
   receipt,
-  english: en,
   hidden = false,
   note,
   ref,
 }: {
   receipt: ReceiptData;
-  english: boolean;
   hidden?: boolean;
   /** Extra line under the counterparty, such as when a cross-network send arrives. */
   note?: string;
   ref: Ref<HTMLDivElement>;
 }) {
+  const locale = useLocale();
+  const t = useTranslations('PaymentSheets');
   const received = receipt.kind === 'received';
   const date = new Date(receipt.date);
   const url =
@@ -345,20 +315,12 @@ function ReceiptCard({
       </div>
       <p id="receipt-title" className="relative z-1 mb-1 text-[14px] text-paper-muted">
         {receipt.kind === 'swapped'
-          ? en
-            ? 'You swapped'
-            : 'Cambiaste'
+          ? t('swapped')
           : received
-            ? en
-              ? 'You received'
-              : 'Recibiste'
+            ? t('received')
             : receipt.kind === 'paid'
-              ? en
-                ? 'You paid'
-                : 'Pagaste'
-              : en
-                ? 'You sent'
-                : 'Enviaste'}
+              ? t('paid')
+              : t('sent')}
       </p>
       <p className="type-mono relative z-1 mb-4 max-w-full break-words text-center text-[40px] font-bold leading-tight text-paper-text">
         {hidden ? (
@@ -366,7 +328,7 @@ function ReceiptCard({
         ) : (
           <>
             {received ? '+' : '−'}
-            {receiptAmount(receipt, en)}
+            {receiptAmount(receipt, locale)}
             <span className="ml-1.5 text-[20px] text-paper-muted">{receipt.currency}</span>
           </>
         )}
@@ -374,7 +336,7 @@ function ReceiptCard({
       {receipt.counterparty ? (
         <div className="relative z-1 mb-1 flex items-center justify-center gap-2">
           <span className="text-[11px] uppercase tracking-[0.08em] text-paper-muted">
-            {received ? (en ? 'From' : 'De') : en ? 'To' : 'Para'}
+            {received ? t('from') : t('to')}
           </span>
           <span className="border border-paper-border bg-paper-2 px-2.5 py-0.5 font-mono text-[13px] text-paper-muted">
             {short(receipt.counterparty)}
@@ -391,9 +353,9 @@ function ReceiptCard({
       ) : null}
       <div className="relative z-1 mt-5 flex w-full flex-col gap-1.5 border border-paper-border bg-paper-2 px-4 py-3">
         <div className="flex items-center justify-between text-[12px]">
-          <span className="text-paper-muted">{en ? 'Date' : 'Fecha'}</span>
+          <span className="text-paper-muted">{t('date')}</span>
           <span className="text-paper-text">
-            {date.toLocaleDateString(en ? 'en' : 'es', {
+            {date.toLocaleDateString(locale, {
               day: 'numeric',
               month: 'long',
               year: 'numeric',
@@ -401,16 +363,14 @@ function ReceiptCard({
           </span>
         </div>
         <div className="flex items-center justify-between text-[12px]">
-          <span className="text-paper-muted">{en ? 'Time' : 'Hora'}</span>
+          <span className="text-paper-muted">{t('time')}</span>
           <span className="text-paper-text">
-            {date.toLocaleTimeString(en ? 'en' : 'es', { hour: '2-digit', minute: '2-digit' })}
+            {date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
         {receipt.hash ? (
           <div className="flex items-center justify-between gap-3 text-[12px]">
-            <span className="shrink-0 text-paper-muted">
-              {en ? 'Receipt no.' : 'N° de comprobante'}
-            </span>
+            <span className="shrink-0 text-paper-muted">{t('receiptNo')}</span>
             <span className="truncate font-mono text-paper-text">
               {`${receipt.hash.slice(0, 10)}…${receipt.hash.slice(-8)}`}
             </span>
@@ -418,7 +378,7 @@ function ReceiptCard({
         ) : null}
         {receipt.networkId ? (
           <div className="flex items-center justify-between gap-3 text-[12px]">
-            <span className="shrink-0 text-paper-muted">{en ? 'Network' : 'Red'}</span>
+            <span className="shrink-0 text-paper-muted">{t('network')}</span>
             <span className="text-right text-paper-text">{networkName(receipt.networkId)}</span>
           </div>
         ) : null}
@@ -429,21 +389,17 @@ function ReceiptCard({
             rel="noopener noreferrer"
             className="mt-2 text-center text-[12px] font-semibold text-cat-700 underline underline-offset-2"
           >
-            {en ? 'See it on the blockchain ↗' : 'Verlo en la blockchain ↗'}
+            {t('seeBlockchain')}
           </a>
         ) : null}
-        <p className="mt-1 text-center text-[11px] text-paper-muted">
-          GatoPago · {en ? 'Receipt' : 'Comprobante'}
-        </p>
+        <p className="mt-1 text-center text-[11px] text-paper-muted">GatoPago · {t('receipt')}</p>
       </div>
     </div>
   );
 }
 
-const downloadFailed = (en: boolean) =>
-  en ? "Couldn't download the receipt" : 'No se pudo descargar el comprobante';
-
-function useReceiptExport(en: boolean) {
+function useReceiptExport() {
+  const t = useTranslations('PaymentSheets');
   const pending = useRef(false);
   const [state, setState] = useState({ busy: false, error: '' });
   async function perform(action: () => Promise<unknown>) {
@@ -454,7 +410,7 @@ function useReceiptExport(en: boolean) {
     try {
       await action();
     } catch {
-      error = downloadFailed(en);
+      error = t('downloadFailed');
     } finally {
       pending.current = false;
       setState({ busy: false, error });
@@ -466,22 +422,21 @@ function useReceiptExport(en: boolean) {
 /** The receipt of a movement, opened from the account (Home, Activity). */
 export function Receipt({
   receipt,
-  english: en,
   onClose,
   action,
 }: {
   receipt: ReceiptData;
-  english: boolean;
   onClose: () => void;
   /** What to do next with this money (e.g. split a paid charge). */
   action?: ReactNode;
 }) {
+  const t = useTranslations('PaymentSheets');
   const card = useRef<HTMLDivElement>(null);
   const [hidden] = useState(balanceHidden);
-  const { busy, error, perform } = useReceiptExport(en);
+  const { busy, error, perform } = useReceiptExport();
   return (
     <Sheet titleId="receipt-title" onClose={onClose} variant="receipt">
-      <ReceiptCard ref={card} receipt={receipt} english={en} hidden={hidden} />
+      <ReceiptCard ref={card} receipt={receipt} hidden={hidden} />
       <div className="mt-4 flex w-full gap-3">
         <button
           type="button"
@@ -490,10 +445,10 @@ export function Receipt({
           aria-busy={busy}
           onClick={() => void perform(() => downloadCard(card.current, receiptFile(receipt)))}
         >
-          {en ? 'Download receipt' : 'Descargar comprobante'}
+          {t('downloadReceipt')}
         </button>
         <button type="button" className="btn btn-ghost shrink-0" data-sheet-close>
-          {en ? 'Close' : 'Cerrar'}
+          {t('close')}
         </button>
       </div>
       {error ? (
@@ -509,23 +464,23 @@ export function Receipt({
 /** What a finished payment or send shows: its receipt, ready to share or download. */
 export function ReceiptScreen({
   receipt,
-  english: en,
   note,
   children,
 }: {
   receipt: ReceiptData;
-  english: boolean;
   note?: string;
   /** Follow-up actions (back home, send again). */
   children?: ReactNode;
 }) {
+  const locale = useLocale();
+  const t = useTranslations('PaymentSheets');
   const card = useRef<HTMLDivElement>(null);
-  const { busy, error, perform } = useReceiptExport(en);
+  const { busy, error, perform } = useReceiptExport();
   const url =
     receipt.hash && receipt.networkId ? explorerUrl(receipt.networkId, receipt.hash) : null;
   return (
     <div className="flex flex-1 flex-col justify-center" role="status" aria-live="polite">
-      <ReceiptCard ref={card} receipt={receipt} english={en} note={note} />
+      <ReceiptCard ref={card} receipt={receipt} note={note} />
       <div className="mt-6 flex gap-3">
         <button
           type="button"
@@ -538,19 +493,21 @@ export function ReceiptScreen({
                 filename: receiptFile(receipt),
                 text:
                   receipt.kind === 'paid'
-                    ? en
-                      ? `I paid ${receiptAmount(receipt, en)} ${receipt.currency} with GatoPago`
-                      : `Pagué ${receiptAmount(receipt, en)} ${receipt.currency} con GatoPago`
-                    : en
-                      ? `I sent ${receiptAmount(receipt, en)} ${receipt.currency} with GatoPago`
-                      : `Envié ${receiptAmount(receipt, en)} ${receipt.currency} con GatoPago`,
+                    ? t('iPaidGatopago', {
+                        amount: receiptAmount(receipt, locale),
+                        currency: receipt.currency,
+                      })
+                    : t('iSentGatopago', {
+                        amount: receiptAmount(receipt, locale),
+                        currency: receipt.currency,
+                      }),
                 url: url ?? undefined,
               });
               if (result === 'unsupported') await downloadCard(card.current, receiptFile(receipt));
             })
           }
         >
-          {en ? 'Share' : 'Compartir'}
+          {t('share')}
         </button>
         <button
           type="button"
@@ -559,7 +516,7 @@ export function ReceiptScreen({
           aria-busy={busy}
           onClick={() => void perform(() => downloadCard(card.current, receiptFile(receipt)))}
         >
-          {en ? 'Download' : 'Descargar'}
+          {t('download')}
         </button>
       </div>
       {error ? (

@@ -3,7 +3,9 @@
 import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAction } from './useAction';
-import { formatUnits, parseUnits, type Address, type Hex } from 'viem';
+import { formatUnits, type Address, type Hex } from 'viem';
+import { exactUnits, tooPrecise } from '../lib/amount';
+import { useFailureMessage } from './messages';
 import { crosschainCalls, crosschainFee } from '@gatopago/shared/crosschain';
 import { walletNetwork } from '@gatopago/shared/networks';
 import { NavigationLink } from '../consumer/NavigationLink';
@@ -26,6 +28,7 @@ import {
   stellarArrived,
   stellarBurnsAllowed,
 } from './stellar';
+import { useTranslations, useLocale } from 'next-intl';
 
 /**
  * A crossing; `calls` burn on an EVM network, `null` when it leaves from Stellar, where
@@ -41,15 +44,10 @@ type Move = {
 };
 
 /** Moves the user's own USDC between networks with Circle's CCTP, by default to the home network. */
-export function Crosschain({
-  settings,
-  session,
-  english: en,
-}: {
-  settings: ClientSettings;
-  session: Session;
-  english: boolean;
-}) {
+export function Crosschain({ settings, session }: { settings: ClientSettings; session: Session }) {
+  const messageFor = useFailureMessage();
+  const locale = useLocale();
+  const t = useTranslations('Crosschain');
   const { balances, stellar, stellarUsdc, refresh } = useBalances(settings, session);
   const stellarId = stellar ? settings.stellar!.network : null;
   const balanceOf = (id: string) => (id === stellarId ? stellarUsdc : balances[id]);
@@ -71,11 +69,15 @@ export function Crosschain({
   // Crossings this device confirmed that are still on their way: a reload or leaving comes back.
   const account = session.wallet.address;
   const [onTheirWay, setOnTheirWay] = useState(() => crossingsOf(account));
-  const { busy, error, run: perform } = useAction(en);
+  const { busy, error, run: perform } = useAction();
   // From Stellar without Circle's permission: which of the two signatures is being asked.
   const [step, setStep] = useState<'allowance' | 'move' | null>(null);
 
-  const value = /^(\d+\.?\d{0,6}|\.\d{1,6})$/.test(amount) ? parseUnits(amount, USDC_DECIMALS) : 0n;
+  const precision = tooPrecise(amount, USDC_DECIMALS)
+    ? messageFor(new Error('TOO_MANY_DECIMALS'))
+    : '';
+  const value =
+    !precision && /^(\d+\.?\d*|\.\d+)$/.test(amount) ? exactUnits(amount, USDC_DECIMALS) : 0n;
   const available = balanceOf(from);
   const enough = typeof available !== 'bigint' || value <= available;
   const locked = busy || review !== null;
@@ -135,7 +137,8 @@ export function Crosschain({
     return {
       value: id,
       label: networkName(id),
-      description: typeof balance === 'bigint' ? `${formatBalance(balance, en)} USDC` : undefined,
+      description:
+        typeof balance === 'bigint' ? `${formatBalance(balance, locale)} USDC` : undefined,
       network: id,
     };
   });
@@ -152,26 +155,18 @@ export function Crosschain({
 
   return (
     <>
-      <BackHeader title={en ? 'Between networks' : 'Entre redes'} english={en} to="/move" />
-      <StageOverlay
-        label={
-          busy && !review && !moved
-            ? en
-              ? 'Preparing the move…'
-              : 'Preparando el movimiento…'
-            : null
-        }
-      />
-      {error && !review ? (
+      <BackHeader title={t('betweenNetworks')} to="/move" />
+      <StageOverlay label={busy && !review && !moved ? t('preparingMove') : null} />
+      {(error || precision) && !review ? (
         <p className="auth-error" role="alert">
-          {error}
+          {error || precision}
         </p>
       ) : null}
       {moved ? (
         <TxResult
           state={moved.arrived ? 'success' : 'pending'}
-          lead={moved.arrived ? (en ? 'It arrived' : 'Ya llegó') : en ? 'On its way' : 'En camino'}
-          amount={formatUsdc(BigInt(moved.amount), en)}
+          lead={moved.arrived ? t('arrived') : t('way')}
+          amount={formatUsdc(BigInt(moved.amount), locale)}
           unit="USDC"
           body={`${networkName(moved.from)} → ${networkName(moved.to)}`}
         >
@@ -180,7 +175,6 @@ export function Crosschain({
               from={moved.from}
               to={moved.to}
               hash={moved.hash}
-              english={en}
               onDelivered={() => {
                 forgetCrossing(account, moved.hash);
                 setOnTheirWay(crossingsOf(account));
@@ -194,11 +188,14 @@ export function Crosschain({
               }
             />
           </div>
-          <NavigationLink href={localizedPath('/app', en)} className="btn btn-primary btn-block">
-            {en ? 'Go to home' : 'Ir al inicio'}
+          <NavigationLink
+            href={localizedPath('/app', locale)}
+            className="btn btn-primary btn-block"
+          >
+            {t('goHome')}
           </NavigationLink>
           <button type="button" className="btn-text mt-1 w-full" onClick={() => setMoved(null)}>
-            {en ? 'Move more' : 'Mover más'}
+            {t('moveMore')}
           </button>
         </TxResult>
       ) : (
@@ -214,19 +211,17 @@ export function Crosschain({
                   className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-2 text-left text-[13px]"
                 >
                   <span className="min-w-0 truncate">
-                    {formatUsdc(BigInt(crossing.amount), en)} USDC · {networkName(crossing.from)} →{' '}
-                    {networkName(crossing.to)}
+                    {formatUsdc(BigInt(crossing.amount), locale)} USDC ·{' '}
+                    {networkName(crossing.from)} → {networkName(crossing.to)}
                   </span>
-                  <span className="shrink-0 text-pending">
-                    {en ? 'On its way · See' : 'En camino · Ver'}
-                  </span>
+                  <span className="shrink-0 text-pending">{t('waySee')}</span>
                 </button>
               ))}
             </div>
           ) : null}
           <MoneyPanel className="mb-2">
             <div className="mb-3 flex items-center justify-between gap-3">
-              <span className="text-[13px] text-text-muted">{en ? 'From' : 'Desde'}</span>
+              <span className="text-[13px] text-text-muted">{t('from')}</span>
               {typeof available === 'bigint' && available > 0n ? (
                 <button
                   type="button"
@@ -234,25 +229,22 @@ export function Crosschain({
                   disabled={locked}
                   onClick={() => setAmount(formatUnits(available, USDC_DECIMALS))}
                 >
-                  {en
-                    ? `Balance: ${formatBalance(available, en)} · Move all`
-                    : `Saldo: ${formatBalance(available, en)} · Mover todo`}
+                  {t('balanceMoveAll', { available: formatBalance(available, locale) })}
                 </button>
               ) : null}
             </div>
             <SelectMenu
-              label={en ? 'Network it leaves from' : 'Red de origen'}
+              label={t('networkLeaves')}
               showLabel={false}
               value={from}
               options={networks}
               onChange={(id) => choose('from', id)}
-              english={en}
               disabled={locked}
               className="mb-4"
             />
             <AmountInput
               name="amount"
-              aria-label={en ? 'Amount in USDC' : 'Monto en USDC'}
+              aria-label={t('amountUsdc')}
               placeholder="0"
               value={amount}
               onChange={setAmount}
@@ -270,7 +262,7 @@ export function Crosschain({
                 setTo(from);
                 setAmount('');
               }}
-              aria-label={en ? 'Flip networks' : 'Invertir redes'}
+              aria-label={t('flipNetworks')}
               className="meli-square-action h-10 w-10 bg-surface text-text"
             >
               <svg
@@ -293,42 +285,40 @@ export function Crosschain({
           </div>
 
           <MoneyPanel className="mt-2 mb-5">
-            <span className="mb-3 block text-[13px] text-text-muted">{en ? 'To' : 'Hacia'}</span>
+            <span className="mb-3 block text-[13px] text-text-muted">{t('to')}</span>
             <SelectMenu
-              label={en ? 'Network it arrives on' : 'Red de destino'}
+              label={t('networkArrives')}
               showLabel={false}
               value={to}
               options={networks}
               onChange={(id) => choose('to', id)}
-              english={en}
               disabled={locked}
             />
             <p className="mt-3 text-[12px] leading-relaxed text-text-faint">
-              {en
-                ? 'It arrives in your own account. Circle charges a small fee, which you will see before confirming.'
-                : 'Llega a tu misma cuenta. Circle cobra una pequeña comisión, que verás antes de confirmar.'}
+              {t('arrivesOwnAccountCircle')}
             </p>
           </MoneyPanel>
 
           {!enough ? (
             <p role="status" className="mb-4 text-center text-[13px] text-danger">
-              {en ? 'Not enough balance on that network.' : 'No te alcanza el saldo en esa red.'}
+              {t('notEnoughBalanceNetwork')}
             </p>
           ) : null}
 
           <TransactionActions
             hint={
               <>
-                {en
-                  ? `Your balance lives on ${networkName(settings.homeNetwork)}. To receive from another network, share `
-                  : `Tu saldo vive en ${networkName(settings.homeNetwork)}. Para recibir desde otra red, comparte `}
-                <NavigationLink
-                  href={localizedPath('/receive', en)}
-                  className="-my-3 inline-block py-3 underline"
-                >
-                  {en ? 'your address' : 'tu dirección'}
-                </NavigationLink>
-                {en ? ': it is the same on every network.' : ': es la misma en todas las redes.'}
+                {t.rich('receiveElsewhere', {
+                  homeNetwork: networkName(settings.homeNetwork),
+                  link: (chunks) => (
+                    <NavigationLink
+                      href={localizedPath('/receive', locale)}
+                      className="-my-3 inline-block py-3 underline"
+                    >
+                      {chunks}
+                    </NavigationLink>
+                  ),
+                })}
               </>
             }
           >
@@ -337,48 +327,26 @@ export function Crosschain({
               className="btn btn-primary btn-block"
               disabled={busy || value <= 0n || !enough}
             >
-              {busy
-                ? en
-                  ? 'Checking…'
-                  : 'Comprobando…'
-                : en
-                  ? 'Review move'
-                  : 'Revisar movimiento'}
+              {busy ? t('checking') : t('reviewMove')}
             </button>
           </TransactionActions>
         </form>
       )}
       {review ? (
         <ConfirmSheet
-          title={en ? 'Confirm the move' : 'Confirma el movimiento'}
-          amountLabel={en ? 'You will move' : 'Vas a mover'}
-          amount={formatUsdc(review.amount, en)}
+          title={t('confirmMove')}
+          amountLabel={t('move')}
+          amount={formatUsdc(review.amount, locale)}
           unit="USDC"
-          warning={
-            (en
-              ? 'Your USDC leaves this network and Circle delivers it to your same account on the destination. GatoPago covers gas.'
-              : 'Tus USDC salen de esta red y Circle los entrega en tu misma cuenta en el destino. GatoPago cubre el gas.') +
-            (review.allowance
-              ? en
-                ? ' You will confirm twice: first a permission for Circle to move your USDC on Stellar (it lasts about six months), then the move.'
-                : ' Vas a confirmar dos veces: primero un permiso para que Circle mueva tus USDC en Stellar (dura unos seis meses), después el movimiento.'
-              : '')
-          }
-          confirmLabel={en ? 'Confirm and move' : 'Confirmar y mover'}
-          english={en}
+          warning={review.allowance ? t('usdcLeavesWithPermission') : t('usdcLeavesNetworkCircle')}
+          confirmLabel={t('confirmAndMove')}
           busy={busy}
           busyLabel={
             step === 'allowance'
-              ? en
-                ? 'Step 1 of 2: confirm the permission for Circle on your device…'
-                : 'Paso 1 de 2: confirma en tu dispositivo el permiso para Circle…'
+              ? t('step12Confirm')
               : step === 'move' && review.allowance
-                ? en
-                  ? 'Step 2 of 2: confirm the move on your device…'
-                  : 'Paso 2 de 2: confirma el movimiento en tu dispositivo…'
-                : en
-                  ? 'Confirm on your device. Moving your money…'
-                  : 'Confirma en tu dispositivo. Moviendo tu dinero…'
+                ? t('step22Confirm')
+                : t('confirmDeviceMovingMoney')
           }
           error={error}
           onConfirm={() => confirm(review)}
@@ -386,21 +354,13 @@ export function Crosschain({
         >
           <ConfirmDetails
             rows={[
-              [en ? 'From' : 'Desde', networkName(review.from)],
-              [en ? 'To' : 'Hacia', networkName(review.to)],
-              [
-                en ? 'Circle transfer fee' : 'Comisión de Circle',
-                `${en ? 'up to' : 'hasta'} ${formatUsdc(review.fee, en)} USDC`,
-              ],
+              [t('from'), networkName(review.from)],
+              [t('to'), networkName(review.to)],
+              [t('circleTransferFee'), t('upTo', { fee: formatUsdc(review.fee, locale) })],
             ]}
           />
           {review.calls ? (
-            <SigningDetails
-              wallet={session.wallet}
-              networkId={review.from}
-              calls={review.calls}
-              english={en}
-            />
+            <SigningDetails wallet={session.wallet} networkId={review.from} calls={review.calls} />
           ) : null}
         </ConfirmSheet>
       ) : null}

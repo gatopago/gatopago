@@ -5,16 +5,17 @@ testnets (Arbitrum Sepolia, Avalanche Fuji, Monad testnet): do not send real fun
 
 ## How the wallet works
 
-The account is a GatoPago smart account (ERC-4337) owned by the user's passkeys; see
-[`protocol`](../protocol). The browser holds no secrets and depends on GatoPago only for
-convenience:
+The account is a GatoPago smart account (ERC-4337) owned by keys derived from the user's
+passkeys; see [`protocol`](../protocol). The passkey opens a signing session; during it, a key
+held only in memory signs the operations. GatoPago is needed only for convenience:
 
-- **Sign-up:** the device creates a passkey and the account address derives from it. The account
-  signs a Sign-In with Ethereum message; with an invitation and Turnstile, Wallet Core admits it
-  and returns a session token. The username and display name are then saved.
-- **Sign-in:** one passkey prompt on a device that used the account before. Elsewhere, a first
-  prompt identifies the passkey (its public key is recovered from the signature) and a second
-  one signs in.
+- **Sign-up:** the device creates a passkey, Mera derives the account's key from it and the
+  account address derives from that key. The account signs a Sign-In with Ethereum message; with
+  Turnstile (and an invitation while sign-up needs one), Wallet Core admits it and returns a
+  session token. The username and display name are then saved.
+- **Sign-in:** one passkey prompt, on any device. The account is found onchain from the key the
+  passkey derives (`findAccount`, with its owners verified); one Wallet Core no longer knows is
+  registered again with the same prompt, after an automatic Turnstile check.
 - **One balance:** one Multicall3 call per network reads USDC, the native token and USDC saved in
   Aave, from the network's RPC (`GATOPAGO_WALLET_RPC_URLS`, e.g. a domain-restricted Alchemy key,
   falling back to the public one). Screens share it; it is read again after the account's own
@@ -35,28 +36,24 @@ convenience:
   merchant console is its own site, GatoPago Business ([`gatopago-dashboard`](../gatopago-dashboard)):
   it signs in with a QR that the app approves at `/approve` with the passkey (Scan reads it too),
   or with the same passkey.
-- **Coins, not networks:** by default people see their coins (USDC as one balance across
-  networks, and each network's coin: ETH, AVAX, MON) and never choose a network, except the
-  warning of which network to use when receiving from an exchange. Settings → View → Advanced
-  shows networks, the balance on each, moving between networks and technical details
-  (`@gatopago/shared/assets`, kept on the device).
-- **Pay my team** (`/team`): several people paid in one operation and one signature, with fixed
+- **Coins, not networks:** USDC is one balance that lives on the home network; what is on other
+  networks or Stellar shows as "You also have X USDC on <network> · Bring it". Each other coin
+  goes with its network (ETH · Arbitrum, AVAX · Avalanche, MON · Monad, AUSD · Monad). Networks
+  appear only at the edges: Receive, sending to an address, and Between networks.
+- **Group payment** (`/team`): several people paid in one operation and one signature, with fixed
   amounts (from the available balance or straight from Aave savings) or shares of an amount that
-  arrived, with a part saved; all payments go through or none do (`@gatopago/shared/rules`).
+  arrived, with a part saved; all payments go through or none do (`@gatopago/shared/rules`). Named
+  groups are kept by Wallet Core (`/app/v1/groups`, up to 20 groups of 10 people).
 - **Every account is Mera's:** [Mera](https://github.com/category-labs/mera) derives an Ethereum
   key from each passkey's PRF output; that key owns the GatoPago account (ERC-7913) and signs during
-  a session that ends after 15 minutes idle or when the app closes. A passkey without PRF cannot
+  a session that ends after `GATOPAGO_MERA_SESSION_MINUTES` idle (15 by default) or when the app
+  closes: within it, operations are signed without another prompt. A passkey without PRF cannot
   create an account. A backup key is another passkey: its Mera key is added as an owner and its
-  user handle names the account, so any device finds it. An account from before (owned by its
-  passkey's P-256 key) is found by that key and approves its Mera key once on its next sign-in. The key exists only in memory while the session lasts, and it fully controls the
-  account: a copy taken from memory works until the account removes it, unlike the passkey.
-- **One way in:** "Create account" and "Sign in" are the only buttons, whatever key owns the
-  account; the word Mera never shows. With Mera on, creating an account uses Mera's key when the
-  device returns PRF, and otherwise the same passkey owns the account (no second passkey is left
-  behind; a cancelled prompt creates nothing). Signing in on a new device is one prompt: the same
-  assertion derives Mera's key and carries the signature the passkey's key is recovered from, so
-  either kind of account is found, and one is never mistaken for the other. Passkeys belong to
-  `GATOPAGO_PASSKEY_RP_ID`.
+  user handle names the account, so any device finds it. The key exists only in memory while the
+  session lasts, and it fully controls the account: a copy taken from memory works until the
+  account removes it, unlike the passkey.
+- **One way in:** "Create account" and "Sign in" are the only buttons; the word Mera never shows.
+  A cancelled prompt creates nothing. Passkeys belong to `GATOPAGO_PASSKEY_RP_ID`.
 - **Backup keys:** adding or removing a passkey is an approval signed once, stored by Wallet Core
   and applied on every network: on the home network right away (so a new key can sign in from day
   one), where the account exists right away, elsewhere before its first operation. Removing a key
@@ -64,12 +61,12 @@ convenience:
   a pending network applies it before its next operation.
 - **Stellar** (optional, `GATOPAGO_STELLAR_NETWORK`, with Wallet Core's Stellar on): the account's
   Stellar address (a smart account signed by the same passkeys, `@gatopago/shared/stellar`) adds
-  its USDC to the balance. In the advanced view it receives at that address and moves USDC with
-  the EVM networks through CCTP; anyone can send to a Stellar address (`G…` with a USDC trustline,
+  its USDC to the balance. Receive shows that address, and Between networks moves USDC with the
+  EVM networks through CCTP; anyone can send to a Stellar address (`G…` with a USDC trustline,
   or `C…`), from the Stellar balance or through CCTP from an EVM network. Wallet Core creates the
-  account, pays its fees and mints what arrives through CCTP. Each Stellar call is one passkey
-  prompt, or none in a Mera session: Mera also derives the account's Stellar key (SEP-5), which the
-  session's Ethereum key approves once (`POST /app/v1/stellar/keys`). A call whose answer is lost
+  account, pays its fees and mints what arrives through CCTP. Stellar calls are signed in the
+  same session: Mera also derives the account's Stellar key (SEP-5), which the session's Ethereum
+  key approves once (`POST /app/v1/stellar/keys`). A call whose answer is lost
   is found out before another one, as on EVM. Security lists Stellar's signers with the other networks: removing a key removes
   it there too, and added keys are synced from that list.
 
@@ -118,3 +115,13 @@ The public pages (landing, `/docs`, legal and the payment example, in `app/(stat
 writes, so they get a static CSP without a nonce: inline scripts from this site only, no other
 origin and no eval (`src/security/static-pages.ts`; a test keeps its list equal to those pages).
 Each language has its own path there (`/docs`, `/en/docs`); `?lang=en` redirects to it.
+
+Texts are in Spanish and English with [next-intl](https://next-intl.dev) and its plugin, one
+catalog per language in `src/messages/{es,en}.json`: `useTranslations` in client components,
+`getTranslations` and `getMessages` on the server. `src/i18n/request.ts` loads only the language of
+the request, and each layout hands its client components only the namespaces they read
+(`src/i18n/messages.ts`): the public pages' texts never reach the app, and no client module imports
+a catalog. Keys are checked when compiling, and `test/messages.test.ts` keeps both languages with
+the same keys and values. The app's pages take their language from `?lang=en`; a first visit from a
+browser that does not prefer Spanish is sent to the English version, unless the visitor already
+chose a language with the switch (cookie `gatopago-language`, see `src/proxy.ts`).

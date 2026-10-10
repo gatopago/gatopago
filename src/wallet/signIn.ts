@@ -8,21 +8,20 @@ import { saveSession, type Session, type Wallet } from './session';
 
 /**
  * Signs in with whichever passkey the person picks: one prompt. An account Wallet Core does not
- * know (its database was reset) signs up again with the same passkey: `register` asks for a
- * Turnstile token and, when sign-up needs one (`invite`), an invitation; the open Mera session signs
- * again without another prompt.
+ * know (its database was reset) signs up again with the same passkey: `human` gives a Turnstile
+ * token and the open Mera session signs again without another prompt. While sign-up needs an
+ * invitation (`INVITE_ONLY`), it ends in `INVITE_REQUIRED` instead.
  */
 export async function enter(
   settings: ClientSettings,
-  register: (needs: { invite: boolean }) => Promise<{ turnstile: string; invite?: string }>,
+  human: () => Promise<string>,
 ): Promise<Session> {
   const wallet = await findAnyWallet(settings);
   try {
     return await signIn(settings, wallet);
   } catch (error) {
-    const code = error instanceof ApiError ? error.code : null;
-    if (code !== 'TURNSTILE_REQUIRED' && code !== 'INVITE_REQUIRED') throw error;
-    return signIn(settings, wallet, await register({ invite: code === 'INVITE_REQUIRED' }));
+    if (!(error instanceof ApiError) || error.code !== 'TURNSTILE_REQUIRED') throw error;
+    return signIn(settings, wallet, { turnstile: await human() });
   }
 }
 

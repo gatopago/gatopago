@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 
 /** The clipboard is missing outside a secure context and the browser can refuse it. */
@@ -10,7 +11,8 @@ export const copyText = (value: string) =>
  * A copy button's words, the same everywhere: its own label, "Copied ✓" for two seconds, or
  * "Could not copy" until the next try. `what` tells apart several buttons on one screen.
  */
-export function useCopy(en: boolean) {
+export function useCopy() {
+  const t = useTranslations('Copy');
   const [last, setLast] = useState<{ what: string; copied: boolean } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -27,14 +29,6 @@ export function useCopy(en: boolean) {
   }
   const failed = (what = '') => last?.what === what && !last.copied;
   const label = (idle: string, what = '') =>
-    last?.what !== what
-      ? idle
-      : last.copied
-        ? en
-          ? 'Copied ✓'
-          : 'Copiado ✓'
-        : en
-          ? 'Could not copy'
-          : 'No se pudo copiar';
+    last?.what !== what ? idle : t(last.copied ? 'copied' : 'failed');
   return { copy, label, failed };
 }

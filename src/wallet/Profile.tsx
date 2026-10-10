@@ -9,9 +9,10 @@ import type { ClientSettings } from '../lib/settings';
 import { useCopy } from '../lib/useCopy';
 import { networkName } from './account';
 import { api, type Profile } from './api';
-import { failureMessage } from './messages';
+import { useFailureMessage } from './messages';
 import type { Session } from './session';
 import { useProfile } from './useProfile';
+import { useTranslations } from 'next-intl';
 
 const UserIcon = () => (
   <svg
@@ -49,36 +50,31 @@ const WalletIcon = () => (
 export function ProfileScreen({
   settings,
   session,
-  english: en,
 }: {
   settings: ClientSettings;
   session: Session;
-  english: boolean;
 }) {
+  const t = useTranslations('Profile');
   const { profile, error, retry } = useProfile();
   return (
     <>
-      <BackHeader title={en ? 'Profile' : 'Perfil'} english={en} />
+      <BackHeader title={t('profile')} />
       {/* A failed read never hides the profile already known; it says so and can be retried. */}
       {error ? (
         <p className="auth-error" role="alert">
-          {profile
-            ? en
-              ? 'We could not update your profile; this may be out of date. '
-              : 'No pudimos actualizar tu perfil; puede no estar al día. '
-            : `${error} `}
+          {profile ? t('couldNotUpdateProfile') : error}{' '}
           <button
             type="button"
             onClick={retry}
             className="-my-3 inline-block py-3 font-semibold underline underline-offset-2"
           >
-            {en ? 'Try again' : 'Reintentar'}
+            {t('tryAgain')}
           </button>
         </p>
       ) : null}
       {!profile ? (
         error ? null : (
-          <ScreenLoading kind="settings" english={en} bar={false} />
+          <ScreenLoading kind="settings" bar={false} />
         )
       ) : (
         <ProfileEditor
@@ -86,7 +82,6 @@ export function ProfileScreen({
           profile={profile}
           settings={settings}
           session={session}
-          english={en}
         />
       )}
     </>
@@ -97,20 +92,20 @@ function ProfileEditor({
   profile,
   settings,
   session,
-  english: en,
 }: {
   profile: Profile;
   settings: ClientSettings;
   session: Session;
-  english: boolean;
 }) {
+  const messageFor = useFailureMessage();
+  const t = useTranslations('Profile');
   const { setProfile } = useProfile();
   const [displayName, setDisplayName] = useState(profile.display_name ?? '');
   const [socialUrl, setSocialUrl] = useState(profile.social_url ?? '');
   const [username, setUsername] = useState('');
   const [busy, setBusy] = useState<'profile' | 'username' | null>(null);
   const [notice, setNotice] = useState<{ tone: 'success' | 'warning'; text: string } | null>(null);
-  const { copy, label } = useCopy(en);
+  const { copy, label } = useCopy();
   const link = profile.username ? `${settings.webOrigin}/@${profile.username}` : null;
   const profileChanged =
     displayName.trim() !== (profile.display_name ?? '') ||
@@ -138,19 +133,10 @@ function ProfileEditor({
         setSocialUrl(value.social_url ?? '');
         setNotice({
           tone: 'success',
-          text:
-            part === 'username'
-              ? en
-                ? 'Username saved'
-                : 'Usuario guardado'
-              : en
-                ? 'Profile saved'
-                : 'Perfil guardado',
+          text: part === 'username' ? t('usernameSaved') : t('profileSaved'),
         });
       })
-      .catch((failure: unknown) =>
-        setNotice({ tone: 'warning', text: failureMessage(failure, en) }),
-      )
+      .catch((failure: unknown) => setNotice({ tone: 'warning', text: messageFor(failure) }))
       .finally(() => setBusy(null));
   }
 
@@ -162,10 +148,10 @@ function ProfileEditor({
         </div>
         <div className="min-w-0">
           <p className="truncate font-display text-[21px]">
-            {profile.display_name || (en ? 'Profile' : 'Perfil')}
+            {profile.display_name || t('profile')}
           </p>
           <p className="truncate text-[13px] text-text-muted">
-            {profile.username ? `@${profile.username}` : en ? 'No username yet' : 'Aún sin usuario'}
+            {profile.username ? `@${profile.username}` : t('noUsernameYet')}
           </p>
         </div>
       </div>
@@ -175,15 +161,9 @@ function ProfileEditor({
         </div>
       ) : null}
 
-      <SettingsSection
-        title={en ? 'How people see you' : 'Cómo te ven'}
-        icon={<UserIcon />}
-        tone="brand"
-      >
+      <SettingsSection title={t('howPeopleSee')} icon={<UserIcon />} tone="brand">
         <form className="p-5" onSubmit={(event) => save(event, 'profile')}>
-          <Label htmlFor="profile-display-name">
-            {en ? 'Display name' : 'Nombre para mostrar'}
-          </Label>
+          <Label htmlFor="profile-display-name">{t('displayName')}</Label>
           <input
             id="profile-display-name"
             type="text"
@@ -191,12 +171,10 @@ function ProfileEditor({
             value={displayName}
             onChange={(event) => setDisplayName(event.target.value)}
             maxLength={40}
-            placeholder={en ? 'Your name' : 'Tu nombre'}
+            placeholder={t('name')}
             className="meli-field mb-3 h-12 text-[14px] placeholder:text-text-faint"
           />
-          <Label htmlFor="profile-social">
-            {en ? 'Social link (optional)' : 'Red social (opcional)'}
-          </Label>
+          <Label htmlFor="profile-social">{t('socialLinkOptional')}</Label>
           <input
             id="profile-social"
             type="url"
@@ -205,34 +183,24 @@ function ProfileEditor({
             value={socialUrl}
             onChange={(event) => setSocialUrl(event.target.value)}
             maxLength={120}
-            placeholder={en ? 'https://instagram.com/yourname' : 'https://instagram.com/tunombre'}
+            placeholder={t('httpsInstagramComYourname')}
             className="meli-field mb-1.5 h-12 text-[14px] placeholder:text-text-faint"
           />
-          <p className="mb-3 text-[12px] text-text-faint">
-            {en
-              ? 'Instagram, X, Telegram, TikTok or Facebook. It appears on your public page.'
-              : 'Instagram, X, Telegram, TikTok o Facebook. Aparece en tu página pública.'}
-          </p>
+          <p className="mb-3 text-[12px] text-text-faint">{t('instagramXTelegramTiktok')}</p>
           <button
             type="submit"
             disabled={busy !== null || !profileChanged}
             className="btn btn-primary btn-sm"
           >
-            {busy === 'profile' ? (en ? 'Saving…' : 'Guardando…') : en ? 'Save' : 'Guardar'}
+            {busy === 'profile' ? t('saving') : t('save')}
           </button>
         </form>
       </SettingsSection>
 
-      <SettingsSection title={en ? 'Your username' : 'Tu usuario'} icon={<UserIcon />} tone="info">
+      <SettingsSection title={t('username')} icon={<UserIcon />} tone="info">
         <form className="p-5" onSubmit={(event) => save(event, 'username')}>
           <p className="mb-3 text-[13px] text-text-muted">
-            {link
-              ? en
-                ? 'Share your link: whoever opens it can pay you.'
-                : 'Comparte tu link: quien lo abre puede pagarte.'
-              : en
-                ? 'Get paid with an easy-to-share name.'
-                : 'Recibe pagos con un nombre fácil de compartir.'}
+            {link ? t('shareLinkWhoeverOpens') : t('getPaidEasyShare')}
           </p>
           {link ? (
             <div className="mb-3 flex items-center gap-3 border border-border bg-surface-2 py-1 pr-1 pl-3.5">
@@ -244,7 +212,7 @@ function ProfileEditor({
                 onClick={() => copy(link, 'link')}
                 className="btn btn-primary btn-sm shrink-0"
               >
-                {label(en ? 'Copy' : 'Copiar', 'link')}
+                {label(t('copy'), 'link')}
               </button>
             </div>
           ) : (
@@ -258,7 +226,7 @@ function ProfileEditor({
                 autoComplete="username"
                 autoCapitalize="none"
                 spellCheck={false}
-                aria-label={en ? 'Your username' : 'Tu usuario'}
+                aria-label={t('username')}
                 pattern="[a-z][a-z0-9_]{2,29}"
                 maxLength={30}
                 value={username}
@@ -270,36 +238,26 @@ function ProfileEditor({
             </div>
           )}
           {profile.username ? (
-            <p className="text-[12px] text-text-faint">
-              {en
-                ? 'Your username cannot change, so your link always reaches you.'
-                : 'Tu usuario no cambia, así tu link siempre llega a ti.'}
-            </p>
+            <p className="text-[12px] text-text-faint">{t('usernameCannotChangeSo')}</p>
           ) : (
             <>
-              <p className="mb-3 text-[12px] text-text-faint">
-                {en ? 'You can choose it only once.' : 'Solo puedes elegirlo una vez.'}
-              </p>
+              <p className="mb-3 text-[12px] text-text-faint">{t('chooseOnlyOnce')}</p>
               <button
                 type="submit"
                 disabled={busy !== null || !username}
                 className="btn btn-primary btn-sm"
               >
-                {busy === 'username' ? (en ? 'Saving…' : 'Guardando…') : en ? 'Save' : 'Guardar'}
+                {busy === 'username' ? t('saving') : t('save')}
               </button>
             </>
           )}
         </form>
       </SettingsSection>
 
-      <SettingsSection
-        title={en ? 'Your account' : 'Tu cuenta'}
-        icon={<WalletIcon />}
-        tone="neutral"
-      >
+      <SettingsSection title={t('account')} icon={<WalletIcon />} tone="neutral">
         <div className="p-5">
           <div className="mb-2 flex items-center justify-between gap-3">
-            <span className="text-[13px] text-text-muted">{en ? 'Address' : 'Dirección'}</span>
+            <span className="text-[13px] text-text-muted">{t('address')}</span>
             <span className="text-right text-[11px] text-text-faint">
               {settings.networks.map(networkName).join(' · ')}
             </span>
@@ -311,7 +269,7 @@ function ProfileEditor({
               onClick={() => copy(session.wallet.address, 'address')}
               className="btn btn-ghost btn-sm flex-1"
             >
-              {label(en ? 'Copy' : 'Copiar', 'address')}
+              {label(t('copy'), 'address')}
             </button>
             {explorer ? (
               <a
@@ -320,7 +278,7 @@ function ProfileEditor({
                 rel="noopener noreferrer"
                 className="btn btn-ghost btn-sm flex-1"
               >
-                {en ? 'See on the blockchain' : 'Ver en la blockchain'}
+                {t('seeBlockchain')}
               </a>
             ) : null}
           </div>

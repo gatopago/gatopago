@@ -11,9 +11,10 @@ import {
 } from 'react';
 import type { ClientSettings } from '../lib/settings';
 import { api, type Profile } from './api';
-import { failureMessage } from './messages';
+import { useFailureMessage } from './messages';
 import { renewPush } from './push';
 import type { Session } from './session';
+import { useLocale } from 'next-intl';
 
 interface ProfileState {
   profile: Profile | null;
@@ -50,14 +51,14 @@ function rememberedProfile(address: string): Profile | null {
 export function ProfileProvider({
   settings,
   session,
-  english: en,
   children,
 }: {
   settings: ClientSettings;
   session: Session;
-  english: boolean;
   children: ReactNode;
 }) {
+  const messageFor = useFailureMessage();
+  const locale = useLocale();
   const [profile, setStoredProfile] = useState<Profile | null>(() =>
     rememberedProfile(session.wallet.address),
   );
@@ -81,14 +82,14 @@ export function ProfileProvider({
     api<Profile>(settings.apiOrigin, 'profile', { token: session.token, signal: controller.signal })
       .then(setProfile)
       .catch((failure: unknown) => {
-        if (!controller.signal.aborted) setError(failureMessage(failure, en));
+        if (!controller.signal.aborted) setError(messageFor(failure));
       });
     return () => controller.abort();
-  }, [settings.apiOrigin, session.token, en, setProfile, attempt]);
+  }, [settings.apiOrigin, session.token, messageFor, setProfile, attempt]);
   // FCM rotates tokens: a device with notifications on confirms its token on every visit.
   useEffect(() => {
-    void renewPush(settings, session, en).catch(() => undefined);
-  }, [settings, session, en]);
+    void renewPush(settings, session, locale).catch(() => undefined);
+  }, [settings, session, locale]);
   const value = useMemo(
     () => ({ profile, setProfile, error, retry }),
     [profile, setProfile, error, retry],

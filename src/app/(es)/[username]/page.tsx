@@ -1,21 +1,11 @@
-import type { Metadata } from 'next';
+import { privateMetadata } from '../../../lib/metadata';
 import { notFound } from 'next/navigation';
 import { PublicUsername } from '../../../consumer/PublicUsername';
 import { clientSettings } from '../../../lib/settings';
-export const metadata: Metadata = {
-  title: 'Perfil público — GatoPago',
-  robots: { index: false, follow: false },
-  referrer: 'no-referrer',
-};
+export const generateMetadata = privateMetadata('publicProfile');
 export const dynamic = 'force-dynamic';
-export default async function Page({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ username: string }>;
-  searchParams: Promise<{ lang?: string }>;
-}) {
-  const [{ username: segment }, { lang }] = await Promise.all([params, searchParams]);
+export default async function Page({ params }: { params: Promise<{ username: string }> }) {
+  const { username: segment } = await params;
   // The segment arrives percent-encoded: `/@ana` is `%40ana`.
   const username = decodeURIComponent(segment);
   if (!/^@[a-zA-Z][a-zA-Z0-9_]{2,29}$/.test(username)) notFound();
@@ -24,7 +14,6 @@ export default async function Page({
       key={username}
       username={username.slice(1).toLowerCase()}
       settings={clientSettings}
-      english={lang === 'en'}
     />
   );
 }

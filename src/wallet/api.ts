@@ -24,6 +24,8 @@ export interface Recipient {
   display_name: string | null;
   social_url: string | null;
   address: Address;
+  /** Their account on Stellar, once Wallet Core registered it (within a minute of joining). */
+  stellar_address: string | null;
 }
 
 export interface Approvals {
@@ -69,10 +71,15 @@ export async function api<T>(
     if (init.signal?.aborted) throw error;
     throw new ApiError(0, 'NETWORK_ERROR');
   }
-  const value = await response.json().catch(() => null);
+  // Every answer of Wallet Core and Flow is a JSON object: anything else (a proxy's error page, a
+  // cut connection, `null`) is a failure of its own, never an empty success. The console's client
+  // applies the same rule.
+  const value = await response.json().catch(() => undefined);
   // An expired or revoked session signs out and the app returns to sign-in; a late answer to an
   // earlier session (another account since, or replaced) leaves the one in use alone.
   if (response.status === 401 && init.token && init.token === currentSession()?.token) signOut();
   if (!response.ok) throw new ApiError(response.status, value?.error_code ?? 'UNAVAILABLE');
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw new ApiError(response.status, 'INVALID_RESPONSE');
   return value as T;
 }

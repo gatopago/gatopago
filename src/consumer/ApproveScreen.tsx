@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { Address } from 'viem';
+import type { Address, Hex } from 'viem';
 import { createSiweMessage } from 'viem/siwe';
 import { walletNetwork } from '@gatopago/shared/networks';
+import { businessKeyResource } from '@gatopago/shared/passkey';
 import type { ClientSettings } from '../lib/settings';
 import { gatopagoAccount } from '../wallet/account';
 import { api, ApiError } from '../wallet/api';
-import { failureMessage } from '../wallet/messages';
+import { useFailureMessage } from '../wallet/messages';
 import type { Session } from '../wallet/session';
 import { useAction } from '../wallet/useAction';
 import { NavigationLink } from './NavigationLink';
@@ -16,6 +17,7 @@ import { BackHeader, MoneyPanel, NoticeCard, TransactionActions } from './Primit
 import { localizedPath } from './routes';
 import { StageOverlay } from './StageOverlay';
 import { TxResult } from './TxResult';
+import { useTranslations, useLocale } from 'next-intl';
 
 /** A sign-in request of GatoPago Business: 32 hex characters, from the console's QR. */
 export const businessRequest = (value: string | null) =>
@@ -23,13 +25,15 @@ export const businessRequest = (value: string | null) =>
 
 /**
  * What the passkey signs to approve the console's sign-in: SIWE for the app's domain whose nonce
- * is the request, so the approval works for that request only.
+ * is the request, so the approval works for that request only. A console that asked with its
+ * Business key gets that exact key approved too, named among the resources.
  */
 export function approvalMessage(input: {
   webOrigin: string;
   address: Address;
   chainId: number;
   request: string;
+  businessKey?: Hex | null;
   issuedAt?: Date;
 }) {
   return createSiweMessage({
@@ -41,7 +45,17 @@ export function approvalMessage(input: {
     version: '1',
     issuedAt: input.issuedAt ?? new Date(),
     statement: 'Sign in to GatoPago Business.',
+    ...(input.businessKey && { resources: [businessKeyResource(input.businessKey)] }),
   });
+}
+
+/** The console's request as the member sees it: its browser, place and the key it would keep. */
+interface Login {
+  device: string;
+  place: string | null;
+  expires_at: number;
+  /** The console's Business key, kept with access until removed in Security; null for one visit. */
+  public_key: Hex | null;
 }
 
 const expired = (failure: unknown) =>
@@ -52,11 +66,7 @@ const expired = (failure: unknown) =>
  * computer asks to sign in and approves it with the passkey. Keyed by request: another QR starts
  * from nothing, so what is shown (device, place, approved) is always the request being signed.
  */
-export function ApproveScreen(props: {
-  settings: ClientSettings;
-  session: Session;
-  english: boolean;
-}) {
+export function ApproveScreen(props: { settings: ClientSettings; session: Session }) {
   const request = businessRequest(useSearchParams().get('request'));
   return <ApproveRequest key={request ?? ''} request={request} {...props} />;
 }
@@ -65,33 +75,29 @@ function ApproveRequest({
   request,
   settings,
   session,
-  english: en,
 }: {
   request: string | null;
   settings: ClientSettings;
   session: Session;
-  english: boolean;
 }) {
-  const [login, setLogin] = useState<{
-    device: string;
-    place: string | null;
-    expires_at: number;
-  } | null>(null);
+  const messageFor = useFailureMessage();
+  const locale = useLocale();
+  const t = useTranslations('Approve');
+  const [login, setLogin] = useState<Login | null>(null);
   const [state, setState] = useState<'reading' | 'ready' | 'approved' | 'expired'>(
     request ? 'reading' : 'expired',
   );
   // One approval at a time: a double tap must not open two passkey prompts.
-  const { busy, error, setError, run } = useAction(en);
+  const { busy, error, setError, run } = useAction();
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
   useEffect(() => {
     if (!request) return;
     const controller = new AbortController();
-    api<{ device: string; place: string | null; expires_at: number }>(
-      settings.apiOrigin,
-      `business-approvals/${request}`,
-      { token: session.token, signal: controller.signal },
-    )
+    api<Login>(settings.apiOrigin, `business-approvals/${request}`, {
+      token: session.token,
+      signal: controller.signal,
+    })
       .then((value) => {
         setLogin(value);
         setState('ready');
@@ -99,10 +105,10 @@ function ApproveRequest({
       .catch((failure: unknown) => {
         if (controller.signal.aborted) return;
         if (expired(failure)) setState('expired');
-        else setError(failureMessage(failure, en));
+        else setError(messageFor(failure));
       });
     return () => controller.abort();
-  }, [request, settings, session, en, setError]);
+  }, [request, settings, session, messageFor, setError]);
 
   useEffect(() => {
     const clock = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
@@ -111,7 +117,7 @@ function ApproveRequest({
 
   const left = login ? login.expires_at - now : 0;
   const shownState = state === 'ready' && left <= 0 ? 'expired' : state;
-  const title = en ? 'Sign in to Business' : 'Entrar a Negocios';
+  const title = t('signBusiness');
 
   function approve() {
     if (!request) return;
@@ -123,6 +129,7 @@ function ApproveRequest({
           address: account.address,
           chainId: walletNetwork(settings.homeNetwork).chain.id,
           request,
+          businessKey: login?.public_key,
         });
         const signature = await account.signMessage({ message });
         await api(settings.apiOrigin, `business-approvals/${request}`, {
@@ -138,24 +145,16 @@ function ApproveRequest({
   }
 
   const home = (
-    <NavigationLink href={localizedPath('/app', en)} className="btn btn-primary btn-block mt-6">
-      {en ? 'Go to home' : 'Ir al inicio'}
+    <NavigationLink href={localizedPath('/app', locale)} className="btn btn-primary btn-block mt-6">
+      {t('goHome')}
     </NavigationLink>
   );
 
   if (shownState === 'approved')
     return (
       <>
-        <BackHeader title={title} english={en} />
-        <TxResult
-          state="success"
-          lead={en ? 'Approved' : 'Aprobado'}
-          body={
-            en
-              ? 'GatoPago Business is opening on your computer. You can close this screen.'
-              : 'GatoPago Negocios se está abriendo en tu computadora. Puedes cerrar esta pantalla.'
-          }
-        >
+        <BackHeader title={title} />
+        <TxResult state="success" lead={t('approved')} body={t('gatopagoBusinessOpeningComputer')}>
           {home}
         </TxResult>
       </>
@@ -164,16 +163,8 @@ function ApproveRequest({
   if (shownState === 'expired')
     return (
       <>
-        <BackHeader title={title} english={en} />
-        <TxResult
-          state="failed"
-          lead={en ? 'This code expired' : 'Este código venció'}
-          body={
-            en
-              ? 'Codes last two minutes. Scan the new one the console shows on your computer.'
-              : 'Los códigos duran dos minutos. Escanea el nuevo que muestra la consola en tu computadora.'
-          }
-        >
+        <BackHeader title={title} />
+        <TxResult state="failed" lead={t('codeExpired')} body={t('codesLastTwoMinutes')}>
           {home}
         </TxResult>
       </>
@@ -181,11 +172,8 @@ function ApproveRequest({
 
   return (
     <>
-      <BackHeader title={title} english={en} />
-      <StageOverlay
-        label={busy ? (en ? 'Confirm on your device…' : 'Confirma en tu dispositivo…') : null}
-        spinner={false}
-      />
+      <BackHeader title={title} />
+      <StageOverlay label={busy ? t('confirmDevice') : null} spinner={false} />
       <MoneyPanel className="mb-4 flex flex-col items-center text-center">
         <span
           aria-hidden="true"
@@ -204,38 +192,30 @@ function ApproveRequest({
           </svg>
         </span>
         <h2 className="font-display text-[20px] leading-tight">
-          {en
-            ? 'Sign in to GatoPago Business on your computer?'
-            : '¿Entras a GatoPago Negocios en tu computadora?'}
+          {t('signGatopagoBusinessComputer')}
         </h2>
         {login ? (
           <>
             <p className="mt-3 text-[16px] font-semibold">{login.device}</p>
             {login.place ? (
-              <p className="text-[13px] text-text-muted">
-                {en ? 'Near ' : 'Cerca de '}
-                {login.place}
-              </p>
+              <p className="text-[13px] text-text-muted">{t('near', { place: login.place })}</p>
             ) : null}
             <p className="mt-3 font-mono text-[12px] text-text-faint" aria-live="off">
-              {en ? 'Expires in ' : 'Vence en '}
-              {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
+              {t('expires', {
+                time: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`,
+              })}
             </p>
           </>
         ) : (
-          <p className="mt-3 text-[13px] text-text-muted">
-            {error || (en ? 'Reading…' : 'Leyendo…')}
-          </p>
+          <p className="mt-3 text-[13px] text-text-muted">{error || t('reading')}</p>
         )}
       </MoneyPanel>
-      <NoticeCard
-        tone="warning"
-        title={en ? 'Approve only if it was you' : 'Aprueba solo si fuiste tú'}
-      >
-        {en
-          ? 'If someone asked you to scan this code, do not approve it: they would see your charges and manage your API keys. Your money stays safe either way.'
-          : 'Si alguien te pidió escanear este código, no lo apruebes: vería tus cobros y manejaría tus claves API. Tu dinero sigue a salvo de todas formas.'}
+      <NoticeCard tone="warning" title={t('approveOnlyIf')}>
+        {t('ifSomeoneAskedScan')}
       </NoticeCard>
+      {login?.public_key ? (
+        <p className="mt-4 text-[13px] leading-relaxed text-text-muted">{t('keyKeepsAccess')}</p>
+      ) : null}
       {error && login ? (
         <p role="alert" className="mt-4 text-center text-[13px] text-danger">
           {error}
@@ -248,10 +228,10 @@ function ApproveRequest({
           disabled={!login || busy}
           onClick={() => void approve()}
         >
-          {en ? 'Approve' : 'Aprobar'}
+          {t('approve')}
         </button>
-        <NavigationLink href={localizedPath('/app', en)} className="btn-text mt-1 w-full">
-          {en ? 'It was not me' : 'No fui yo'}
+        <NavigationLink href={localizedPath('/app', locale)} className="btn-text mt-1 w-full">
+          {t('notMe')}
         </NavigationLink>
       </TransactionActions>
     </>

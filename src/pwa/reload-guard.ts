@@ -20,9 +20,3 @@ export function holdPageReload(): () => void {
     for (const listener of listeners) listener();
   };
 }
-
-export function reloadPage(): boolean {
-  if (isReloadBlocked() || typeof window === 'undefined') return false;
-  window.location.reload();
-  return true;
-}

@@ -5,6 +5,7 @@ import type { ClientSettings } from '../lib/settings';
 import { useActivity } from '../wallet/activity';
 import { api } from '../wallet/api';
 import type { Session } from '../wallet/session';
+import { useTranslations } from 'next-intl';
 
 const LIMIT = 8;
 
@@ -15,20 +16,19 @@ const LIMIT = 8;
 export function RecipientShortcuts({
   settings,
   session,
-  english: en,
   selected = [],
   onPick,
   className = '',
 }: {
   settings: ClientSettings;
   session: Session;
-  english: boolean;
   /** Usernames already chosen, shown as pressed. */
   selected?: readonly string[];
   onPick: (username: string) => void;
   className?: string;
 }) {
-  const { movements } = useActivity(settings, session, en);
+  const t = useTranslations('RecipientShortcuts');
+  const { movements } = useActivity(settings, session);
   const [contacts, setContacts] = useState<{ username: string; display_name: string | null }[]>([]);
   useEffect(() => {
     const controller = new AbortController();
@@ -53,9 +53,7 @@ export function RecipientShortcuts({
 
   return (
     <div className={className}>
-      <p className="mb-2 text-[12px] text-text-muted">
-        {en ? 'Recent and contacts' : 'Recientes y contactos'}
-      </p>
+      <p className="mb-2 text-[12px] text-text-muted">{t('recentContacts')}</p>
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         {shown.map(([username, name]) => {
           const pressed = selected.includes(username);

@@ -1,13 +1,14 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { failureMessage } from './messages';
+import { useFailureMessage } from './messages';
 
 /**
  * The busy and error state of a screen's actions: one runs at a time, and a failure becomes a
  * message for the person. `run` resolves whether the action succeeded.
  */
-export function useAction(en: boolean) {
+export function useAction() {
+  const messageFor = useFailureMessage();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   // Checked and set at once, so a second tap before the next render does not start it again.
@@ -22,7 +23,7 @@ export function useAction(en: boolean) {
       await action();
       return true;
     } catch (failure) {
-      setError(failureMessage(failure, en));
+      setError(messageFor(failure));
       return false;
     } finally {
       running.current = false;

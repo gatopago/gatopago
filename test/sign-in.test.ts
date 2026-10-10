@@ -79,12 +79,9 @@ describe('signing in', () => {
   it('registers again an account Wallet Core does not know, with the same passkey', async () => {
     fake.registered = false;
     const { enter } = await import('../src/wallet/signIn');
-    const asked: { invite: boolean }[] = [];
-    const session = await enter(settings, async (needs) => {
-      asked.push(needs);
-      return { turnstile: 'human' };
-    });
-    expect(asked).toEqual([{ invite: false }]);
+    let asked = 0;
+    const session = await enter(settings, async () => (asked++, 'human'));
+    expect(asked).toBe(1);
     expect(session.wallet.address).toBe(ACCOUNT);
     expect(fake.posted.filter(({ path }) => path === 'auth/session').at(-1)?.body).toMatchObject({
       turnstile: 'human',

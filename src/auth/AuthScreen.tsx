@@ -4,58 +4,51 @@ import { useSyncExternalStore, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ConsumerFrame } from '../consumer/ConsumerFrame';
 import { NavigationLink } from '../consumer/NavigationLink';
-import { safeNext } from '../consumer/routes';
+import { localizedPath, safeNext } from '../consumer/routes';
 import type { ClientSettings } from '../lib/settings';
 import { currentSession, signOut, subscribeSession } from '../wallet/session';
 import { PasskeyAccess } from './PasskeyAccess';
 import { ScreenLoading } from '../consumer/Skeleton';
+import { useLocale, useTranslations } from 'next-intl';
 
 /** `/login`: sign in or create an account with a passkey. The signed-in app is `AccountShell`. */
 export function AuthScreen({
   settings,
   art,
-  english: en = false,
 }: {
   settings: ClientSettings;
   view: 'login';
   art: ReactNode;
-  english?: boolean;
 }) {
+  const t = useTranslations('Auth');
+  const locale = useLocale();
   const router = useRouter();
   // The session lives in this browser: unknown while rendering on the server.
   const session = useSyncExternalStore(subscribeSession, currentSession, () => undefined);
-  const suffix = en ? '?lang=en' : '';
   // Where the member was going: a payment or a send opened before signing in.
   const next = safeNext(useSearchParams().get('next'));
   return (
-    <ConsumerFrame english={en} presentation="access">
-      <AccessContent art={art} english={en}>
+    <ConsumerFrame presentation="access">
+      <AccessContent art={art}>
         {session === undefined ? (
-          <ScreenLoading kind="form" english={en} bar={false} />
+          <ScreenLoading kind="form" bar={false} />
         ) : session ? (
           <section>
             <NavigationLink
               className="auth-primary btn btn-primary btn-block"
-              href={next ?? `/app${suffix}`}
+              href={next ?? localizedPath('/app', locale)}
             >
-              {next
-                ? en
-                  ? 'Continue'
-                  : 'Continuar'
-                : en
-                  ? 'Continue to my account'
-                  : 'Continuar a mi cuenta'}
+              {next ? t('continue') : t('continueMyAccount')}
             </NavigationLink>
             <button className="auth-secondary btn btn-ghost btn-block" onClick={signOut}>
-              {en ? 'Sign out' : 'Cerrar sesión'}
+              {t('signOut')}
             </button>
           </section>
         ) : (
           <PasskeyAccess
             settings={settings}
-            english={en}
             onSignedIn={(path) =>
-              router.replace(path === '/app' && next ? next : `${path}${suffix}`)
+              router.replace(path === '/app' && next ? next : localizedPath(path, locale))
             }
           />
         )}
@@ -64,15 +57,8 @@ export function AuthScreen({
   );
 }
 
-function AccessContent({
-  children,
-  art,
-  english: en,
-}: {
-  children: ReactNode;
-  art: ReactNode;
-  english: boolean;
-}) {
+function AccessContent({ children, art }: { children: ReactNode; art: ReactNode }) {
+  const t = useTranslations('Auth');
   return (
     <div className="auth-content auth-content--login">
       <div className="auth-login-grid">
@@ -83,23 +69,11 @@ function AccessContent({
               {art}
             </figure>
           ) : null}
-          <h1>{en ? 'Sign in to GatoPago' : 'Entra a GatoPago'}</h1>
+          <h1>{t('signGatopago')}</h1>
           <p className="auth-tagline">
-            {en ? (
-              <>
-                Your dollars already know <span>how to move.</span>
-              </>
-            ) : (
-              <>
-                Tus dólares ya saben <span>moverse.</span>
-              </>
-            )}
+            {t.rich('tagline', { accent: (chunks) => <span>{chunks}</span> })}
           </p>
-          <p className="auth-description">
-            {en
-              ? 'Use your phone’s fingerprint or face. No passwords.'
-              : 'Usa la huella o el rostro de tu teléfono. Sin contraseñas.'}
-          </p>
+          <p className="auth-description">{t('usePhonesFingerprintFace')}</p>
         </div>
         <div className="auth-login-copy">{children}</div>
       </div>

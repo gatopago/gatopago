@@ -2,6 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { RecoveryScreen } from '../src/consumer/AccountScreens';
+import { withTexts } from './translations';
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/settings/security/recovery',
@@ -13,7 +14,9 @@ describe('Consumer authority: one key, optional equivalent backups, no guardian 
   it.each([false, true])(
     'explains permanent loss without promising support recovery (English=%s)',
     (english) => {
-      const html = renderToStaticMarkup(createElement(RecoveryScreen, { english }));
+      const html = renderToStaticMarkup(
+        withTexts(createElement(RecoveryScreen), english ? 'en' : 'es'),
+      );
       expect(html).toContain(
         english ? 'access is lost permanently' : 'pierdes el acceso definitivamente',
       );

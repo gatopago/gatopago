@@ -5,12 +5,13 @@ import type { ClientSettings } from '../lib/settings';
 import { copyText } from '../lib/useCopy';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { api } from '../wallet/api';
-import { failureMessage } from '../wallet/messages';
+import { useFailureMessage } from '../wallet/messages';
 import type { Session } from '../wallet/session';
 import { NavigationLink } from './NavigationLink';
 import { BackHeader } from './Primitives';
 import { localizedPath } from './routes';
 import { RowSkeletonList } from './Skeleton';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface Contact {
   username: string;
@@ -22,12 +23,13 @@ interface Contact {
 export function ContactsScreen({
   settings,
   session,
-  english: en,
 }: {
   settings: ClientSettings;
   session: Session;
-  english: boolean;
 }) {
+  const messageFor = useFailureMessage();
+  const locale = useLocale();
+  const t = useTranslations('Contacts');
   const [contacts, setContacts] = useState<Contact[] | null>(null);
   // The list could not be read: shown as such (with a retry), never as "no contacts yet".
   const [loadFailed, setLoadFailed] = useState(false);
@@ -70,9 +72,9 @@ export function ContactsScreen({
           ...(current ?? []).filter((item) => item.username !== contact.username),
         ]);
         setUsername('');
-        setNotice({ error: false, text: en ? 'Contact added' : 'Contacto agregado' });
+        setNotice({ error: false, text: t('contactAdded') });
       })
-      .catch((failure: unknown) => setNotice({ error: true, text: failureMessage(failure, en) }))
+      .catch((failure: unknown) => setNotice({ error: true, text: messageFor(failure) }))
       .finally(() => setAdding(false));
   }
 
@@ -90,7 +92,7 @@ export function ContactsScreen({
       });
       setNotice({
         error: true,
-        text: en ? "Couldn't remove the contact" : 'No se pudo eliminar el contacto',
+        text: t('couldntRemoveContact'),
       });
     });
   }
@@ -103,40 +105,30 @@ export function ContactsScreen({
       return value;
     });
     const url = `${settings.webOrigin}/login#invite=${code}`;
-    const text = en
-      ? 'Join GatoPago: your dollars already know how to move.'
-      : 'Únete a GatoPago: tus dólares ya saben moverse.';
+    const text = t('joinGatopagoDollarsAlready');
     if (navigator.share) {
       await navigator.share({ title: 'GatoPago', text, url }).catch(() => undefined);
       return;
     }
     await copyText(url);
-    setNotice({ error: false, text: en ? 'Invite link copied' : 'Link de invitación copiado' });
+    setNotice({ error: false, text: t('inviteLinkCopied') });
   }
 
   return (
     <>
-      <BackHeader title={en ? 'Contacts' : 'Contactos'} english={en} />
+      <BackHeader title={t('contacts')} />
 
       <div className="meli-paper-card meli-paper-card--strong relative mb-6 overflow-hidden p-5">
         <div className="pointer-events-none absolute top-0 right-5 h-1 w-12 bg-cat-500 shadow-[8px_4px_0_var(--color-cat-700)]" />
         <div className="relative z-1 flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="mb-1 font-display text-[17px]">
-              {en ? 'Invite your friends' : 'Invita a tus amigos'}
-            </p>
+            <p className="mb-1 font-display text-[17px]">{t('inviteFriends')}</p>
             <p className="text-[13px] leading-relaxed text-text-muted">
               {invites === null
-                ? en
-                  ? 'Share your code and send each other money instantly, with no fees.'
-                  : 'Comparte tu código y pásense dinero al instante, sin comisiones.'
+                ? t('shareCodeSendEach')
                 : invites.invited === 0
-                  ? en
-                    ? 'No one has joined with your code yet. Share it!'
-                    : 'Aún nadie se unió con tu código. ¡Compártelo!'
-                  : en
-                    ? `${invites.invited} ${invites.invited === 1 ? 'friend' : 'friends'} joined with your invite`
-                    : `${invites.invited} ${invites.invited === 1 ? 'amigo se unió' : 'amigos se unieron'} con tu invitación`}
+                  ? t('noOneJoinedCode')
+                  : t('friendsJoined', { count: invites.invited })}
             </p>
           </div>
           <button
@@ -144,11 +136,11 @@ export function ContactsScreen({
             className="btn btn-primary btn-sm shrink-0"
             onClick={() =>
               void invite().catch((failure: unknown) =>
-                setNotice({ error: true, text: failureMessage(failure, en) }),
+                setNotice({ error: true, text: messageFor(failure) }),
               )
             }
           >
-            {en ? 'Invite' : 'Invitar'}
+            {t('invite')}
           </button>
         </div>
         {invites?.code ? (
@@ -156,13 +148,13 @@ export function ContactsScreen({
             type="button"
             onClick={() =>
               void copyText(invites.code!).then(
-                () => setNotice({ error: false, text: en ? 'Code copied' : 'Código copiado' }),
-                () => setNotice({ error: true, text: en ? 'Could not copy' : 'No se pudo copiar' }),
+                () => setNotice({ error: false, text: t('codeCopied') }),
+                () => setNotice({ error: true, text: t('couldNotCopy') }),
               )
             }
             className="relative z-1 mt-3.5 flex items-center gap-2.5 border border-border bg-surface-2 px-3.5 py-2"
           >
-            <span className="text-[12px] text-text-faint">{en ? 'Your code' : 'Tu código'}</span>
+            <span className="text-[12px] text-text-faint">{t('code')}</span>
             <span className="font-mono text-[14px] tracking-[0.2em] text-pending">
               {invites.code}
             </span>
@@ -200,12 +192,12 @@ export function ContactsScreen({
             autoComplete="off"
             autoCapitalize="none"
             spellCheck={false}
-            aria-label={en ? 'Username to add' : 'Usuario a agregar'}
+            aria-label={t('usernameAdd')}
             value={username}
             onChange={(event) =>
               setUsername(event.target.value.replace(/[^a-z0-9_]/gi, '').toLowerCase())
             }
-            placeholder={en ? 'username' : 'usuario'}
+            placeholder={t('username')}
             maxLength={30}
             className="min-w-0 flex-1 bg-transparent text-[14px] text-text placeholder:text-text-faint"
           />
@@ -216,7 +208,7 @@ export function ContactsScreen({
           disabled={adding || !username || (contacts === null && !loadFailed)}
           className="btn btn-primary btn-sm h-12 shrink-0"
         >
-          {adding ? '…' : en ? 'Add' : 'Agregar'}
+          {adding ? '…' : t('add')}
         </button>
       </form>
 
@@ -231,13 +223,7 @@ export function ContactsScreen({
 
       {loadFailed ? (
         <p role="alert" className="mb-4 text-[13px] leading-relaxed text-pending">
-          {contacts
-            ? en
-              ? 'We could not update your contacts; this list may be out of date. '
-              : 'No pudimos actualizar tus contactos; esta lista puede no estar al día. '
-            : en
-              ? 'We could not load your contacts. '
-              : 'No pudimos cargar tus contactos. '}
+          {contacts ? t('couldNotUpdateContacts') : t('couldNotLoadContacts')}{' '}
           <button
             type="button"
             onClick={() => {
@@ -246,7 +232,7 @@ export function ContactsScreen({
             }}
             className="-my-3 inline-block py-3 font-semibold text-cat-700 underline underline-offset-2"
           >
-            {en ? 'Try again' : 'Reintentar'}
+            {t('tryAgain')}
           </button>
         </p>
       ) : null}
@@ -258,9 +244,7 @@ export function ContactsScreen({
         <div className="flex flex-col items-center px-6 py-12 text-center">
           <CatGlyph className="mb-4 w-10 opacity-40" decorative />
           <p className="max-w-[240px] text-[14px] leading-relaxed text-text-muted">
-            {en
-              ? 'Add your friends by their username to pay them in one tap.'
-              : 'Agrega a tus amigos por su usuario para pagarles en un toque.'}
+            {t('addFriendsTheirUsername')}
           </p>
         </div>
       ) : (
@@ -271,7 +255,7 @@ export function ContactsScreen({
               className="flex items-center gap-3.5 border-b border-border px-3 py-3 last:border-b-0"
             >
               <NavigationLink
-                href={localizedPath(`/@${contact.username}`, en)}
+                href={localizedPath(`/@${contact.username}`, locale)}
                 className="flex min-w-0 flex-1 items-center gap-3.5 text-left"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center border border-text bg-cat-500 font-display uppercase text-on-cat">
@@ -295,28 +279,28 @@ export function ContactsScreen({
                     onClick={() => remove(contact)}
                     className="bg-danger/10 px-2.5 py-1.5 text-[13px] font-medium text-danger"
                   >
-                    {en ? 'Remove' : 'Eliminar'}
+                    {t('remove')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setRemoving(null)}
                     className="bg-surface-2 px-2 py-1.5 text-[13px] text-text-muted"
                   >
-                    {en ? 'Cancel' : 'Cancelar'}
+                    {t('cancel')}
                   </button>
                 </div>
               ) : (
                 <>
                   <NavigationLink
-                    href={localizedPath(`/send?username=${contact.username}`, en)}
+                    href={localizedPath(`/send?username=${contact.username}`, locale)}
                     className="shrink-0 px-2 py-1.5 text-[13px] font-semibold text-cat-300"
                   >
-                    {en ? 'Pay' : 'Pagar'}
+                    {t('pay')}
                   </NavigationLink>
                   <button
                     type="button"
                     onClick={() => setRemoving(contact.username)}
-                    aria-label={en ? `Remove ${contact.username}` : `Eliminar ${contact.username}`}
+                    aria-label={t('removeUsername', { username: contact.username })}
                     className="flex h-8 w-8 shrink-0 items-center justify-center text-text-faint"
                   >
                     <svg

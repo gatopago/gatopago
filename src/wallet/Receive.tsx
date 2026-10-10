@@ -10,10 +10,12 @@ import { TokenSelect } from '../consumer/TokenSelect';
 import type { ClientSettings } from '../lib/settings';
 import { networkName } from './account';
 import { refreshBalances } from './balances';
-import { failureMessage } from './messages';
+import { useFailureMessage } from './messages';
 import { send } from './operations';
 import type { Session } from './session';
 import { stellarAccount } from './stellar';
+import { useTranslations } from 'next-intl';
+import { NetworkIcon } from '../consumer/TokenIcon';
 
 /**
  * `/receive`, as in V2: coin, QR and the warnings a wallet or exchange needs. The coin comes first:
@@ -21,15 +23,9 @@ import { stellarAccount } from './stellar';
  * USDC can arrive on several, so it alone asks which one: the home network comes chosen, and
  * Stellar shows its own address when it is on. On testnets, a coin with a faucet can be requested.
  */
-export function Receive({
-  settings,
-  session,
-  english: en,
-}: {
-  settings: ClientSettings;
-  session: Session;
-  english: boolean;
-}) {
+export function Receive({ settings, session }: { settings: ClientSettings; session: Session }) {
+  const messageFor = useFailureMessage();
+  const t = useTranslations('Receive');
   const [symbol, setSymbol] = useState('USDC');
   const [usdcNetwork, setUsdcNetwork] = useState(settings.homeNetwork);
   const [requested, setRequested] = useState<'busy' | 'done' | string | null>(null);
@@ -76,22 +72,18 @@ export function Receive({
         setRequested('done');
         void refreshBalances(settings, session.wallet.address);
       })
-      .catch((failure: unknown) => setRequested(failureMessage(failure, en)));
+      .catch((failure: unknown) => setRequested(messageFor(failure)));
   }
 
   return (
     <>
-      <BackHeader title={en ? 'Receive' : 'Recibir'} english={en} to="/move?flow=receive" />
-      <p className="mb-5 text-[14px] leading-relaxed text-text-muted">
-        {en
-          ? 'Choose the coin, then share your address with the wallet or exchange that sends it.'
-          : 'Elige la moneda y comparte tu dirección con la wallet o el exchange que te la envía.'}
-      </p>
-      {/* The network gets its own row when the coin beside it would cut its name. */}
-      <div className="mb-5 flex flex-wrap items-center gap-2">
+      <BackHeader title={t('receive')} to="/move?flow=receive" />
+      <p className="mb-5 text-[14px] leading-relaxed text-text-muted">{t('chooseCoinThenShare')}</p>
+      {/* The coin, then its network on a row of its own: the same layout for every coin. */}
+      <div className="mb-5 flex flex-col items-start gap-2">
         <TokenSelect
           value={coin.symbol}
-          label={en ? 'Currency' : 'Moneda'}
+          label={t('currency')}
           options={coins.map((item) => ({
             value: item.symbol,
             symbol: item.symbol,
@@ -101,34 +93,29 @@ export function Receive({
             setSymbol(value);
             setRequested(null);
           }}
-          english={en}
         />
         {usdc ? (
           <SelectMenu
-            label={en ? 'Network' : 'Red'}
+            label={t('network')}
             showLabel={false}
             value={onStellar ? stellarId! : held.networkId}
             options={[...settings.networks, ...(stellarId ? [stellarId] : [])].map((id) => ({
               value: id,
               label: networkName(id),
-              description:
-                id === settings.homeNetwork
-                  ? en
-                    ? 'Recommended: your main network'
-                    : 'Recomendada: tu red principal'
-                  : undefined,
+              description: id === settings.homeNetwork ? t('recommendedMainNetwork') : undefined,
               network: id,
             }))}
             onChange={(id) => {
               setUsdcNetwork(id);
               setRequested(null);
             }}
-            english={en}
-            className="min-w-[220px] flex-1"
+            className="w-full"
           />
         ) : (
-          <p className="min-w-0 flex-1 truncate px-1 text-[14px] text-text-muted">
-            {en ? `On ${network}` : `Por ${network}`}
+          // A coin of one network: the same row as USDC's choice, with nothing to choose.
+          <p className="flex h-12 w-full items-center gap-2 border border-border px-3.5 text-[14px] text-text-muted">
+            <NetworkIcon id={networkId} size={22} />
+            <span className="truncate">{t('on', { network })}</span>
           </p>
         )}
       </div>
@@ -136,9 +123,7 @@ export function Receive({
         {onStellar && !stellar ? (
           stellarFailed ? (
             <p role="alert" className="py-8 text-center text-[13px] leading-relaxed text-pending">
-              {en
-                ? 'We could not get your Stellar address. '
-                : 'No pudimos obtener tu dirección de Stellar. '}
+              {t('couldNotGetStellar')}{' '}
               <button
                 type="button"
                 onClick={() => {
@@ -147,37 +132,25 @@ export function Receive({
                 }}
                 className="-my-3 inline-block py-3 font-semibold text-cat-700 underline underline-offset-2"
               >
-                {en ? 'Try again' : 'Reintentar'}
+                {t('tryAgain')}
               </button>
             </p>
           ) : (
             <p className="py-8 text-center text-[13px] text-text-muted">
-              {en ? 'Preparing your Stellar address…' : 'Preparando tu dirección de Stellar…'}
+              {t('preparingStellarAddress')}
             </p>
           )
         ) : (
           <AddressQRCard
             address={onStellar ? stellar! : session.wallet.address}
             chainId={chainId}
-            english={en}
           />
         )}
       </MoneyPanel>
-      <NoticeCard
-        tone="warning"
-        title={
-          en
-            ? `Only ${coin.symbol}, only on ${network}`
-            : `Solo ${coin.symbol} y solo por ${network}`
-        }
-      >
+      <NoticeCard tone="warning" title={t('onlyOnly', { symbol: coin.symbol, network })}>
         {onStellar
-          ? en
-            ? 'This address (C…) is your Stellar smart account. Send from a Stellar wallet that accepts contract addresses; most exchanges do not yet.'
-            : 'Esta dirección (C…) es tu cuenta inteligente en Stellar. Envía desde una wallet de Stellar que acepte direcciones de contrato; la mayoría de los exchanges todavía no.'
-          : en
-            ? `In the exchange or wallet that sends it, choose ${coin.symbol} and the same network you see here, ${network}. On another network, the money can be lost.`
-            : `En el exchange o la wallet que te lo envía, elige ${coin.symbol} y la misma red que ves aquí, ${network}. Por otra red, el dinero puede perderse.`}
+          ? t('addressCStellarSmart')
+          : t('exchangeWalletSendsChoose', { symbol: coin.symbol, network })}
       </NoticeCard>
       {faucet ? (
         <div className="mt-4">
@@ -187,24 +160,14 @@ export function Receive({
             disabled={requested === 'busy'}
             onClick={requestTestCoins}
           >
-            {requested === 'busy'
-              ? en
-                ? 'Requesting…'
-                : 'Pidiendo…'
-              : en
-                ? `Get test ${coin.symbol}`
-                : `Recibir ${coin.symbol} de prueba`}
+            {requested === 'busy' ? t('requesting') : t('getTest', { symbol: coin.symbol })}
           </button>
           {requested && requested !== 'busy' ? (
             <p
               role={requested === 'done' ? 'status' : 'alert'}
               className="mt-2 text-center text-[12px] text-text-muted"
             >
-              {requested === 'done'
-                ? en
-                  ? `Your test ${coin.symbol} arrived.`
-                  : `Llegaron tus ${coin.symbol} de prueba.`
-                : requested}
+              {requested === 'done' ? t('testArrived', { symbol: coin.symbol }) : requested}
             </p>
           ) : null}
         </div>

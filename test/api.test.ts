@@ -44,3 +44,30 @@ describe('a rejected session', () => {
     expect(currentSession()).toBeNull();
   });
 });
+
+describe('an answer that is not a JSON object', () => {
+  it('is a failure of its own, never an empty success', async () => {
+    const { api } = await import('../src/wallet/api');
+    for (const answer of [
+      () => new Response('<html>Bad gateway</html>', { status: 200 }),
+      () => new Response('', { status: 200 }),
+      () => Response.json(null),
+      () => Response.json([]),
+    ]) {
+      vi.stubGlobal('fetch', async () => answer());
+      await expect(api('https://api.gatopago.com', 'groups', { token: 't' })).rejects.toThrow(
+        'INVALID_RESPONSE',
+      );
+    }
+    vi.stubGlobal('fetch', async () => Response.json({ groups: [] }));
+    expect(await api('https://api.gatopago.com', 'groups', { token: 't' })).toEqual({ groups: [] });
+  });
+
+  it('keeps the unavailable code for an error without a body', async () => {
+    const { api } = await import('../src/wallet/api');
+    vi.stubGlobal('fetch', async () => new Response('Bad gateway', { status: 502 }));
+    await expect(api('https://api.gatopago.com', 'groups', { token: 't' })).rejects.toThrow(
+      'UNAVAILABLE',
+    );
+  });
+});

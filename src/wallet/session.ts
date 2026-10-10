@@ -19,8 +19,6 @@ export interface Session {
 }
 
 const SESSION = 'gatopago.session';
-/** The last wallet signed in on this device, so the next sign-in needs a single passkey prompt. */
-const WALLET = 'gatopago.wallet';
 const listeners = new Set<() => void>();
 const memory = new Map<string, string | null>();
 let cached: { raw: string | null; session: Session | null } = { raw: null, session: null };
@@ -100,7 +98,6 @@ export function subscribeSession(listener: () => void) {
 }
 
 export function saveSession(session: Session) {
-  write(WALLET, session.wallet);
   write(SESSION, session);
   notify();
 }
@@ -110,9 +107,4 @@ export function signOut() {
   // The profile cached for the header (useProfile) goes with the session.
   write('gatopago:profile', null);
   notify();
-}
-
-export function knownWallet(): Wallet | null {
-  const wallet = parsed<Wallet>(read(WALLET));
-  return isWallet(wallet) ? wallet : null;
 }

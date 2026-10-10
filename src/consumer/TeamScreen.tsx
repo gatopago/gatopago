@@ -1,10 +1,10 @@
 'use client';
 
 import { walletAssets } from '@gatopago/shared/assets';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useAction } from '../wallet/useAction';
 import { useSearchParams } from 'next/navigation';
-import { isAddress, isAddressEqual, parseUnits, type Address, type Hex } from 'viem';
+import { isAddress, isAddressEqual, type Address, type Hex } from 'viem';
 import { walletNetwork } from '@gatopago/shared/networks';
 import {
   MAX_PAYOUTS,
@@ -15,13 +15,15 @@ import {
   splitCalls,
   type Payout,
 } from '@gatopago/shared/rules';
-import { amountInput } from '../lib/amount';
+import { amountInput, exactUnits, tooPrecise } from '../lib/amount';
+import { useFailureMessage } from '../wallet/messages';
 import type { ClientSettings } from '../lib/settings';
 import { networkName, shortAddress, USDC_DECIMALS } from '../wallet/account';
 import { api, type Recipient } from '../wallet/api';
 import { formatBalance, formatUsdc, useBalances } from '../wallet/balances';
 import { send } from '../wallet/operations';
-import { deleteGroup, listGroups, saveGroup, type Group } from '../wallet/groups';
+import type { Group } from '../wallet/groups';
+import { useGroups } from './useGroups';
 import { ElsewhereNote } from './ElsewhereNote';
 import { RecipientShortcuts } from './RecipientShortcuts';
 import { TokenSelect } from './TokenSelect';
@@ -37,6 +39,7 @@ import {
 import { BackHeader, MoneyPanel, TransactionActions } from './Primitives';
 import { localizedPath } from './routes';
 import { StageOverlay } from './StageOverlay';
+import { useTranslations, useLocale } from 'next-intl';
 
 /** One person in the team: their @username or address, a fixed amount and a share (%). */
 interface Member {
@@ -66,8 +69,7 @@ interface Review {
 }
 
 const teamKey = (account: Address) => `gatopago.team.${account.toLowerCase()}`;
-const units = (value: string, decimals: number) =>
-  parseUnits(value.replace(',', '.') || '0', decimals);
+const units = (value: string, decimals: number) => exactUnits(value || '0', decimals);
 /** A percentage as typed ("12,5") in basis points. */
 const basisPoints = (value: string) => Math.round(Number(value.replace(',', '.') || '0') * 100);
 
@@ -75,15 +77,24 @@ const basisPoints = (value: string) => Math.round(Number(value.replace(',', '.')
 type SavedMember = Pick<Member, 'who' | 'amount' | 'share'>;
 const plainTeam = (team: Member[]): SavedMember[] =>
   team.map(({ who, amount, share }) => ({ who, amount, share }));
-const members = (list: unknown): Member[] | null =>
-  Array.isArray(list) && list.length > 0
-    ? list.map((member: Partial<Member>, id: number) => ({
-        id,
-        who: member.who ?? '',
-        amount: member.amount ?? '',
-        share: member.share ?? '',
-      }))
-    : null;
+/**
+ * A team as read back from this device or from Wallet Core, or `null` when it is not one: a draft
+ * from another version, or edited by hand, starts the form empty instead of breaking the screen.
+ */
+export function members(list: unknown): Member[] | null {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  const text = (value: unknown) =>
+    value === undefined ? '' : typeof value === 'string' ? value : null;
+  const team: Member[] = [];
+  for (const [id, member] of list.entries()) {
+    if (typeof member !== 'object' || member === null) return null;
+    const { who, amount, share } = member as Record<string, unknown>;
+    const fields = { who: text(who), amount: text(amount), share: text(share) };
+    if (fields.who === null || fields.amount === null || fields.share === null) return null;
+    team.push({ id, who: fields.who, amount: fields.amount, share: fields.share });
+  }
+  return team;
+}
 
 /** The group paid last from this device, to start from it next time. */
 function rememberedTeam(account: Address): Member[] {
@@ -110,15 +121,10 @@ function rememberTeam(account: Address, team: Member[]) {
  * that arrived, with a part saved (`/team?split=<amount>` opens it on a paid charge). Every
  * payment goes through or none does.
  */
-export function TeamScreen({
-  settings,
-  session,
-  english: en,
-}: {
-  settings: ClientSettings;
-  session: Session;
-  english: boolean;
-}) {
+export function TeamScreen({ settings, session }: { settings: ClientSettings; session: Session }) {
+  const messageFor = useFailureMessage();
+  const locale = useLocale();
+  const t = useTranslations('Team');
   const params = useSearchParams();
   const account = session.wallet.address;
   const { balances, saved, holding, refresh } = useBalances(settings, session);
@@ -140,27 +146,15 @@ export function TeamScreen({
   const [reference, setReference] = useState(params.get('reference') ?? '');
   const [review, setReview] = useState<Review | null>(null);
   const [receipt, setReceipt] = useState<(ReceiptData & { review: Review }) | null>(null);
-  const { busy, error, run: perform } = useAction(en);
+  const { busy, error, run: perform } = useAction();
   // "My groups": named groups kept by Wallet Core, on any device the member signs in.
-  const [groups, setGroups] = useState<Group[]>([]);
-  const groupAction = useAction(en);
+  const groups = useGroups(settings, session);
   /** The group loaded in the form, if any. */
   const [group, setGroup] = useState<string | null>(null);
   /** The name being typed to save the form as a group; `null` while not saving. */
   const [naming, setNaming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [savedAs, setSavedAs] = useState('');
-  useEffect(() => {
-    let active = true;
-    listGroups(settings, session)
-      .then((list) => {
-        if (active) setGroups(list);
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, [settings, session]);
   const named = team.filter(({ who }) => who.trim());
 
   function pickGroup(chosen: Group) {
@@ -174,21 +168,21 @@ export function TeamScreen({
   function keepGroup() {
     const name = (naming ?? '').trim();
     if (!name) return;
-    groupAction.run(async () => {
-      setGroups(await saveGroup(settings, session, { name, members: plainTeam(named) }));
+    void groups.save({ name, members: plainTeam(named) }).then((saved) => {
+      if (!saved) return;
       setGroup(name);
       setNaming(null);
       setSavedAs(name);
     });
   }
   function forgetGroup(name: string) {
-    groupAction.run(async () => {
-      setGroups(await deleteGroup(settings, session, name));
+    void groups.remove(name).then((removed) => {
+      if (!removed) return;
       setGroup(null);
       setDeleting(false);
     });
   }
-  const saving = en ? 'Saving…' : 'Guardando…';
+  const saving = t('saving');
 
   const network = walletNetwork(networkId);
   // Savings (Aave) hold USDC only.
@@ -200,6 +194,11 @@ export function TeamScreen({
     : from === 'savings'
       ? saved[networkId]
       : balances[networkId];
+  const precision = (mode === 'shares' ? [splitting] : team.map(({ amount }) => amount)).some(
+    (value) => tooPrecise(value, decimals),
+  )
+    ? messageFor(new Error('TOO_MANY_DECIMALS'))
+    : '';
   const sum = (() => {
     try {
       return mode === 'shares'
@@ -304,9 +303,7 @@ export function TeamScreen({
         amount: current.total,
         currency: current.symbol,
         decimals,
-        counterparty: en
-          ? `${current.lines.length} ${current.lines.length === 1 ? 'person' : 'people'}`
-          : `${current.lines.length} ${current.lines.length === 1 ? 'persona' : 'personas'}`,
+        counterparty: t('people', { count: current.lines.length }),
         reference: reference.trim() || null,
         hash,
         networkId,
@@ -321,32 +318,31 @@ export function TeamScreen({
   /** Each payout, then the saved and kept parts of a split. */
   const breakdown = (current: Review) => [
     ...current.lines.map(
-      (line) => [line.label, `${formatUsdc(line.amount, en)} ${symbol}`] as const,
+      (line) => [line.label, `${formatUsdc(line.amount, locale)} ${symbol}`] as const,
     ),
     ...(current.save > 0n
-      ? ([
-          [en ? 'To Grow (Aave)' : 'A Crecer (Aave)', `${formatUsdc(current.save, en)} ${symbol}`],
-        ] as const)
+      ? ([[t('growAave'), `${formatUsdc(current.save, locale)} ${symbol}`]] as const)
       : []),
     ...(current.mode === 'shares'
-      ? ([
-          [en ? 'Stays available' : 'Te queda', `${formatUsdc(current.keep, en)} ${symbol}`],
-        ] as const)
+      ? ([[t('staysAvailable'), `${formatUsdc(current.keep, locale)} ${symbol}`]] as const)
       : []),
   ];
 
-  const title = en ? 'Group payment' : 'Pago en grupo';
+  const title = t('groupPayment');
   if (receipt)
     return (
       <>
-        <BackHeader title={title} english={en} to="/move" />
-        <ReceiptScreen receipt={receipt} english={en}>
+        <BackHeader title={title} to="/move" />
+        <ReceiptScreen receipt={receipt}>
           <ConfirmDetails rows={breakdown(receipt.review)} />
-          <NavigationLink href={localizedPath('/app', en)} className="btn btn-ghost btn-block mt-4">
-            {en ? 'Go to home' : 'Ir al inicio'}
+          <NavigationLink
+            href={localizedPath('/app', locale)}
+            className="btn btn-ghost btn-block mt-4"
+          >
+            {t('goHome')}
           </NavigationLink>
           <button type="button" className="btn-text mt-1 w-full" onClick={() => setReceipt(null)}>
-            {en ? 'Pay this group again' : 'Pagar a este grupo otra vez'}
+            {t('payGroupAgain')}
           </button>
         </ReceiptScreen>
       </>
@@ -354,20 +350,10 @@ export function TeamScreen({
 
   return (
     <>
-      <BackHeader title={title} english={en} to="/move" />
-      <StageOverlay
-        label={
-          busy && !review && !receipt
-            ? en
-              ? 'Preparing the payments…'
-              : 'Preparando los pagos…'
-            : null
-        }
-      />
+      <BackHeader title={title} to="/move" />
+      <StageOverlay label={busy && !review && !receipt ? t('preparingPayments') : null} />
       <p className="mb-4 text-[14px] leading-relaxed text-text-muted">
-        {en
-          ? 'Pay several people at once with a single confirmation. Either every payment goes through or none does.'
-          : 'Paga a varias personas a la vez con una sola confirmación. O se hacen todos los pagos, o ninguno.'}
+        {t('paySeveralPeopleOnce')}
       </p>
       <div className="seg-track seg-track-block mb-5">
         {(['amounts', 'shares'] as const).map((option) => (
@@ -380,26 +366,20 @@ export function TeamScreen({
             disabled={busy}
             onClick={() => setMode(option)}
           >
-            {option === 'amounts'
-              ? en
-                ? 'Fixed amounts'
-                : 'Montos fijos'
-              : en
-                ? 'Split an amount'
-                : 'Repartir un monto'}
+            {option === 'amounts' ? t('fixedAmounts') : t('splitAmount')}
           </button>
         ))}
       </div>
-      {error && !review ? (
+      {(error || precision) && !review ? (
         <p className="auth-error" role="alert">
-          {error}
+          {error || precision}
         </p>
       ) : null}
       <form onSubmit={prepare} aria-busy={busy} className="flex flex-1 flex-col">
         {mode === 'shares' ? (
           <MoneyPanel className="mb-5">
             <label className="mb-2 block text-[13px] font-semibold" htmlFor="team-split">
-              {en ? `Amount to split (${symbol})` : `Monto a repartir (${symbol})`}
+              {t('amountSplit', { symbol })}
             </label>
             <input
               id="team-split"
@@ -414,30 +394,34 @@ export function TeamScreen({
               className="meli-field tabular h-12 text-[15px] placeholder:text-text-faint"
             />
             <p className="mt-2 text-[12px] leading-relaxed text-text-muted">
-              {en
-                ? 'For example, a payment you just received. Give each person a share; what nobody gets stays available.'
-                : 'Por ejemplo, un pago que acabas de recibir. Asigna un porcentaje a cada persona; lo que no repartas se queda disponible.'}
+              {t('examplePaymentJustReceived')}
             </p>
           </MoneyPanel>
         ) : null}
         <MoneyPanel className="mb-5">
-          <p className="text-[13px] font-semibold">{en ? 'Who gets paid' : 'A quién pagas'}</p>
-          <p className="mb-3 text-[12px] text-text-muted">
-            {en
-              ? 'Their GatoPago @username or a 0x address.'
-              : 'Su @usuario de GatoPago o una dirección 0x.'}
-          </p>
-          {groups.length > 0 ? (
+          <p className="text-[13px] font-semibold">{t('whoGetsPaid')}</p>
+          <p className="mb-3 text-[12px] text-text-muted">{t('theirGatopagoUsername0x')}</p>
+          {groups.failed ? (
+            <p role="alert" className="mb-3 text-[12px] leading-relaxed text-pending">
+              {t('couldNotLoadGroups')}{' '}
+              <button
+                type="button"
+                onClick={groups.retry}
+                className="-my-3 inline-block py-3 font-semibold text-cat-700 underline underline-offset-2"
+              >
+                {t('tryAgain')}
+              </button>
+            </p>
+          ) : null}
+          {groups.groups.length > 0 ? (
             <div className="mb-3">
-              <p className="mb-1.5 text-[12px] text-text-muted">
-                {en ? 'My groups' : 'Mis grupos'}
-              </p>
+              <p className="mb-1.5 text-[12px] text-text-muted">{t('myGroups')}</p>
               <div className="flex flex-wrap gap-2">
-                {groups.map((item) => (
+                {groups.groups.map((item) => (
                   <button
                     key={item.name}
                     type="button"
-                    disabled={busy || groupAction.busy}
+                    disabled={busy || groups.busy}
                     aria-pressed={item.name === group}
                     onClick={() => pickGroup(item)}
                     className={`min-h-11 max-w-full overflow-hidden text-ellipsis whitespace-nowrap border px-3 text-[13px] ${item.name === group ? 'border-text bg-cat-500/15 font-semibold' : 'border-border bg-surface'}`}
@@ -447,55 +431,48 @@ export function TeamScreen({
                   </button>
                 ))}
               </div>
-              {group && groups.some((item) => item.name === group) ? (
+              {group && groups.groups.some((item) => item.name === group) ? (
                 deleting ? (
                   <p className="mt-1 text-[12px]">
-                    {en ? `Delete “${group}”?` : `¿Borrar «${group}»?`}{' '}
+                    {t('deleteQuestion', { group })}{' '}
                     <button
                       type="button"
-                      disabled={groupAction.busy}
+                      disabled={groups.busy}
                       onClick={() => forgetGroup(group)}
                       className="min-h-11 px-1 font-semibold text-danger underline underline-offset-2"
                     >
-                      {groupAction.busy
-                        ? en
-                          ? 'Deleting…'
-                          : 'Borrando…'
-                        : en
-                          ? 'Yes, delete'
-                          : 'Sí, borrar'}
+                      {groups.busy ? t('deleting') : t('yesDelete')}
                     </button>
                     <button
                       type="button"
-                      disabled={groupAction.busy}
+                      disabled={groups.busy}
                       onClick={() => setDeleting(false)}
                       className="min-h-11 px-1 text-text-muted underline underline-offset-2"
                     >
-                      {en ? 'Keep it' : 'No, dejarlo'}
+                      {t('keep')}
                     </button>
                   </p>
                 ) : (
                   <button
                     type="button"
-                    disabled={busy || groupAction.busy}
+                    disabled={busy || groups.busy}
                     onClick={() => setDeleting(true)}
                     className="mt-1 min-h-11 text-[12px] text-text-muted underline underline-offset-2"
                   >
-                    {en ? `Delete “${group}”` : `Borrar «${group}»`}
+                    {t('deleteGroup', { group })}
                   </button>
                 )
               ) : null}
             </div>
           ) : null}
-          {groupAction.error ? (
+          {groups.error ? (
             <p role="alert" className="mb-3 text-[12px] leading-relaxed text-pending">
-              {groupAction.error}
+              {groups.error}
             </p>
           ) : null}
           <RecipientShortcuts
             settings={settings}
             session={session}
-            english={en}
             selected={team.map(({ who }) => who.replace(/^@/, '').toLowerCase())}
             onPick={(username) =>
               setTeam((current) => {
@@ -530,8 +507,8 @@ export function TeamScreen({
             {team.map((member, index) => (
               <li key={member.id} className="flex items-center gap-2">
                 <input
-                  aria-label={en ? `Person ${index + 1}` : `Persona ${index + 1}`}
-                  placeholder={en ? '@username' : '@usuario'}
+                  aria-label={t('person', { index: index + 1 })}
+                  placeholder={t('username')}
                   autoComplete="off"
                   autoCapitalize="none"
                   spellCheck={false}
@@ -544,12 +521,8 @@ export function TeamScreen({
                   <input
                     aria-label={
                       mode === 'shares'
-                        ? en
-                          ? `Share for person ${index + 1} (%)`
-                          : `Porcentaje para la persona ${index + 1}`
-                        : en
-                          ? `Amount for person ${index + 1}`
-                          : `Monto para la persona ${index + 1}`
+                        ? t('sharePerson', { index: index + 1 })
+                        : t('amountPerson', { index: index + 1 })
                     }
                     placeholder="0"
                     inputMode="decimal"
@@ -574,9 +547,7 @@ export function TeamScreen({
                 <button
                   type="button"
                   className="btn-text shrink-0 px-2"
-                  aria-label={
-                    en ? `Remove person ${index + 1}` : `Quitar a la persona ${index + 1}`
-                  }
+                  aria-label={t('removePerson', { index: index + 1 })}
                   disabled={busy || team.length === 1}
                   onClick={() => setTeam((current) => current.filter(({ id }) => id !== member.id))}
                 >
@@ -602,69 +573,63 @@ export function TeamScreen({
                 ])
               }
             >
-              {en ? '+ Add a person' : '+ Agregar persona'}
+              {t('addPerson')}
             </button>
           ) : null}
           {named.length > 0 ? (
             naming === null ? (
               <button
                 type="button"
-                disabled={groupAction.busy || busy}
+                disabled={groups.busy || busy}
                 onClick={() => {
                   setNaming(group ?? '');
                   setSavedAs('');
                 }}
                 className="mt-1 block min-h-11 text-left text-[13px] font-semibold text-cat-700 underline underline-offset-2 disabled:opacity-50"
               >
-                {group
-                  ? en
-                    ? `Save changes to “${group}”`
-                    : `Guardar cambios en «${group}»`
-                  : en
-                    ? 'Save group'
-                    : 'Guardar grupo'}
+                {group ? t('saveChanges', { group }) : t('saveGroup')}
               </button>
             ) : (
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <label htmlFor="group-name" className="basis-full text-[12px] text-text-muted">
-                  {en ? 'Group name' : 'Nombre del grupo'}
+                  {t('groupName')}
                 </label>
                 <input
                   id="group-name"
                   value={naming}
                   maxLength={40}
-                  placeholder={en ? 'E.g. Suppliers' : 'Ej.: Proveedores'}
+                  placeholder={t('eGSuppliers')}
                   onChange={(event) => setNaming(event.target.value)}
                   className="meli-field h-11 basis-full text-[14px] placeholder:text-text-faint"
                 />
                 <button
                   type="button"
-                  disabled={groupAction.busy || busy || !naming.trim()}
+                  disabled={groups.busy || busy || !naming.trim()}
                   onClick={keepGroup}
                   className="btn btn-primary btn-sm h-11 shrink-0"
                 >
-                  {groupAction.busy ? saving : en ? 'Save' : 'Guardar'}
+                  {groups.busy ? saving : t('save')}
                 </button>
                 <button
                   type="button"
-                  disabled={groupAction.busy}
+                  disabled={groups.busy}
                   onClick={() => setNaming(null)}
                   className="btn-text min-h-11 shrink-0 text-[13px]"
                 >
-                  {en ? 'Cancel' : 'Cancelar'}
+                  {t('cancel')}
                 </button>
               </div>
             )
           ) : null}
           {savedAs ? (
             <p role="status" className="mt-2 text-[12px] text-growth">
-              ✓ {en ? `“${savedAs}” saved` : `«${savedAs}» guardado`}
+              ✓ {t('saved', { savedAs })}
             </p>
           ) : null}
           {mode === 'shares' && canSave ? (
             <div className="mt-4 flex items-center gap-2">
               <label htmlFor="team-save" className="min-w-0 flex-1 text-[14px]">
-                {en ? 'To Grow (Aave)' : 'A Crecer (Aave)'}
+                {t('growAave')}
               </label>
               <div className="relative w-24 shrink-0">
                 <input
@@ -690,8 +655,8 @@ export function TeamScreen({
             </div>
           ) : null}
           <input
-            aria-label={en ? 'What it is for (optional)' : 'Concepto (opcional)'}
-            placeholder={en ? 'What it is for (optional)' : 'Concepto (opcional)'}
+            aria-label={t('whatOptional')}
+            placeholder={t('whatOptional')}
             maxLength={80}
             value={reference}
             disabled={busy}
@@ -701,11 +666,11 @@ export function TeamScreen({
         </MoneyPanel>
         <MoneyPanel className="mb-5">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="text-[13px] font-semibold">{en ? 'Pay from' : 'Pagar desde'}</p>
+            <p className="text-[13px] font-semibold">{t('pay')}</p>
             {others.length > 0 ? (
               <TokenSelect
                 value={symbol}
-                label={en ? 'Currency' : 'Moneda'}
+                label={t('currency')}
                 options={[
                   { value: 'USDC', symbol: 'USDC', label: 'USD Coin' },
                   ...others.map((asset) => ({
@@ -715,7 +680,6 @@ export function TeamScreen({
                   })),
                 ]}
                 onChange={setCoin}
-                english={en}
                 disabled={busy}
               />
             ) : null}
@@ -731,66 +695,39 @@ export function TeamScreen({
                   data-active={from === option}
                   onClick={() => setSource(option)}
                 >
-                  {option === 'available'
-                    ? en
-                      ? 'Available'
-                      : 'Disponible'
-                    : en
-                      ? 'In Grow'
-                      : 'En Crecer'}
+                  {option === 'available' ? t('available') : t('grow')}
                 </button>
               ))}
             </div>
           ) : null}
           <p className="text-[12px] leading-relaxed text-text-muted">
-            {from === 'savings'
-              ? en
-                ? 'What is in Grow keeps earning interest: only what the payments add up to leaves it'
-                : 'Lo que tienes en Crecer sigue ganando intereses: solo sale lo que suman los pagos'
-              : en
-                ? `From the ${symbol} you have available`
-                : `Desde los ${symbol} que tienes disponibles`}
-            {typeof funds === 'bigint' ? ` (${formatBalance(funds, en)} ${symbol})` : null}.
+            {from === 'savings' ? t('whatGrowKeepsEarning') : t('fromAvailable', { symbol })}
+            {typeof funds === 'bigint' ? ` (${formatBalance(funds, locale)} ${symbol})` : null}.
           </p>
           {from === 'available' && !chosen ? (
-            <ElsewhereNote settings={settings} session={session} english={en} className="mt-2" />
+            <ElsewhereNote settings={settings} session={session} className="mt-2" />
           ) : null}
         </MoneyPanel>
         <TransactionActions>
           <button type="submit" className="btn btn-primary btn-block" disabled={busy || sum === 0n}>
             {busy
-              ? en
-                ? 'Preparing…'
-                : 'Preparando…'
+              ? t('preparing')
               : mode === 'shares'
-                ? en
-                  ? `Review split · ${formatUsdc(sum, en)} ${symbol}`
-                  : `Revisar reparto · ${formatUsdc(sum, en)} ${symbol}`
-                : en
-                  ? `Review payments · ${formatUsdc(sum, en)} ${symbol}`
-                  : `Revisar pagos · ${formatUsdc(sum, en)} ${symbol}`}
+                ? t('reviewSplit', { sum: formatUsdc(sum, locale), symbol })
+                : t('reviewPayments', { sum: formatUsdc(sum, locale), symbol })}
           </button>
         </TransactionActions>
       </form>
       {review ? (
         <ConfirmSheet
-          title={en ? 'Confirm the payments' : 'Confirma los pagos'}
-          amountLabel={en ? 'You will move' : 'Vas a mover'}
-          amount={formatUsdc(review.total, en)}
+          title={t('confirmPayments')}
+          amountLabel={t('move')}
+          amount={formatUsdc(review.total, locale)}
           unit={review.symbol}
-          warning={
-            en
-              ? 'Check each person and amount: payments cannot be undone. GatoPago pays the network fee.'
-              : 'Revisa cada persona y monto: los pagos no se pueden deshacer. GatoPago paga la comisión de red.'
-          }
-          confirmLabel={en ? 'Confirm and pay' : 'Confirmar y pagar'}
-          english={en}
+          warning={t('checkEachPersonAmount')}
+          confirmLabel={t('confirmPay')}
           busy={busy}
-          busyLabel={
-            en
-              ? 'Confirm on your device. Paying the group…'
-              : 'Confirma en tu dispositivo. Pagando al grupo…'
-          }
+          busyLabel={t('confirmDevicePayingGroup')}
           error={error}
           onConfirm={() => confirm(review)}
           onCancel={() => setReview(null)}
@@ -798,26 +735,12 @@ export function TeamScreen({
           <ConfirmDetails
             rows={[
               ...breakdown(review),
-              [
-                en ? 'From' : 'Desde',
-                review.from === 'savings'
-                  ? en
-                    ? 'Grow (Aave)'
-                    : 'Crecer (Aave)'
-                  : en
-                    ? 'Available'
-                    : 'Disponible',
-              ],
-              [en ? 'Network' : 'Red', networkName(networkId)],
-              ...(reference.trim() ? ([[en ? 'For' : 'Concepto', reference.trim()]] as const) : []),
+              [t('from'), review.from === 'savings' ? t('growAaveShort') : t('available')],
+              [t('network'), networkName(networkId)],
+              ...(reference.trim() ? ([[t('for'), reference.trim()]] as const) : []),
             ]}
           />
-          <SigningDetails
-            wallet={session.wallet}
-            networkId={networkId}
-            calls={callsFor(review)}
-            english={en}
-          />
+          <SigningDetails wallet={session.wallet} networkId={networkId} calls={callsFor(review)} />
         </ConfirmSheet>
       ) : null}
     </>

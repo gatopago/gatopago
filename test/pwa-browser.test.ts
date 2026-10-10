@@ -170,7 +170,7 @@ describe('browser PWA lifecycle', () => {
     const unsubscribe = guard.subscribeReloadGuard(notify);
     const a = guard.holdPageReload();
     const b = guard.holdPageReload();
-    expect(guard.reloadPage()).toBe(false);
+    expect(guard.isReloadBlocked()).toBe(true);
     expect(await pwa.requestInstall()).toBe('blocked');
     a();
     a();
@@ -179,8 +179,6 @@ describe('browser PWA lifecycle', () => {
     expect(guard.isReloadBlocked()).toBe(false);
     expect(notify).toHaveBeenCalledTimes(4);
     expect(env.win.location.reload).not.toHaveBeenCalled();
-    expect(guard.reloadPage()).toBe(true);
-    expect(env.win.location.reload).toHaveBeenCalledOnce();
     unsubscribe();
   });
 });

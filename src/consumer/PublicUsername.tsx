@@ -5,41 +5,43 @@ import type { ClientSettings } from '../lib/settings';
 import { useCopy } from '../lib/useCopy';
 import { networkName } from '../wallet/account';
 import { api, type Recipient } from '../wallet/api';
-import { failureMessage } from '../wallet/messages';
+import { useFailureMessage } from '../wallet/messages';
 import { ConsumerFrame } from './ConsumerFrame';
 import { NavigationLink } from './NavigationLink';
 import { Panel } from './Primitives';
 import { localizedPath } from './routes';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { ScreenLoading } from './Skeleton';
+import { useTranslations, useLocale } from 'next-intl';
 
 /** `/@username`: who receives payments to this username, and where. */
 export function PublicUsername({
   username,
   settings,
-  english: en,
 }: {
   username: string;
   settings: ClientSettings;
-  english: boolean;
 }) {
+  const messageFor = useFailureMessage();
+  const locale = useLocale();
+  const t = useTranslations('PublicUsername');
   const [recipient, setRecipient] = useState<Recipient | null>(null);
   const [error, setError] = useState('');
-  const { copy, label, failed } = useCopy(en);
+  const { copy, label, failed } = useCopy();
   useEffect(() => {
     const controller = new AbortController();
     api<Recipient>(settings.apiOrigin, `recipients/${username}`, { signal: controller.signal })
       .then(setRecipient)
       .catch((failure: unknown) => {
-        if (!controller.signal.aborted) setError(failureMessage(failure, en));
+        if (!controller.signal.aborted) setError(messageFor(failure));
       });
     return () => controller.abort();
-  }, [settings, username, en]);
+  }, [settings, username, messageFor]);
   return (
-    <ConsumerFrame english={en} presentation="public">
+    <ConsumerFrame presentation="public">
       <div className="auth-content">
         {error ? <p role="alert">{error}</p> : null}
-        {!recipient && !error ? <ScreenLoading kind="detail" english={en} bar={false} /> : null}
+        {!recipient && !error ? <ScreenLoading kind="detail" bar={false} /> : null}
         {recipient ? (
           <>
             <div className="flex flex-col items-center py-6 text-center">
@@ -55,9 +57,7 @@ export function PublicUsername({
               {recipient.display_name ? (
                 <p className="mb-3 text-[15px] text-text-muted">@{recipient.username}</p>
               ) : null}
-              <p className="text-[14px] text-text-muted">
-                {en ? 'Receives payments with GatoPago' : 'Recibe pagos con GatoPago'}
-              </p>
+              <p className="text-[14px] text-text-muted">{t('receivesPaymentsGatopago')}</p>
               {recipient.social_url ? (
                 <a
                   href={recipient.social_url}
@@ -70,39 +70,33 @@ export function PublicUsername({
               ) : null}
             </div>
             <Panel className="meli-paper-card--strong">
-              <p className="mb-2 text-[12px] text-text-faint">
-                {en ? 'Receiving address' : 'Dirección para recibir'}
-              </p>
+              <p className="mb-2 text-[12px] text-text-faint">{t('receivingAddress')}</p>
               <p className="mb-4 break-all font-mono text-[12px]">{recipient.address}</p>
               <button
                 type="button"
                 className="auth-secondary btn btn-ghost btn-block"
                 onClick={() => copy(recipient.address)}
               >
-                {label(en ? 'Copy address' : 'Copiar dirección')}
+                {label(t('copyAddress'))}
               </button>
               {failed() ? (
                 <p role="alert" className="mt-3 text-[12px] text-danger">
-                  {en
-                    ? 'Select the address above to copy it.'
-                    : 'Selecciona la dirección de arriba para copiarla.'}
+                  {t('selectAddressAboveCopy')}
                 </p>
               ) : null}
               <p className="mt-4 text-[12px] leading-relaxed text-text-muted">
-                {en
-                  ? `Send only USDC, on ${settings.networks.map(networkName).join(', ')}.`
-                  : `Envía solo USDC, en ${settings.networks.map(networkName).join(', ')}.`}
+                {t('sendOnlyUsdc', { value: settings.networks.map(networkName).join(', ') })}
               </p>
             </Panel>
             <NavigationLink
               className="auth-primary btn btn-primary btn-block"
-              href={localizedPath(`/send?username=${recipient.username}`, en)}
+              href={localizedPath(`/send?username=${recipient.username}`, locale)}
             >
-              {en ? 'Pay with GatoPago' : 'Pagar con GatoPago'}
+              {t('payGatopago')}
             </NavigationLink>
             <p className="mt-5 flex items-center justify-center gap-2 text-[12px] text-text-muted">
               <CatGlyph className="w-6" decorative />
-              {en ? 'Your passkey authorizes each payment' : 'Tu passkey autoriza cada pago'}
+              {t('passkeyAuthorizesEachPayment')}
             </p>
           </>
         ) : null}

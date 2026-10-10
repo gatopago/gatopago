@@ -4,6 +4,7 @@ import Script from 'next/script';
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { createChallengeLifecycle, type ChallengeState } from './turnstile-lifecycle';
 import { useCspNonce } from '../security/NonceProvider';
+import { useTranslations } from 'next-intl';
 
 type TurnstileApi = {
   render(
@@ -35,15 +36,8 @@ declare global {
 export type TurnstileHandle = { token(signal: AbortSignal): Promise<string> };
 type PendingToken = { resolve(token: string): void; reject(error: unknown): void; cleanup(): void };
 
-export function Turnstile({
-  siteKey,
-  english,
-  ref,
-}: {
-  siteKey: string;
-  english: boolean;
-  ref: Ref<TurnstileHandle>;
-}) {
+export function Turnstile({ siteKey, ref }: { siteKey: string; ref: Ref<TurnstileHandle> }) {
+  const t = useTranslations('Turnstile');
   const nonce = useCspNonce();
   const container = useRef<HTMLDivElement>(null);
   const [scriptReady, setScriptReady] = useState(false);
@@ -174,16 +168,8 @@ export function Turnstile({
         onError={() => controller.current?.fail()}
       />
       <div ref={container} />
-      {state.status === 'loading' ? (
-        <p role="status">{english ? 'Checking security…' : 'Comprobando seguridad…'}</p>
-      ) : null}
-      {failed ? (
-        <p role="status">
-          {english
-            ? 'Select Create account to retry the security check.'
-            : 'Pulsa Crear cuenta para reintentar la comprobación de seguridad.'}
-        </p>
-      ) : null}
+      {state.status === 'loading' ? <p role="status">{t('checkingSecurity')}</p> : null}
+      {failed ? <p role="status">{t('selectCreateAccountRetry')}</p> : null}
     </div>
   );
 }

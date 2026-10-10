@@ -17,20 +17,15 @@ import type { ClientSettings } from '../lib/settings';
 import { networkName } from './account';
 import { formatBalance, formatHolding, useBalances } from './balances';
 import type { Session } from './session';
+import { useTranslations, useLocale } from 'next-intl';
 
 const CardInterestSheet = dynamic(() =>
   import('../consumer/CardInterestSheet').then((m) => m.CardInterestSheet),
 );
 
-export function Home({
-  settings,
-  session,
-  english: en,
-}: {
-  settings: ClientSettings;
-  session: Session;
-  english: boolean;
-}) {
+export function Home({ settings, session }: { settings: ClientSettings; session: Session }) {
+  const locale = useLocale();
+  const t = useTranslations('Home');
   const { balances, saved, holding, refreshing, refresh } = useBalances(settings, session);
   const home = settings.homeNetwork;
   const [hidden, setHidden] = useState(balanceHidden);
@@ -42,7 +37,7 @@ export function Home({
     savedValues.length > 0 && savedValues.every((value) => typeof value === 'bigint')
       ? savedValues.reduce<bigint>((sum, value) => sum + (value ?? 0n), 0n)
       : null;
-  const growingText = hidden ? '••••' : growing === null ? '—' : formatBalance(growing, en);
+  const growingText = hidden ? '••••' : growing === null ? '—' : formatBalance(growing, locale);
   // XLM joins the list when Stellar is on, on its own network like every other coin.
   const assets = walletAssets(settings.networks, settings.stellar?.network);
   // USDC is one balance, on the home network. Every other coin is listed on its own network (ETH on
@@ -64,8 +59,8 @@ export function Home({
     if (hidden) return '••••';
     if (typeof value !== 'bigint') return '—';
     return item.symbol === 'USDC'
-      ? formatBalance(value, en)
-      : formatHolding(value, item.decimals, en);
+      ? formatBalance(value, locale)
+      : formatHolding(value, item.decimals, locale);
   };
   // USDC first, then the coins the account holds, then the empty ones, quieter.
   const tokens = coins
@@ -82,24 +77,24 @@ export function Home({
         Number(a.muted) - Number(b.muted),
     );
   const actions = [
-    { href: '/charge', label: en ? 'Request' : 'Cobrar', icon: RequestIcon },
-    { href: '/send', label: en ? 'Send' : 'Enviar', icon: SendIcon },
-    { href: '/swap', label: en ? 'Swap' : 'Cambiar', icon: SwapIcon },
-    { href: '/scan', label: en ? 'Scan' : 'Escanear', icon: ScanIcon },
+    { href: '/charge', label: t('request'), icon: RequestIcon },
+    { href: '/send', label: t('send'), icon: SendIcon },
+    { href: '/swap', label: t('swap'), icon: SwapIcon },
+    { href: '/scan', label: t('scan'), icon: ScanIcon },
   ];
   return (
     <>
-      <h1 className="sr-only">{en ? 'My GatoPago account' : 'Mi cuenta GatoPago'}</h1>
+      <h1 className="sr-only">{t('myGatopagoAccount')}</h1>
       <section className="meli-balance-card-app p-5" aria-labelledby="available-heading">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2
             id="available-heading"
             className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted"
           >
-            {en ? 'Available' : 'Disponible'}
+            {t('available')}
           </h2>
           <div className="flex shrink-0 items-center gap-1">
-            <TokenSelect value={currency} options={tokens} onChange={setCurrency} english={en} />
+            <TokenSelect value={currency} options={tokens} onChange={setCurrency} />
             <button
               type="button"
               onClick={() => {
@@ -107,15 +102,7 @@ export function Home({
                 setHidden(!hidden);
               }}
               aria-pressed={hidden}
-              aria-label={
-                hidden
-                  ? en
-                    ? 'Show balance'
-                    : 'Mostrar saldo'
-                  : en
-                    ? 'Hide balance'
-                    : 'Ocultar saldo'
-              }
+              aria-label={hidden ? t('showBalance') : t('hideBalance')}
               className="flex h-10 w-10 shrink-0 items-center justify-center text-text-faint"
             >
               <EyeIcon hidden={hidden} />
@@ -130,11 +117,11 @@ export function Home({
               '••••'
             ) : shownBalance != null ? (
               native ? (
-                formatHolding(shownBalance, asset.decimals, en)
+                formatHolding(shownBalance, asset.decimals, locale)
               ) : (
                 <>
                   <span className="mr-1 text-[0.5em]">$</span>
-                  {formatBalance(shownBalance, en)}
+                  {formatBalance(shownBalance, locale)}
                 </>
               )
             ) : (
@@ -148,65 +135,51 @@ export function Home({
           <span className="min-w-0 truncate">
             {native
               ? held.token !== null
-                ? en
-                  ? 'Kept apart from your USDC'
-                  : 'Aparte de tus USDC'
-                : en
-                  ? 'Not counted in your dollar balance'
-                  : 'No se suma a tu saldo en dólares'
+                ? t('keptApartUsdc')
+                : t('notCountedDollarBalance')
               : null}
           </span>
           <button
             type="button"
             disabled={refreshing}
             onClick={refresh}
-            aria-label={en ? 'Refresh balance' : 'Actualizar saldo'}
+            aria-label={t('refreshBalance')}
             className="balance-refresh -mr-2 flex h-9 shrink-0 items-center gap-1.5 px-2 disabled:cursor-wait"
             data-busy={refreshing || !loaded}
           >
             <RefreshIcon />
-            <span>
-              {!loaded || refreshing
-                ? en
-                  ? 'Refreshing'
-                  : 'Actualizando'
-                : en
-                  ? 'Refresh'
-                  : 'Actualizar'}
-            </span>
+            <span>{!loaded || refreshing ? t('refreshing') : t('refresh')}</span>
           </button>
         </div>
         {growing ? (
           <NavigationLink
-            href={localizedPath('/earn', en)}
+            href={localizedPath('/earn', locale)}
             className="mt-4 flex items-center justify-between gap-3 border-t border-[rgb(255_248_240/.14)] pt-3 text-[12px]"
           >
             <span className="flex items-center gap-2 text-text-muted">
               <i className="h-2 w-2 bg-[#71d5a1]" aria-hidden="true" />
-              {en ? 'Also growing' : 'Además, creciendo'}
+              {t('alsoGrowing')}
             </span>
             <strong className="font-mono">{growingText} USDC</strong>
           </NavigationLink>
         ) : null}
         {shownBalance === null ? (
           <p className="mt-4 text-[12px] text-text-muted">
-            {en
-              ? 'We could not read this balance right now. Your money is safe.'
-              : 'No pudimos leer este saldo ahora. Tu dinero está a salvo.'}{' '}
+            {t('couldNotReadBalance')}{' '}
             <button type="button" className="underline" onClick={refresh}>
-              {en ? 'Retry' : 'Reintentar'}
+              {t('retry')}
             </button>
           </p>
         ) : null}
       </section>
       {native ? null : (
-        <ElsewhereNote settings={settings} session={session} english={en} className="mt-3 px-1" />
+        <ElsewhereNote settings={settings} session={session} className="mt-3 px-1" />
       )}
       <div className="meli-quick-grid mt-5">
         {actions.map((item) => (
           <NavigationLink
             key={item.href}
-            href={localizedPath(item.href, en)}
+            href={localizedPath(item.href, locale)}
             className="meli-quick-action interactive-surface"
           >
             <span>
@@ -219,33 +192,29 @@ export function Home({
       <section className="meli-paper-card mt-6" aria-labelledby="recent-activity-title">
         <div className="flex items-center justify-between gap-3 border-b border-border py-1 pr-1 pl-4">
           <h2 id="recent-activity-title" className="font-display text-[17px]">
-            {en ? 'Recent activity' : 'Actividad reciente'}
+            {t('recentActivity')}
           </h2>
           <NavigationLink
-            href={localizedPath('/statement', en)}
+            href={localizedPath('/statement', locale)}
             className="btn-text min-h-11 text-[13px] text-cat-700"
           >
-            {en ? 'See all' : 'Ver todo'}
+            {t('seeAll')}
           </NavigationLink>
         </div>
-        <RecentActivity settings={settings} session={session} hidden={hidden} english={en} />
+        <RecentActivity settings={settings} session={session} hidden={hidden} />
       </section>
       {growing ? null : (
         <NavigationLink
-          href={localizedPath('/earn', en)}
+          href={localizedPath('/earn', locale)}
           className="meli-paper-card meli-paper-card--strong interactive-surface relative mt-6 grid grid-cols-[1fr_76px] items-center gap-3 overflow-hidden p-4 text-left"
         >
           <span>
-            <span className="meli-kicker mb-2 block">{en ? 'Grow' : 'Crecer'}</span>
+            <span className="meli-kicker mb-2 block">{t('grow')}</span>
             <strong className="block font-display text-[18px] leading-tight">
-              {en
-                ? 'Put the money you are not using to work'
-                : 'Pon a trabajar el dinero que no estás usando'}
+              {t('putMoneyNotUsing')}
             </strong>
             <span className="mt-1.5 block text-[12px] leading-snug text-text-muted">
-              {en
-                ? 'Variable rate with Aave. Withdraw whenever you want.'
-                : 'Tasa variable con Aave. Retíralo cuando quieras.'}
+              {t('variableRateAaveWithdraw')}
             </span>
           </span>
           <MeliSprite variant="body-sleeping" className="w-20 translate-y-2" />
@@ -258,16 +227,10 @@ export function Home({
       >
         <span className="meli-kicker mb-2 block !text-cat-500">GatoPago Card</span>
         <strong className="block font-display text-[18px] leading-tight font-normal">
-          {en ? 'Pay with your balance anywhere' : 'Paga con tu saldo en cualquier lugar'}
+          {t('payBalanceAnywhere')}
         </strong>
         <span className="mt-1.5 block text-[12px] leading-snug text-[rgb(255_248_240/.64)]">
-          {cardSaved
-            ? en
-              ? 'Thanks! You are on the list. Tap to change your answers.'
-              : '¡Gracias! Ya estás en la lista. Toca para cambiar tus respuestas.'
-            : en
-              ? 'We are designing it. Tell us how you would use it.'
-              : 'La estamos diseñando. Cuéntanos cómo la usarías.'}
+          {cardSaved ? t('thanksListTapChange') : t('designingTellHowWould')}
         </span>
         <MeliSprite
           variant="body-peek-card"
@@ -278,7 +241,6 @@ export function Home({
         <CardInterestSheet
           settings={settings}
           session={session}
-          english={en}
           onClose={() => setCardOpen(false)}
           onSaved={() => setCardSaved(true)}
         />

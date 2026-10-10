@@ -3,6 +3,7 @@
 import type { ClientSettings } from '../lib/settings';
 import { api } from './api';
 import type { Session } from './session';
+import type { Locale } from 'next-intl';
 
 /**
  * Notifications are a setting of this device: once turned on, whoever signs in here gets theirs.
@@ -13,7 +14,7 @@ const REGISTRATION_KEY = 'gatopago:push-registration';
 interface Registration {
   token: string;
   account: string | null;
-  language: 'en' | 'es';
+  language: Locale;
 }
 
 function keep(registration: Registration) {
@@ -44,7 +45,7 @@ export async function pushSupported(settings: ClientSettings) {
 export const pushEnabled = () =>
   'Notification' in window && Notification.permission === 'granted' && stored() !== null;
 
-async function register(settings: ClientSettings, session: Session, en: boolean) {
+async function register(settings: ClientSettings, session: Session, locale: Locale) {
   const push = settings.push!;
   const [{ initializeApp, getApps }, { getMessaging, getToken }] = await Promise.all([
     import('firebase/app'),
@@ -65,7 +66,7 @@ async function register(settings: ClientSettings, session: Session, en: boolean)
   const current: Registration = {
     token,
     account: session.wallet.address.toLowerCase(),
-    language: en ? 'en' : 'es',
+    language: locale,
   };
   const last = stored();
   if (
@@ -83,18 +84,18 @@ async function register(settings: ClientSettings, session: Session, en: boolean)
 }
 
 /** Asks for permission and registers this device. Call it from a tap (browsers require it). */
-export async function enablePush(settings: ClientSettings, session: Session, en: boolean) {
+export async function enablePush(settings: ClientSettings, session: Session, locale: Locale) {
   if (!(await pushSupported(settings))) return false;
   if ((await Notification.requestPermission()) !== 'granted') return false;
-  return register(settings, session, en);
+  return register(settings, session, locale);
 }
 
 /**
  * On every visit of a device with notifications on: FCM rotates tokens, and after signing in again
  * (or as another account) the device registers for the account in use, without asking.
  */
-export async function renewPush(settings: ClientSettings, session: Session, en: boolean) {
-  if (pushEnabled() && (await pushSupported(settings))) await register(settings, session, en);
+export async function renewPush(settings: ClientSettings, session: Session, locale: Locale) {
+  if (pushEnabled() && (await pushSupported(settings))) await register(settings, session, locale);
 }
 
 /**

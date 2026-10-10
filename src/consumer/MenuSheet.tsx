@@ -4,6 +4,7 @@ import { CatGlyph } from '../marketing/CatGlyph';
 import {
   BusinessIcon,
   ChevronIcon,
+  ContactsIcon,
   ProfileIcon,
   SecurityIcon,
   SettingsIcon,
@@ -12,33 +13,23 @@ import {
 import { NavigationLink } from './NavigationLink';
 import { localizedPath } from './routes';
 import { Sheet } from './Sheet';
+import { useTranslations, useLocale } from 'next-intl';
 
 export function MenuSheet({
-  english: en,
   businessOrigin,
   onClose,
 }: {
-  english: boolean;
   /** GatoPago Business, the merchant console: its own site. */
   businessOrigin: string;
   onClose: () => void;
 }) {
+  const locale = useLocale();
+  const t = useTranslations('MenuSheet');
   const items = [
-    {
-      href: '/settings/security',
-      es: 'Seguridad',
-      en: 'Security',
-      icon: SecurityIcon,
-      tone: 'pending',
-    },
-    {
-      href: '/contacts',
-      es: 'Contactos e invitaciones',
-      en: 'Contacts and invitations',
-      icon: ProfileIcon,
-      tone: 'brand',
-    },
-    { href: '/settings', es: 'Ajustes', en: 'Settings', icon: SettingsIcon, tone: 'neutral' },
+    { href: '/profile', label: t('profile'), icon: ProfileIcon, tone: 'brand' },
+    { href: '/settings/security', label: t('security'), icon: SecurityIcon, tone: 'pending' },
+    { href: '/contacts', label: t('contacts'), icon: ContactsIcon, tone: 'growth' },
+    { href: '/settings', label: t('settings'), icon: SettingsIcon, tone: 'neutral' },
   ];
   return (
     <Sheet titleId="account-menu-title" onClose={onClose} variant="menu">
@@ -50,7 +41,7 @@ export function MenuSheet({
           type="button"
           data-sheet-close
           className="meli-square-action h-11 w-11"
-          aria-label={en ? 'Close menu' : 'Cerrar menú'}
+          aria-label={t('closeMenu')}
         >
           <svg
             aria-hidden="true"
@@ -65,18 +56,18 @@ export function MenuSheet({
           </svg>
         </button>
       </header>
-      <nav aria-label={en ? 'Account menu' : 'Menú de cuenta'}>
+      <nav aria-label={t('accountMenu')}>
         {items.map((item) => (
           <NavigationLink
             key={item.href}
-            href={localizedPath(item.href, en)}
+            href={localizedPath(item.href, locale)}
             onClick={onClose}
             className="meli-menu-row"
           >
             <span className="meli-menu-row__icon" data-tone={item.tone}>
               <item.icon />
             </span>
-            <span>{en ? item.en : item.es}</span>
+            <span>{item.label}</span>
             <ChevronIcon />
           </NavigationLink>
         ))}
@@ -92,10 +83,8 @@ export function MenuSheet({
           <BusinessIcon />
         </span>
         <span>
-          {en ? 'GatoPago Business' : 'GatoPago Negocios'}
-          <small className="block text-[12px] text-text-faint">
-            {en ? 'Charges, API keys and webhooks ↗' : 'Cobros, claves API y webhooks ↗'}
-          </small>
+          {t('gatopagoBusiness')}
+          <small className="block text-[12px] text-text-faint">{t('chargesApiKeysWebhooks')}</small>
         </span>
         <ChevronIcon />
       </a>
@@ -109,7 +98,7 @@ export function MenuSheet({
         <span className="meli-menu-row__icon" data-tone="info">
           <SupportIcon />
         </span>
-        <span>{en ? 'Support' : 'Soporte'}</span>
+        <span>{t('support')}</span>
         <ChevronIcon />
       </a>
     </Sheet>

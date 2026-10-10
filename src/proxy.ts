@@ -1,6 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
-import { englishLocation, LANGUAGE_COOKIE, preferredLanguage } from './lib/language';
+import {
+  englishLocation,
+  LANGUAGE_COOKIE,
+  LANGUAGE_HEADER,
+  preferredLanguage,
+} from './lib/language';
 import { settings } from './lib/settings';
 import { documentCsp, documentSecurityHeaders } from './security/content-policy';
 import { NONCE_HEADER } from './security/nonce';
@@ -59,6 +64,8 @@ export function proxy(request: NextRequest) {
   const headers = new Headers(request.headers);
 
   headers.set(NONCE_HEADER, nonce);
+  // Always set here, never taken from the visitor's own request.
+  headers.set(LANGUAGE_HEADER, request.nextUrl.searchParams.get('lang') === 'en' ? 'en' : 'es');
   headers.set('Content-Security-Policy', csp);
   headers.delete('Content-Security-Policy-Report-Only');
   const response = NextResponse.next({ request: { headers } });

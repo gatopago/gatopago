@@ -23,7 +23,7 @@ vi.mock('../src/marketing/MeliSprite', () => ({
 
 describe('Consumer presentation migration', () => {
   it('restores the four V2 navigation sections', () => {
-    const html = renderToStaticMarkup(createElement(PrimaryNav, { english: true }));
+    const html = renderToStaticMarkup(withTexts(createElement(PrimaryNav), 'en'));
     expect(html).toContain('href="/app?lang=en"');
     expect(html).toContain('href="/move?lang=en"');
     expect(html).toContain('href="/statement?lang=en"');
@@ -32,7 +32,7 @@ describe('Consumer presentation migration', () => {
   });
   it('opens receiving from Move with a request or the account', () => {
     searchParams = new URLSearchParams('flow=receive');
-    const html = renderToStaticMarkup(createElement(MoveMenu, { english: false }));
+    const html = renderToStaticMarkup(withTexts(createElement(MoveMenu)));
     searchParams = new URLSearchParams();
     expect(html).toContain('href="/charge"');
     expect(html).toContain('href="/receive"');
@@ -40,11 +40,10 @@ describe('Consumer presentation migration', () => {
     expect(html).toContain('aria-label="Volver"');
   });
   it('retains deterministic Next settings destinations in both languages', () => {
-    for (const english of [false, true]) {
+    for (const locale of ['es', 'en'] as const) {
       const html = renderToStaticMarkup(
         withTexts(
           createElement(AccountSettings, {
-            english,
             settings: {
               webOrigin: 'https://gatopago.com',
               apiOrigin: 'https://api.gatopago.com',
@@ -70,13 +69,13 @@ describe('Consumer presentation migration', () => {
               },
             },
           }),
-          english,
+          locale,
         ),
       );
-      expect(html).toContain(english ? 'aria-label="Back"' : 'aria-label="Volver"');
+      expect(html).toContain(locale === 'en' ? 'aria-label="Back"' : 'aria-label="Volver"');
       // Security lives in the menu only, not repeated in Settings.
       expect(html).not.toContain('/settings/security');
-      expect(html).toContain(`href="/settings${english ? '' : '?lang=en'}"`);
+      expect(html).toContain(`href="/settings${locale === 'en' ? '' : '?lang=en'}"`);
       expect(html).toContain('meli-paper-card');
       expect(html).not.toContain('workers.dev');
     }

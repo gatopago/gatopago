@@ -58,21 +58,19 @@ const Crosschain = dynamic(() => import('../wallet/Crosschain').then((m) => m.Cr
 
 export function ConsumerContent({
   view,
-  english: en,
   settings,
   session,
 }: {
   view: Exclude<ConsumerView, 'login'>;
-  english: boolean;
   settings: ClientSettings;
   session: Session;
 }) {
-  const props = { english: en, settings, session };
+  const props = { settings, session };
   switch (view) {
     case 'account':
       return <Home {...props} />;
     case 'move':
-      return <MoveMenu english={en} />;
+      return <MoveMenu />;
     case 'send':
       return <Send {...props} />;
     case 'team':
@@ -100,7 +98,7 @@ export function ConsumerContent({
     case 'settings':
       return <AccountSettings {...props} />;
     case 'recovery':
-      return <Recovery english={en} />;
+      return <Recovery />;
     case 'security':
       return <Security {...props} />;
   }

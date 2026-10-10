@@ -47,17 +47,17 @@ describe('payment notifications', () => {
     const { disablePush, enablePush, pushEnabled, renewPush } = await import('../src/wallet/push');
     const alice = '0x1111111111111111111111111111111111111111';
     const bob = '0x2222222222222222222222222222222222222222';
-    await enablePush(settings, session(alice), false);
+    await enablePush(settings, session(alice), 'es');
     // The same account on its next visit: nothing to register again.
-    await renewPush(settings, session(alice), false);
+    await renewPush(settings, session(alice), 'es');
     // Alice's session ended without signing out; Bob signs in on the same device.
-    await renewPush(settings, session(bob), false);
+    await renewPush(settings, session(bob), 'es');
     // And Bob switches the app to English.
-    await renewPush(settings, session(bob), true);
+    await renewPush(settings, session(bob), 'en');
     // Bob signs out: his notifications stop here, and they come back when he signs in again.
     await disablePush(settings, session(bob));
     expect(pushEnabled()).toBe(true);
-    await renewPush(settings, session(bob), true);
+    await renewPush(settings, session(bob), 'en');
     expect(calls.api).toEqual([
       { path: 'push-tokens', token: `session-${alice}` },
       { path: 'push-tokens', token: `session-${bob}` },

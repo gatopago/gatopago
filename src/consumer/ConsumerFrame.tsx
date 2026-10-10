@@ -14,6 +14,7 @@ import dynamic from 'next/dynamic';
 import { walletNetwork } from '@gatopago/shared/networks';
 import { useProfile } from '../wallet/useProfile';
 import { useTopLevel } from './history';
+import { useLocale, useTranslations } from 'next-intl';
 
 const AccountDetails = dynamic(() =>
   import('./AccountDetailsSheet').then((m) => m.AccountDetailsSheet),
@@ -26,7 +27,6 @@ const AccountDetails = dynamic(() =>
  */
 type FrameProps = {
   children: ReactNode;
-  english: boolean;
   navigation?: boolean;
   presentation?: 'account' | 'access' | 'public';
   account?: { address: string; networks: readonly string[]; businessOrigin: string };
@@ -48,12 +48,13 @@ function AccountFrame(props: FrameProps) {
 
 function Frame({
   children,
-  english: en,
   navigation = false,
   presentation = 'account',
   account,
   top,
 }: FrameProps & { top: boolean }) {
+  const t = useTranslations('ConsumerFrame');
+  const locale = useLocale();
   const [menuOpen, setMenuOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const { profile } = useProfile();
@@ -71,7 +72,7 @@ function Frame({
           {profile?.username ? `@${profile.username}` : 'GatoPago'}
         </strong>
         <small className="mt-0.5 flex items-center gap-1.5 truncate whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.08em] text-text-faint">
-          {en ? 'Personal account' : 'Cuenta personal'}
+          {t('personalAccount')}
           {testnet ? (
             <span aria-hidden="true" className="hidden min-[390px]:inline">
               · Testnet
@@ -82,11 +83,11 @@ function Frame({
     </>
   );
   return (
-    <div className={`consumer-ui${access ? ' consumer-ui--access' : ''}`} lang={en ? 'en' : 'es'}>
+    <div className={`consumer-ui${access ? ' consumer-ui--access' : ''}`} lang={locale}>
       <Screen withPrimaryNav={tabs} className={access ? 'auth-frame' : ''}>
         {access || presentation === 'public' ? (
           <header className={access ? 'auth-brand' : 'auth-brand auth-brand--public'}>
-            <Link href={en ? '/en' : '/'} className="brand-lockup">
+            <Link href={locale === 'en' ? '/en' : '/'} className="brand-lockup">
               <CatGlyph className="auth-brand__symbol" decorative />
               <strong>GatoPago</strong>
             </Link>
@@ -98,7 +99,7 @@ function Frame({
                 type="button"
                 className="meli-identity interactive-surface"
                 onClick={() => setDetailsOpen(true)}
-                aria-label={en ? 'My account' : 'Mi cuenta'}
+                aria-label={t('myAccount')}
                 aria-haspopup="dialog"
                 aria-expanded={detailsOpen}
               >
@@ -109,13 +110,13 @@ function Frame({
               <span className="meli-identity">{identity}</span>
             )}
             <div className="flex items-center gap-2">
-              <PwaControls english={en} compact />
+              <PwaControls compact />
               {account ? (
                 <button
                   type="button"
                   onClick={() => setMenuOpen(true)}
                   className="meli-avatar"
-                  aria-label={en ? 'Open menu' : 'Abrir menú'}
+                  aria-label={t('openMenu')}
                   aria-haspopup="dialog"
                   aria-expanded={menuOpen}
                 >
@@ -138,20 +139,12 @@ function Frame({
         ) : null}
         {children}
       </Screen>
-      {tabs ? <PrimaryNav english={en} /> : null}
+      {tabs ? <PrimaryNav /> : null}
       {menuOpen && account ? (
-        <MenuSheet
-          english={en}
-          businessOrigin={account.businessOrigin}
-          onClose={() => setMenuOpen(false)}
-        />
+        <MenuSheet businessOrigin={account.businessOrigin} onClose={() => setMenuOpen(false)} />
       ) : null}
       {detailsOpen && account ? (
-        <AccountDetails
-          address={account.address}
-          english={en}
-          onClose={() => setDetailsOpen(false)}
-        />
+        <AccountDetails address={account.address} onClose={() => setDetailsOpen(false)} />
       ) : null}
     </div>
   );

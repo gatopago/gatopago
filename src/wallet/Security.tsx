@@ -15,29 +15,26 @@ import { gatopagoAccount, networkName, publicClient } from './account';
 import { applyApprovals } from './operations';
 import { api } from './api';
 import { readKeys, type KeysState } from './keys';
-import { failureMessage } from './messages';
+import { useFailureMessage } from './messages';
 import { addOwnerCall, newBackupKey } from './passkey';
 import { saveSession, type Session } from './session';
 import { approveStellarKey, registerStellarKey, syncStellarSigners } from './stellar';
+import { useTranslations, useLocale } from 'next-intl';
+import { BusinessAccess } from '../consumer/BusinessAccess';
 
 /**
  * `/settings/security`, as V2's security center: the passkeys that own the account. Adding or
  * removing one is an approval signed once and applied on every network: now where the account
  * exists, later where it is first used.
  */
-export function Security({
-  settings,
-  session,
-  english: en,
-}: {
-  settings: ClientSettings;
-  session: Session;
-  english: boolean;
-}) {
+export function Security({ settings, session }: { settings: ClientSettings; session: Session }) {
+  const messageFor = useFailureMessage();
+  const locale = useLocale();
+  const t = useTranslations('Security');
   const { wallet } = session;
   const current = keyOwner(wallet.owner).toLowerCase();
   const [state, setState] = useState<KeysState | null>(null);
-  const { busy, error, setError, run } = useAction(en);
+  const { busy, error, setError, run } = useAction();
   const [dialog, setDialog] = useState<{ remove: Hex } | null>(null);
 
   const [revision, setRevision] = useState(0);
@@ -48,12 +45,12 @@ export function Security({
         if (active) setState(value);
       })
       .catch((failure: unknown) => {
-        if (active) setError(failureMessage(failure, en));
+        if (active) setError(messageFor(failure));
       });
     return () => {
       active = false;
     };
-  }, [settings, session, en, revision, setError]);
+  }, [settings, session, messageFor, revision, setError]);
 
   function perform(action: () => Promise<void>) {
     void run(action).then((done) => {
@@ -150,19 +147,10 @@ export function Security({
     state && settings.stellar && typeof state.stellar === 'number' && state.stellar > 0;
   return (
     <>
-      <BackHeader title={en ? 'Security' : 'Seguridad'} english={en} to="/settings" />
-      <StageOverlay
-        label={
-          busy
-            ? en
-              ? 'Confirm the change on your device…'
-              : 'Confirma el cambio en tu dispositivo…'
-            : null
-        }
-        spinner={false}
-      />
+      <BackHeader title={t('security')} to="/settings" />
+      <StageOverlay label={busy ? t('confirmChangeDevice') : null} spinner={false} />
       {!state && !error ? (
-        <ScreenLoading kind="settings" english={en} bar={false} />
+        <ScreenLoading kind="settings" bar={false} />
       ) : (
         <div>
           {error ? (
@@ -177,7 +165,7 @@ export function Security({
                   }}
                   className="btn btn-ghost mt-3 min-h-10 px-4 text-[12px]"
                 >
-                  {en ? 'Try again' : 'Reintentar'}
+                  {t('tryAgain')}
                 </button>
               ) : null}
             </div>
@@ -199,18 +187,10 @@ export function Security({
                   >
                     {backedUp ? '✓' : '!'}
                   </span>
-                  {en
-                    ? `${keyCount} ${keyCount === 1 ? 'key' : 'keys'} · ${backedUp ? 'backed up' : 'no backup'}`
-                    : `${keyCount} ${keyCount === 1 ? 'llave' : 'llaves'} · ${backedUp ? 'con respaldo' : 'sin respaldo'}`}
+                  {t('keysSummary', { count: keyCount, backedUp: String(backedUp) })}
                 </h2>
                 <p className="mt-2 text-[14px] leading-relaxed text-text-muted">
-                  {backedUp
-                    ? en
-                      ? 'You can sign in with any of them.'
-                      : 'Puedes entrar con cualquiera de ellas.'
-                    : en
-                      ? 'If you lose this device without another key, you lose the account.'
-                      : 'Si pierdes este dispositivo sin otra llave, pierdes la cuenta.'}
+                  {backedUp ? t('signAnyThem') : t('ifLoseDeviceWithout')}
                 </p>
                 <button
                   type="button"
@@ -218,17 +198,7 @@ export function Security({
                   disabled={busy}
                   className={`btn ${backedUp ? 'btn-ghost' : 'btn-primary'} btn-block mt-5`}
                 >
-                  {busy
-                    ? en
-                      ? 'Adding…'
-                      : 'Agregando…'
-                    : backedUp
-                      ? en
-                        ? 'Add another key'
-                        : 'Agregar otra llave'
-                      : en
-                        ? 'Add a backup key'
-                        : 'Agregar llave de respaldo'}
+                  {busy ? t('adding') : backedUp ? t('addAnotherKey') : t('addBackupKey')}
                 </button>
                 <button
                   type="button"
@@ -236,11 +206,11 @@ export function Security({
                   disabled={busy}
                   className="btn-text mt-1 min-h-11 w-full text-[13px] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {en ? 'Use a physical key' : 'Usar una llave física'}
+                  {t('usePhysicalKey')}
                 </button>
               </section>
 
-              <h3 className="meli-kicker mb-3 px-1">{en ? 'Your keys' : 'Tus llaves'}</h3>
+              <h3 className="meli-kicker mb-3 px-1">{t('keys')}</h3>
               <div className="meli-paper-card mb-3 divide-y divide-border">
                 {state.owners.map((owner, index) => {
                   const mine = owner.toLowerCase() === current;
@@ -251,22 +221,14 @@ export function Security({
                     >
                       <div className="min-w-0">
                         <p className="truncate text-[14px]">
-                          {mine
-                            ? en
-                              ? 'This device'
-                              : 'Este dispositivo'
-                            : en
-                              ? `Key ${index + 1}`
-                              : `Llave ${index + 1}`}
+                          {mine ? t('device') : t('key', { index: index + 1 })}
                           <span className="ml-2 font-mono text-[11px] text-text-faint">
                             …{owner.slice(-8)}
                           </span>
                         </p>
                       </div>
                       {mine ? (
-                        <span className="shrink-0 text-[12px] text-text-faint">
-                          {en ? 'in use' : 'en uso'}
-                        </span>
+                        <span className="shrink-0 text-[12px] text-text-faint">{t('use')}</span>
                       ) : (
                         <button
                           type="button"
@@ -274,7 +236,7 @@ export function Security({
                           onClick={() => setDialog({ remove: owner })}
                           className="min-h-11 shrink-0 px-1 text-[13px] text-danger underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          {en ? 'Remove' : 'Quitar'}
+                          {t('remove')}
                         </button>
                       )}
                     </div>
@@ -289,7 +251,6 @@ export function Security({
                       key={id}
                       network={networkName(id)}
                       unread={state.applied[id] === 'unread'}
-                      english={en}
                       busy={busy}
                       onApply={() => perform(() => applyApprovals(settings, session, id))}
                     />
@@ -297,7 +258,6 @@ export function Security({
                   {stellarBehind && settings.stellar ? (
                     <BehindRow
                       network={networkName(settings.stellar.network)}
-                      english={en}
                       busy={busy}
                       onApply={() =>
                         perform(() => syncStellarSigners(settings, session, state.owners))
@@ -306,20 +266,20 @@ export function Security({
                   ) : null}
                 </div>
               ) : state.total > 0 ? (
-                <p className="mb-6 px-1 text-[13px] text-growth">
-                  ✓ {en ? 'Up to date on all your networks' : 'Al día en todas tus redes'}
-                </p>
+                <p className="mb-6 px-1 text-[13px] text-growth">✓ {t('upDateAllNetworks')}</p>
               ) : (
                 <div className="mb-6" />
               )}
             </>
           ) : null}
 
+          <BusinessAccess settings={settings} session={session} />
+
           <NavigationLink
-            href={localizedPath('/settings/security/recovery', en)}
+            href={localizedPath('/settings/security/recovery', locale)}
             className="interactive-surface flex min-h-12 items-center justify-between border border-border bg-surface px-4 text-[14px]"
           >
-            {en ? 'How keys work' : 'Cómo funcionan las llaves'}
+            {t('howKeysWork')}
             <span aria-hidden="true" className="font-mono text-text-faint">
               →
             </span>
@@ -330,17 +290,13 @@ export function Security({
       {removing ? (
         <Sheet titleId="remove-key-title" onClose={() => setDialog(null)} busy={busy}>
           <h2 id="remove-key-title" className="font-display text-[22px]">
-            {en ? 'Remove this key' : 'Quitar esta llave'}
+            {t('removeKey')}
           </h2>
           <p className="mt-3 text-[13px] leading-relaxed text-text-muted">
-            {en
-              ? `You are about to remove the key …${removing.slice(-8)} from your account.`
-              : `Vas a retirar la llave …${removing.slice(-8)} de tu cuenta.`}
+            {t('aboutRemoveKeyAccount', { value: removing.slice(-8) })}
           </p>
           <p className="mt-4 border-l-4 border-danger bg-danger/10 px-3 py-2 text-[12px] leading-relaxed text-danger">
-            {en
-              ? 'Once you confirm with an active key, this key can no longer authorize movements.'
-              : 'Después de confirmarlo con una llave activa, esta llave ya no podrá autorizar movimientos.'}
+            {t('onceConfirmActiveKey')}
           </p>
           {error ? (
             <p className="mt-3 text-[12px] leading-relaxed text-danger" role="alert">
@@ -364,13 +320,7 @@ export function Security({
             }
             className="btn btn-danger btn-block mt-5"
           >
-            {busy
-              ? en
-                ? 'Removing…'
-                : 'Quitando…'
-              : en
-                ? 'Confirm and remove'
-                : 'Confirmar y quitar'}
+            {busy ? t('removing') : t('confirmRemove')}
           </button>
           <button
             type="button"
@@ -378,7 +328,7 @@ export function Security({
             onClick={() => setDialog(null)}
             className="btn-text mt-1 w-full"
           >
-            {en ? 'Cancel' : 'Cancelar'}
+            {t('cancel')}
           </button>
         </Sheet>
       ) : null}
@@ -390,27 +340,20 @@ export function Security({
 function BehindRow({
   network,
   unread = false,
-  english: en,
   busy,
   onApply,
 }: {
   network: string;
   /** The network could not be asked: the change may be applied there or not. */
   unread?: boolean;
-  english: boolean;
   busy: boolean;
   onApply: () => void;
 }) {
+  const t = useTranslations('Security');
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-3">
       <p className="text-[13px] text-pending">
-        {unread
-          ? en
-            ? `Could not check ${network}`
-            : `No pudimos revisar ${network}`
-          : en
-            ? `Still to apply on ${network}`
-            : `Falta aplicar en ${network}`}
+        {unread ? t('couldNotCheck', { network }) : t('stillApply', { network })}
       </p>
       <button
         type="button"
@@ -418,7 +361,7 @@ function BehindRow({
         onClick={onApply}
         className="btn btn-primary min-h-10 shrink-0 px-4 text-[12px]"
       >
-        {en ? 'Apply' : 'Aplicar'}
+        {t('apply')}
       </button>
     </div>
   );

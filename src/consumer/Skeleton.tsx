@@ -3,6 +3,7 @@
 import type { CSSProperties } from 'react';
 
 import { useTopLevel } from './history';
+import { useTranslations } from 'next-intl';
 
 export function Skeleton({ className = '', style }: { className?: string; style?: CSSProperties }) {
   return <div className={`skeleton ${className}`} style={style} aria-hidden="true" />;
@@ -109,17 +110,16 @@ function FormPageSkeleton() {
  */
 export function ScreenLoading({
   kind = 'form',
-  english: en = false,
   bar,
 }: {
   kind?: 'form' | 'detail' | 'account' | 'settings';
-  english?: boolean;
   bar?: boolean;
 }) {
+  const t = useTranslations('Skeleton');
   const tab = useTopLevel();
   return (
     <div className="flex min-h-[440px] flex-1 flex-col" role="status" aria-busy="true">
-      <span className="sr-only">{en ? 'Loading…' : 'Cargando…'}</span>
+      <span className="sr-only">{t('loading')}</span>
       {(bar ?? !tab) ? (
         <div className="back-header" aria-hidden="true">
           <Skeleton className="h-11 w-11 border-0" />

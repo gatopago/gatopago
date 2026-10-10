@@ -1,3 +1,5 @@
+import type { Locale } from 'next-intl';
+
 export const consumerRoutes = {
   '/app': 'account',
   '/move': 'move',
@@ -19,9 +21,9 @@ export const consumerRoutes = {
 } as const;
 export type ConsumerView = 'login' | (typeof consumerRoutes)[keyof typeof consumerRoutes];
 
-export function localizedPath(path: string, english: boolean): string {
+export function localizedPath(path: string, locale: Locale): string {
   const url = new URL(path, 'https://gatopago.invalid');
-  if (english) url.searchParams.set('lang', 'en');
+  if (locale === 'en') url.searchParams.set('lang', 'en');
   else url.searchParams.delete('lang');
   return url.pathname + url.search + url.hash;
 }

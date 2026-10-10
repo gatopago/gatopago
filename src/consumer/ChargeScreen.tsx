@@ -10,7 +10,8 @@ import { MeliSprite } from '../marketing/MeliSprite';
 import { networkName, USDC_DECIMALS } from '../wallet/account';
 import { formatUsdc } from '../wallet/balances';
 import { createCharge, listCharges, type Intent } from '../wallet/flow';
-import { failureMessage } from '../wallet/messages';
+import { useFailureMessage } from '../wallet/messages';
+import { exactUnits, tooPrecise } from '../lib/amount';
 import type { Session } from '../wallet/session';
 import { useProfile } from '../wallet/useProfile';
 import { downloadCard, shareCard } from './exportCard';
@@ -21,6 +22,7 @@ import { localizedPath } from './routes';
 import { AmountInput } from './SelectMenu';
 import { RowSkeletonList } from './Skeleton';
 import { TokenIcon } from './TokenIcon';
+import { useTranslations, useLocale } from 'next-intl';
 
 /** What the result screen shows: a Flow charge, or the profile link for an open amount. */
 type Link = { url: string; amount: bigint | null; description: string };
@@ -32,12 +34,13 @@ type Link = { url: string; amount: bigint | null; description: string };
 export function ChargeScreen({
   settings,
   session,
-  english: en,
 }: {
   settings: ClientSettings;
   session: Session;
-  english: boolean;
 }) {
+  const messageFor = useFailureMessage();
+  const locale = useLocale();
+  const t = useTranslations('Charge');
   const { profile } = useProfile();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -71,16 +74,15 @@ export function ChargeScreen({
 
   // Empty or zero asks the payer for the amount, on purpose; more than USDC's 6 decimals is a
   // mistake to fix, never an open link.
-  const tooPrecise = /\.\d{7,}$/.test(amount);
+  const precise = !tooPrecise(amount, USDC_DECIMALS);
   const value =
-    !tooPrecise && /^(\d+\.?\d*|\.\d+)$/.test(amount) ? parseUnits(amount, USDC_DECIMALS) : 0n;
-  const open = value === 0n && !tooPrecise;
-  const shareText = (url: string) =>
-    en ? `Pay me with GatoPago: ${url}` : `Págame con GatoPago: ${url}`;
+    precise && /^(\d+\.?\d*|\.\d+)$/.test(amount) ? exactUnits(amount, USDC_DECIMALS) : 0n;
+  const open = value === 0n && precise;
+  const shareText = (url: string) => t('payMeGatopago', { url });
 
   function create() {
     setError('');
-    if (tooPrecise) return;
+    if (!precise) return;
     if (open) {
       if (!profile?.username) return;
       setLink({ url: `${settings.webOrigin}/@${profile.username}`, amount: null, description });
@@ -99,7 +101,7 @@ export function ChargeScreen({
         setLink({ url: intent.checkout_url, amount: value, description: description.trim() });
         setRevision((current) => current + 1);
       })
-      .catch((failure: unknown) => setError(failureMessage(failure, en)))
+      .catch((failure: unknown) => setError(messageFor(failure)))
       .finally(() => setBusy(false));
   }
 
@@ -122,7 +124,7 @@ export function ChargeScreen({
     try {
       await action();
     } catch {
-      setNotice(en ? "Couldn't export" : 'No se pudo exportar');
+      setNotice(t('couldntExport'));
     } finally {
       setBusy(false);
     }
@@ -138,11 +140,7 @@ export function ChargeScreen({
   if (link)
     return (
       <>
-        <BackHeader
-          title={en ? 'Your payment link' : 'Tu link de cobro'}
-          english={en}
-          onBack={newCharge}
-        />
+        <BackHeader title={t('paymentLink')} onBack={newCharge} />
         <div className="flex flex-1 flex-col justify-center">
           <MoneyPanel
             ref={card}
@@ -168,12 +166,12 @@ export function ChargeScreen({
             </div>
             {link.amount ? (
               <p className="type-mono relative z-1 mb-2 text-[34px] font-bold leading-none">
-                {formatUsdc(link.amount, en)}
+                {formatUsdc(link.amount, locale)}
                 <span className="ml-1.5 text-[18px] text-text-muted">USDC</span>
               </p>
             ) : (
               <p className="relative z-1 mb-2 font-display text-[24px] text-cat-300">
-                {en ? 'Open amount' : 'Monto abierto'}
+                {t('openAmount')}
               </p>
             )}
             {link.description ? (
@@ -182,9 +180,7 @@ export function ChargeScreen({
               </p>
             ) : null}
             <p className="relative z-1 mt-5 text-[12px] text-text-faint">
-              {en
-                ? `Paid in USDC on ${networkName(settings.homeNetwork)}`
-                : `Se paga en USDC por ${networkName(settings.homeNetwork)}`}
+              {t('paidUsdc', { homeNetwork: networkName(settings.homeNetwork) })}
             </p>
           </MoneyPanel>
         </div>
@@ -208,11 +204,11 @@ export function ChargeScreen({
                 });
                 if (result !== 'unsupported') return;
                 await copyText(link.url);
-                setNotice(en ? 'Link copied' : 'Link copiado');
+                setNotice(t('linkCopied'));
               })
             }
           >
-            {en ? 'Share' : 'Compartir'}
+            {t('share')}
           </button>
           <div className="mt-3 flex gap-3">
             <button
@@ -229,19 +225,19 @@ export function ChargeScreen({
                 )
               }
             >
-              {en ? 'Download QR' : 'Descargar QR'}
+              {t('downloadQr')}
             </button>
             <button
               type="button"
               className="btn btn-ghost flex-1"
               onClick={() =>
                 void copyText(link.url).then(
-                  () => setNotice(en ? 'Link copied' : 'Link copiado'),
-                  () => setNotice(en ? 'Could not copy' : 'No se pudo copiar'),
+                  () => setNotice(t('linkCopied')),
+                  () => setNotice(t('couldNotCopy')),
                 )
               }
             >
-              {en ? 'Copy link' : 'Copiar link'}
+              {t('copyLink')}
             </button>
           </div>
           {/* WhatsApp is where charges actually travel in LATAM: one tap, no share sheet. */}
@@ -251,10 +247,10 @@ export function ChargeScreen({
             rel="noopener noreferrer"
             className="btn btn-ghost btn-block mt-3"
           >
-            {en ? 'Share on WhatsApp' : 'Compartir por WhatsApp'}
+            {t('shareWhatsapp')}
           </a>
           <button type="button" className="btn-text mt-1 w-full" onClick={newCharge}>
-            {en ? 'Create another link' : 'Crear otro link'}
+            {t('createAnotherLink')}
           </button>
         </TransactionActions>
       </>
@@ -263,16 +259,12 @@ export function ChargeScreen({
   const visible = showAll ? (charges ?? []) : (charges ?? []).slice(0, 5);
   return (
     <>
-      <BackHeader
-        title={en ? 'Request a payment' : 'Cobrar'}
-        english={en}
-        to="/move?flow=receive"
-      />
+      <BackHeader title={t('requestPayment')} to="/move?flow=receive" />
       <MoneyPanel className="mb-5 flex flex-col items-center">
-        <p className="mb-3 text-[13px] text-text-muted">{en ? 'How much?' : '¿Cuánto cobras?'}</p>
+        <p className="mb-3 text-[13px] text-text-muted">{t('howMuch')}</p>
         <AmountInput
           name="amount"
-          aria-label={en ? 'Amount to request' : 'Monto a cobrar'}
+          aria-label={t('amountRequest')}
           placeholder="0"
           value={amount}
           onChange={setAmount}
@@ -282,20 +274,16 @@ export function ChargeScreen({
           <TokenIcon symbol="USDC" size={22} />
           USDC
         </span>
-        <p className="mt-3 text-center text-[12px] text-text-faint">
-          {en
-            ? 'Leave it at 0 and the payer chooses the amount.'
-            : 'Si lo dejas en 0, quien paga elige el monto.'}
-        </p>
+        <p className="mt-3 text-center text-[12px] text-text-faint">{t('leave0PayerChooses')}</p>
       </MoneyPanel>
       <MoneyPanel className="mb-5">
         <label htmlFor="charge-reference" className="mb-2 block text-[13px] text-text-muted">
-          {en ? 'Note (optional)' : 'Concepto (opcional)'}
+          {t('noteOptional')}
         </label>
         <textarea
           id="charge-reference"
           name="reference"
-          placeholder={en ? 'E.g. Logo design' : 'Ej.: Diseño de logo'}
+          placeholder={t('eGLogoDesign')}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           maxLength={200}
@@ -308,54 +296,39 @@ export function ChargeScreen({
           {error}
         </p>
       ) : null}
-      {tooPrecise ? (
+      {!precise ? (
         <p role="alert" className="mb-4 text-center text-[13px] text-danger">
-          {en ? 'USDC takes up to 6 decimals.' : 'USDC admite hasta 6 decimales.'}
+          {t('usdcDecimals')}
         </p>
       ) : null}
       {open && profile && !profile.username ? (
         <p className="mb-4 text-center text-[12px] text-text-muted">
-          {en
-            ? 'Without an amount, the link uses your username. '
-            : 'Sin monto, el link usa tu usuario. '}
-          <NavigationLink href={localizedPath('/profile', en)} className="underline">
-            {en ? 'Choose it' : 'Elígelo'}
-          </NavigationLink>
+          {t.rich('withoutAmountLinkUses', {
+            link: (chunks) => (
+              <NavigationLink href={localizedPath('/profile', locale)} className="underline">
+                {chunks}
+              </NavigationLink>
+            ),
+          })}
         </p>
       ) : null}
       <div className="pt-5">
         <button
           type="button"
-          disabled={busy || tooPrecise || (open && !profile?.username)}
+          disabled={busy || !precise || (open && !profile?.username)}
           className="btn btn-primary btn-block"
           onClick={create}
         >
-          {busy
-            ? en
-              ? 'Creating…'
-              : 'Creando…'
-            : open
-              ? en
-                ? 'Create link without an amount'
-                : 'Crear link sin monto'
-              : en
-                ? 'Create payment link'
-                : 'Crear link de cobro'}
+          {busy ? t('creating') : open ? t('createLinkWithoutAmount') : t('createPaymentLink')}
         </button>
       </div>
 
       {charges === null || charges.length > 0 || listFailed ? (
         <div className="mt-9">
-          <SectionLabel>{en ? 'Your payment links' : 'Tus links de cobro'}</SectionLabel>
+          <SectionLabel>{t('paymentLinks')}</SectionLabel>
           {listFailed ? (
             <p role="alert" className="mb-3 text-[13px] leading-relaxed text-pending">
-              {charges
-                ? en
-                  ? 'We could not update your links; these may be out of date. '
-                  : 'No pudimos actualizar tus links; estos pueden no estar al día. '
-                : en
-                  ? 'We could not load your links. '
-                  : 'No pudimos cargar tus links. '}
+              {charges ? t('couldNotUpdateLinks') : t('couldNotLoadLinks')}{' '}
               <button
                 type="button"
                 onClick={() => {
@@ -364,7 +337,7 @@ export function ChargeScreen({
                 }}
                 className="-my-3 inline-block py-3 font-semibold text-cat-700 underline underline-offset-2"
               >
-                {en ? 'Try again' : 'Reintentar'}
+                {t('tryAgain')}
               </button>
             </p>
           ) : null}
@@ -388,10 +361,10 @@ export function ChargeScreen({
                   >
                     <div className="min-w-0">
                       <p className="truncate text-[14px]">
-                        {formatUsdc(parseUnits(intent.amount, USDC_DECIMALS), en)} USDC
+                        {formatUsdc(parseUnits(intent.amount, USDC_DECIMALS), locale)} USDC
                       </p>
                       <p className="truncate text-[12px] text-text-faint">
-                        {new Date(intent.created_at * 1000).toLocaleDateString(en ? 'en' : 'es', {
+                        {new Date(intent.created_at * 1000).toLocaleDateString(locale, {
                           day: 'numeric',
                           month: 'short',
                         })}
@@ -402,20 +375,12 @@ export function ChargeScreen({
                       className={`meli-chip shrink-0 ${settled ? 'bg-growth/15 text-growth' : pending ? 'bg-pending/10 text-pending' : 'bg-surface-2 text-text-faint'}`}
                     >
                       {settled
-                        ? en
-                          ? 'Paid'
-                          : 'Pagado'
+                        ? t('paid')
                         : pending
-                          ? en
-                            ? 'Pending'
-                            : 'Pendiente'
+                          ? t('pending')
                           : intent.status === 'canceled'
-                            ? en
-                              ? 'Canceled'
-                              : 'Cancelado'
-                            : en
-                              ? 'Expired'
-                              : 'Vencido'}
+                            ? t('canceled')
+                            : t('expired')}
                     </span>
                   </button>
                 );
@@ -428,13 +393,7 @@ export function ChargeScreen({
               onClick={() => setShowAll((value) => !value)}
               className="btn-text mx-auto mt-3 block"
             >
-              {showAll
-                ? en
-                  ? 'View less'
-                  : 'Ver menos'
-                : en
-                  ? `View all (${charges.length})`
-                  : `Ver todos (${charges.length})`}
+              {showAll ? t('viewLess') : t('viewAll', { length: charges.length })}
             </button>
           ) : null}
         </div>
@@ -442,7 +401,6 @@ export function ChargeScreen({
 
       {paid?.payment?.transaction_hash ? (
         <Receipt
-          english={en}
           onClose={() => setPaid(null)}
           receipt={{
             kind: 'received',
@@ -459,13 +417,11 @@ export function ChargeScreen({
             <NavigationLink
               href={localizedPath(
                 `/team?${new URLSearchParams({ split: paid.amount, reference: paid.description ?? '' })}`,
-                en,
+                locale,
               )}
               className="btn-text mt-2 w-full text-[#fff8f0]"
             >
-              {en
-                ? 'Split this payment among several people'
-                : 'Repartir este cobro entre varias personas'}
+              {t('splitPaymentAmongSeveral')}
             </NavigationLink>
           }
         />

@@ -3,19 +3,23 @@
 import { NavigationLink as Link } from './NavigationLink';
 import { usePathname } from 'next/navigation';
 import { ActivityIcon, GrowIcon, HomeIcon, MoveIcon } from './Icons';
+import { useLocale, useTranslations } from 'next-intl';
+import { localizedPath } from './routes';
 
 const destinations = [
-  { href: '/app', es: 'Inicio', en: 'Home', icon: HomeIcon },
-  { href: '/move', es: 'Mover', en: 'Move', icon: MoveIcon },
-  { href: '/earn', es: 'Crecer', en: 'Grow', icon: GrowIcon },
-  { href: '/statement', es: 'Actividad', en: 'Activity', icon: ActivityIcon },
+  { href: '/app', key: 'home', icon: HomeIcon },
+  { href: '/move', key: 'move', icon: MoveIcon },
+  { href: '/earn', key: 'grow', icon: GrowIcon },
+  { href: '/statement', key: 'activity', icon: ActivityIcon },
 ] as const;
 
-export function PrimaryNav({ english: en }: { english: boolean }) {
+export function PrimaryNav() {
+  const t = useTranslations('PrimaryNav');
+  const locale = useLocale();
   const pathname = usePathname();
   return (
     <nav
-      aria-label={en ? 'Main navigation' : 'Navegación principal'}
+      aria-label={t('mainNavigation')}
       className="primary-nav fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[480px] px-2 pt-2 pb-[max(0.65rem,env(safe-area-inset-bottom))]"
     >
       <div className="grid grid-cols-4 gap-1">
@@ -27,13 +31,13 @@ export function PrimaryNav({ english: en }: { english: boolean }) {
           const content = (
             <>
               <item.icon />
-              <span>{en ? item.en : item.es}</span>
+              <span>{t(item.key)}</span>
             </>
           );
           return (
             <Link
-              key={item.es}
-              href={`${item.href}${en ? '?lang=en' : ''}`}
+              key={item.href}
+              href={localizedPath(item.href, locale)}
               className={className}
               aria-current={active ? 'page' : undefined}
             >

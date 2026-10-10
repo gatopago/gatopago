@@ -1,18 +1,23 @@
 import type { Metadata } from 'next';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { settings } from '../../../lib/settings';
 import { DevelopersDocs } from '../../../marketing/DevelopersDocs';
 
-export const metadata: Metadata = {
-  title: 'Documentación del API · GatoPago',
-  description: 'Cobra en USDC desde tu servidor: cobros, estados y webhooks firmados.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations({ locale: 'es', namespace: 'Metadata' });
+  return {
+    title: t('docs.title'),
+    description: t('docs.description'),
+  };
+}
 
 export default function Page() {
+  setRequestLocale('es');
   return (
     <DevelopersDocs
       apiOrigin={settings.apiOrigin}
       businessOrigin={settings.businessOrigin}
-      english={false}
+      locale="es"
     />
   );
 }

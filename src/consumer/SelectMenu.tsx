@@ -1,10 +1,12 @@
 'use client';
 
-import { useId, useState, type InputHTMLAttributes } from 'react';
+import { useId, useRef, useState, type InputHTMLAttributes } from 'react';
 import { amountInput } from '../lib/amount';
 import { ChevronDownIcon } from './Icons';
 import { Sheet } from './Sheet';
 import { NetworkIcon } from './TokenIcon';
+import { moveOptionFocus } from './listbox';
+import { useTranslations } from 'next-intl';
 
 interface SelectMenuOption {
   value: string;
@@ -20,7 +22,6 @@ export function SelectMenu({
   value,
   options,
   onChange,
-  english: en,
   showLabel = true,
   placeholder,
   disabled = false,
@@ -30,15 +31,16 @@ export function SelectMenu({
   value: string;
   options: SelectMenuOption[];
   onChange: (value: string) => void;
-  english: boolean;
   showLabel?: boolean;
   /** Shown until an option is chosen. */
   placeholder?: string;
   disabled?: boolean;
   className?: string;
 }) {
+  const t = useTranslations('SelectMenu');
   const [open, setOpen] = useState(false);
   const titleId = useId();
+  const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const selected = options.find((option) => option.value === value);
   return (
     <div className={className}>
@@ -71,21 +73,25 @@ export function SelectMenu({
             <button
               type="button"
               data-sheet-close
-              aria-label={en ? 'Close' : 'Cerrar'}
+              aria-label={t('close')}
               className="meli-square-action h-11 w-11"
             >
               <span aria-hidden="true">×</span>
             </button>
           </div>
           <div role="listbox" aria-labelledby={titleId} className="flex flex-col gap-1.5">
-            {options.map((option) => {
+            {options.map((option, index) => {
               const isSelected = option.value === value;
               return (
                 <button
                   key={option.value}
                   type="button"
+                  ref={(element) => {
+                    optionRefs.current[index] = element;
+                  }}
                   role="option"
                   aria-selected={isSelected}
+                  onKeyDown={(event) => moveOptionFocus(event, index, optionRefs.current)}
                   data-sheet-close
                   onClick={() => {
                     onChange(option.value);

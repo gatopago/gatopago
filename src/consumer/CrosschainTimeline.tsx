@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { crosschainStatus, type CrosschainStage } from '@gatopago/shared/crosschain';
 import { cctpNetwork, networkName } from '../wallet/account';
 import type { StellarDelivery } from '../wallet/stellar';
+import { useTranslations } from 'next-intl';
 
 type StepState = 'waiting' | 'active' | 'done' | 'error';
 
@@ -78,7 +79,6 @@ export function CrosschainTimeline({
   from,
   to,
   hash,
-  english: en,
   onDelivered,
   delivery,
 }: {
@@ -86,11 +86,11 @@ export function CrosschainTimeline({
   to: string;
   /** The confirmed burn on `from`. */
   hash: string;
-  english: boolean;
   onDelivered?: () => void;
   /** Where Circle does not deliver (toward Stellar): where the attested burn stands. */
   delivery?: () => Promise<StellarDelivery>;
 }) {
+  const t = useTranslations('CrosschainTimeline');
   const [stage, setStage] = useState<CrosschainStage>('burned');
   const [delayed, setDelayed] = useState(false);
   const delivered = useRef(onDelivered);
@@ -103,7 +103,13 @@ export function CrosschainTimeline({
     const controller = new AbortController();
     const started = Date.now();
     let timer: ReturnType<typeof setTimeout>;
+    // Nobody is looking: no checks until the page is visible again, then one right away.
+    let paused = false;
     const poll = async () => {
+      if (document.hidden) {
+        paused = true;
+        return;
+      }
       const status = await crosschainStatus(cctpNetwork(from), hash, controller.signal).catch(
         () => null,
       );
@@ -119,10 +125,17 @@ export function CrosschainTimeline({
       setDelayed(Date.now() - started > DELAYED_MS);
       timer = setTimeout(poll, POLL_MS);
     };
+    const resume = () => {
+      if (!paused || document.hidden) return;
+      paused = false;
+      void poll();
+    };
+    document.addEventListener('visibilitychange', resume);
     void poll();
     return () => {
       controller.abort();
       clearTimeout(timer);
+      document.removeEventListener('visibilitychange', resume);
     };
   }, [from, hash]);
 
@@ -137,46 +150,26 @@ export function CrosschainTimeline({
     >
       <Step
         state="done"
-        title={en ? 'Source-network confirmation' : 'Confirmación en la red de origen'}
-        detail={
-          en
-            ? 'The source transaction is confirmed onchain.'
-            : 'La salida quedó confirmada onchain.'
-        }
+        title={t('sourceNetworkConfirmation')}
+        detail={t('sourceTransactionConfirmedOnchain')}
       />
       <Step
         state={failed ? 'error' : attested ? 'done' : 'active'}
-        title={en ? 'Circle attestation' : 'Atestación de Circle'}
-        detail={
-          attested
-            ? en
-              ? 'The attestation is available.'
-              : 'La atestación ya está disponible.'
-            : en
-              ? 'Circle is verifying the CCTP message.'
-              : 'Circle está verificando el mensaje de CCTP.'
-        }
+        title={t('circleAttestation')}
+        detail={attested ? t('attestationAvailable') : t('circleVerifyingCctpMessage')}
       />
       <Step
         last
         state={failed ? 'error' : arrived ? 'done' : attested ? 'active' : 'waiting'}
-        title={en ? `Delivery on ${destination}` : `Entrega en ${destination}`}
+        title={t('delivery', { destination })}
         detail={
           failed
-            ? en
-              ? 'The operation needs review; do not submit it again.'
-              : 'La operación necesita revisión; no la envíes otra vez.'
+            ? t('operationNeedsReviewDo')
             : arrived
-              ? en
-                ? 'USDC arrived at the destination address.'
-                : 'USDC llegó a la dirección de destino.'
+              ? t('usdcArrivedDestinationAddress')
               : delayed
-                ? en
-                  ? 'You can leave this screen. Processing will continue.'
-                  : 'Puedes salir de esta pantalla. La operación seguirá procesándose.'
-                : en
-                  ? 'USDC minting starts after the attestation.'
-                  : 'La acuñación de USDC comenzará después de la atestación.'
+                ? t('leaveScreenProcessingContinue')
+                : t('usdcMintingStartsAfter')
         }
       />
     </ol>

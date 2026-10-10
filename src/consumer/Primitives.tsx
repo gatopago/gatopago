@@ -5,6 +5,7 @@ import { NavigationLink } from './NavigationLink';
 import { localizedPath } from './routes';
 import { BackIcon, ChevronIcon } from './Icons';
 import { useBack } from './history';
+import { useTranslations, useLocale } from 'next-intl';
 
 /**
  * A screen's top bar, fixed while it scrolls: back to where the member came from (`to`, the
@@ -12,25 +13,24 @@ import { useBack } from './history';
  */
 export function BackHeader({
   title,
-  english,
   to = '/app',
   onBack,
   action,
 }: {
   title: string;
-  english: boolean;
   to?: string;
   /** A step inside the screen (a result, a sub-view) goes back to the screen itself. */
   onBack?: () => void;
   action?: ReactNode;
 }) {
-  const back = useBack(to, english);
+  const t = useTranslations('Primitives');
+  const back = useBack(to);
   return (
     <header className="back-header">
       <button
         type="button"
         onClick={onBack ?? back}
-        aria-label={english ? 'Back' : 'Volver'}
+        aria-label={t('back')}
         className="back-header__button"
       >
         <BackIcon />
@@ -156,7 +156,6 @@ export function OptionCard({
   href,
   title,
   description,
-  english,
   icon,
   tone = 'brand',
   badge,
@@ -164,14 +163,14 @@ export function OptionCard({
   href: string;
   title: string;
   description: string;
-  english: boolean;
   icon: ReactNode;
   tone?: keyof typeof tones;
   badge?: string;
 }) {
+  const locale = useLocale();
   return (
     <NavigationLink
-      href={localizedPath(href, english)}
+      href={localizedPath(href, locale)}
       className="meli-path-card-app interactive-surface w-full p-4 text-left"
     >
       <span

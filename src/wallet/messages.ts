@@ -1,21 +1,25 @@
-import english from '../messages/en.json';
-import spanish from '../messages/es.json';
+'use client';
+
+import { useTranslations, type Messages } from 'next-intl';
+import { useCallback } from 'react';
 import { ApiError } from './api';
 
-/** The person's messages for every failure code live with the rest of the translations. */
-const errors = {
-  es: spanish.Errors as Record<string, string>,
-  en: english.Errors as Record<string, string>,
-};
+type ErrorCode = keyof Messages['Errors'];
 
-/** The message for one code. */
-function messageFor(code: string, en: boolean): string {
-  const table = en ? errors.en : errors.es;
-  return table[code] ?? table.UNKNOWN;
+/**
+ * The person's message for any failure (API codes, passkey prompts, bundler errors), from the
+ * `Errors` texts of the language in use; a code without its own text says `UNKNOWN`'s.
+ */
+export function useFailureMessage() {
+  const t = useTranslations('Errors');
+  return useCallback(
+    (error: unknown) => {
+      const code = failureCode(error) as ErrorCode;
+      return t.has(code) ? t(code) : t('UNKNOWN');
+    },
+    [t],
+  );
 }
-
-/** A message for the person for any failure: API codes, passkey prompts and bundler errors. */
-export const failureMessage = (error: unknown, en: boolean) => messageFor(failureCode(error), en);
 
 function failureCode(error: unknown): string {
   for (let cause = error; cause instanceof Error; cause = cause.cause) {

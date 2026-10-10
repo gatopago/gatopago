@@ -1,14 +1,9 @@
-import type { Metadata } from 'next';
+import { privateMetadata } from '../../../../lib/metadata';
 import { AccountView } from '../../../../auth/AccountShell';
 
-export const metadata: Metadata = {
-  title: 'Enviar · GatoPago',
-  robots: { index: false, follow: false },
-  referrer: 'no-referrer',
-};
+export const generateMetadata = privateMetadata('send');
 export const dynamic = 'force-dynamic';
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
-  const { lang } = await searchParams;
-  return <AccountView view="send" english={lang === 'en'} />;
+export default function Page() {
+  return <AccountView view="send" />;
 }

@@ -33,19 +33,13 @@ import {
   type Plan,
 } from './flow';
 import { formatBalance, formatUsdc, useBalances } from './balances';
-import { failureMessage } from './messages';
+import { useFailureMessage } from './messages';
 import { currentSession, subscribeSession, type Session } from './session';
+import { useTranslations, useLocale } from 'next-intl';
 
 /** `/pay/:id`: a GatoPago Flow payment request, as V2's payment page presented it. */
-export function Checkout({
-  id,
-  settings,
-  english: en,
-}: {
-  id: string;
-  settings: ClientSettings;
-  english: boolean;
-}) {
+export function Checkout({ id, settings }: { id: string; settings: ClientSettings }) {
+  const messageFor = useFailureMessage();
   const session = useSyncExternalStore(subscribeSession, currentSession, () => undefined);
   const [intent, setIntent] = useState<Intent | null>(null);
   const [error, setError] = useState('');
@@ -55,8 +49,8 @@ export function Checkout({
   useEffect(() => {
     readCheckout(settings, id)
       .then(setIntent)
-      .catch((failure: unknown) => setError(failureMessage(failure, en)));
-  }, [settings, id, en]);
+      .catch((failure: unknown) => setError(messageFor(failure)));
+  }, [settings, id, messageFor]);
 
   // A payment that crosses networks settles once Circle mints to the merchant: check again 5 s
   // after each answer, while the page is visible. A failed check just waits for the next one;
@@ -79,20 +73,19 @@ export function Checkout({
   }, [processing, settings, id]);
 
   return (
-    <ConsumerFrame english={en} presentation="public">
+    <ConsumerFrame presentation="public">
       <div className="auth-content">
         {error ? (
           <p className="auth-error" role="alert">
             {error}
           </p>
         ) : !intent ? (
-          <ScreenLoading kind="detail" english={en} bar={false} />
+          <ScreenLoading kind="detail" bar={false} />
         ) : (
           <Request
             intent={intent}
             settings={settings}
             session={session ?? null}
-            english={en}
             paidHere={paidHere}
             onPaid={(paid) => {
               setPaidHere(true);
@@ -112,17 +105,17 @@ function Request({
   intent,
   settings,
   session,
-  english: en,
   paidHere,
   onPaid,
 }: {
   intent: Intent;
   settings: ClientSettings;
   session: Session | null;
-  english: boolean;
   paidHere: boolean;
   onPaid: (intent: Intent) => void;
 }) {
+  const locale = useLocale();
+  const t = useTranslations('Checkout');
   const amount = parseUnits(intent.amount, USDC_DECIMALS);
   const merchant = merchantLabel(intent);
   const payment = intent.payment;
@@ -130,15 +123,14 @@ function Request({
     paidHere ||
     (!!session && !!payment?.payer && isAddressEqual(payment.payer, session.wallet.address));
   const home = (
-    <NavigationLink href={localizedPath('/app', en)} className="btn btn-ghost btn-block mt-4">
-      {en ? 'Go to home' : 'Ir al inicio'}
+    <NavigationLink href={localizedPath('/app', locale)} className="btn btn-ghost btn-block mt-4">
+      {t('goHome')}
     </NavigationLink>
   );
 
   if (intent.status === 'succeeded' && mine && payment?.transaction_hash)
     return (
       <ReceiptScreen
-        english={en}
         receipt={{
           kind: 'paid',
           amount,
@@ -158,21 +150,16 @@ function Request({
     return (
       <TxResult
         state="pending"
-        lead={en ? 'Payment in progress' : 'Pago en proceso'}
-        amount={formatUsdc(amount, en)}
+        lead={t('paymentProgress')}
+        amount={formatUsdc(amount, locale)}
         unit="USDC"
-        body={
-          en
-            ? 'Confirming on the network. You can leave; the payment keeps going.'
-            : 'Confirmando en la red. Puedes salir; el pago sigue su curso.'
-        }
+        body={t('confirmingNetworkLeavePayment')}
       >
         <div className="mt-4 w-full">
           <CrosschainTimeline
             from={payment.network}
             to={settings.homeNetwork}
             hash={payment.transaction_hash}
-            english={en}
           />
         </div>
         {session ? home : null}
@@ -184,18 +171,12 @@ function Request({
         state={intent.status === 'succeeded' ? 'success' : 'failed'}
         lead={
           intent.status === 'succeeded'
-            ? en
-              ? 'This request was already paid'
-              : 'Este cobro ya fue pagado'
+            ? t('requestAlreadyPaid')
             : intent.status === 'canceled'
-              ? en
-                ? 'The merchant canceled this request'
-                : 'El comercio canceló este cobro'
-              : en
-                ? 'This request expired'
-                : 'Este cobro venció'
+              ? t('merchantCanceledRequest')
+              : t('requestExpired')
         }
-        amount={formatUsdc(amount, en)}
+        amount={formatUsdc(amount, locale)}
         unit="USDC"
       >
         {intent.description ? (
@@ -211,10 +192,10 @@ function Request({
           {merchant[0] ?? 'G'}
         </div>
         <h1 className="font-display text-[20px] leading-tight">
-          {en ? `${merchant} requests a payment` : `${merchant} te cobra`}
+          {t('requestsPayment', { merchant })}
         </h1>
       </div>
-      <Pay intent={intent} settings={settings} session={session} english={en} onPaid={onPaid} />
+      <Pay intent={intent} settings={settings} session={session} onPaid={onPaid} />
     </>
   );
 }
@@ -223,38 +204,38 @@ function Pay({
   intent,
   settings,
   session,
-  english: en,
   onPaid,
 }: {
   intent: Intent;
   settings: ClientSettings;
   session: Session | null;
-  english: boolean;
   onPaid: (intent: Intent) => void;
 }) {
+  const locale = useLocale();
+  const t = useTranslations('Checkout');
   const [method, setMethod] = useState<'balance' | 'external'>(session ? 'balance' : 'external');
   const [hasWallet] = useState(() => typeof window !== 'undefined' && 'ethereum' in window);
   const amount = parseUnits(intent.amount, USDC_DECIMALS);
   // Signing in comes back to this payment.
   const signIn = localizedPath(
-    `/login?next=${encodeURIComponent(`/pay/${intent.id}${en ? '?lang=en' : ''}`)}`,
-    en,
+    `/login?next=${encodeURIComponent(localizedPath(`/pay/${intent.id}`, locale))}`,
+    locale,
   );
   return (
     <>
       <MoneyPanel className="mb-6 flex flex-col items-center text-center">
         <p className="tabular max-w-full break-words font-display text-[clamp(40px,13vw,56px)] leading-tight">
-          {formatUsdc(amount, en)}
+          {formatUsdc(amount, locale)}
           <span className="ml-2 text-[0.42em] text-text-muted">USDC</span>
         </p>
         {intent.description ? (
           <p className="mt-1 text-[14px] leading-relaxed text-text-muted">{intent.description}</p>
         ) : null}
-        {session ? <Balance settings={settings} session={session} english={en} /> : null}
+        {session ? <Balance settings={settings} session={session} /> : null}
       </MoneyPanel>
       {session ? (
         <div className="mb-2">
-          <SectionLabel>{en ? 'Pay with' : '¿Con qué pagas?'}</SectionLabel>
+          <SectionLabel>{t('payWith')}</SectionLabel>
           <div className="seg-track seg-track-block">
             {(['balance', 'external'] as const).map((value) => (
               <button
@@ -265,53 +246,33 @@ function Pay({
                 aria-pressed={method === value}
                 onClick={() => setMethod(value)}
               >
-                {value === 'external'
-                  ? en
-                    ? 'Another wallet'
-                    : 'Otra wallet'
-                  : en
-                    ? 'GatoPago balance'
-                    : 'Saldo GatoPago'}
+                {value === 'external' ? t('anotherWallet') : t('gatopagoBalance')}
               </button>
             ))}
           </div>
         </div>
       ) : null}
       {session && method === 'balance' ? (
-        <AccountPay
-          intent={intent}
-          settings={settings}
-          session={session}
-          english={en}
-          onPaid={onPaid}
-        />
+        <AccountPay intent={intent} settings={settings} session={session} onPaid={onPaid} />
       ) : session || hasWallet ? (
-        <WalletPay
-          intent={intent}
-          settings={settings}
-          english={en}
-          hasWallet={hasWallet}
-          onPaid={onPaid}
-        />
+        <WalletPay intent={intent} settings={settings} hasWallet={hasWallet} onPaid={onPaid} />
       ) : (
         // No account here and no wallet in this browser: GatoPago first, the link for a wallet app.
         <TransactionActions>
           <NavigationLink href={signIn} className="btn btn-money btn-block">
-            {en ? 'Pay with GatoPago' : 'Pagar con GatoPago'}
+            {t('payGatopago')}
           </NavigationLink>
           <p className="mt-3 text-center text-[12px] leading-relaxed text-text-faint">
-            {en
-              ? 'Sign in with your fingerprint or face and come back here to pay. No account? You create it in a minute.'
-              : 'Entras con tu huella o tu rostro y vuelves aquí para pagar. ¿Sin cuenta? La creas en un minuto.'}
+            {t('signFingerprintFaceCome')}
           </p>
           <div className="mt-6 border-t border-border pt-5">
-            <CopyCheckoutLink english={en} />
+            <CopyCheckoutLink />
           </div>
         </TransactionActions>
       )}
       {!session && hasWallet ? (
         <NavigationLink href={signIn} className="btn-text mt-1 block w-full text-center">
-          {en ? 'Have GatoPago? Pay with your balance' : '¿Tienes GatoPago? Paga con tu saldo'}
+          {t('gatopagoPayBalance')}
         </NavigationLink>
       ) : null}
     </>
@@ -319,31 +280,22 @@ function Pay({
 }
 
 /** For a wallet app with its own browser: the link to open there. */
-function CopyCheckoutLink({ english: en }: { english: boolean }) {
-  const { copy, label } = useCopy(en);
+function CopyCheckoutLink() {
+  const t = useTranslations('Checkout');
+  const { copy, label } = useCopy();
   return (
     <>
-      <p className="mb-3 text-center text-[13px] text-text-muted">
-        {en
-          ? 'Paying from another wallet? Open this link in its browser (MetaMask, Coinbase Wallet…).'
-          : '¿Pagas desde otra wallet? Abre este link en su navegador (MetaMask, Coinbase Wallet…).'}
-      </p>
+      <p className="mb-3 text-center text-[13px] text-text-muted">{t('payingAnotherWalletOpen')}</p>
       <button type="button" className="btn btn-ghost btn-block" onClick={() => copy(location.href)}>
-        {label(en ? 'Copy link' : 'Copiar link')}
+        {label(t('copyLink'))}
       </button>
     </>
   );
 }
 
-function Balance({
-  settings,
-  session,
-  english: en,
-}: {
-  settings: ClientSettings;
-  session: Session;
-  english: boolean;
-}) {
+function Balance({ settings, session }: { settings: ClientSettings; session: Session }) {
+  const locale = useLocale();
+  const t = useTranslations('Checkout');
   const { balances } = useBalances(settings, session);
   // USDC lives on the home network, as everywhere in the app. Nothing is said about other networks:
   // a payment comes from one that covers it on its own (`planAccountPayment`).
@@ -351,7 +303,7 @@ function Balance({
   if (typeof available !== 'bigint') return null;
   return (
     <p className="mt-3 text-[12px] text-text-faint">
-      {en ? 'Your balance' : 'Tu saldo'}: {formatBalance(available, en)} USDC
+      {t('balance')}: {formatBalance(available, locale)} USDC
     </p>
   );
 }
@@ -360,33 +312,29 @@ function AccountPay({
   intent,
   settings,
   session,
-  english: en,
   onPaid,
 }: {
   intent: Intent;
   settings: ClientSettings;
   session: Session;
-  english: boolean;
   onPaid: (intent: Intent) => void;
 }) {
+  const locale = useLocale();
+  const t = useTranslations('Checkout');
   const { balances, refresh } = useBalances(settings, session);
   const [plan, setPlan] = useState<Plan | null>(null);
-  const { busy, error, run: perform } = useAction(en);
+  const { busy, error, run: perform } = useAction();
 
   const amount = parseUnits(intent.amount, USDC_DECIMALS);
   return (
     <>
-      <StageOverlay
-        label={busy && !plan ? (en ? 'Preparing your payment…' : 'Preparando tu pago…') : null}
-      />
+      <StageOverlay label={busy && !plan ? t('preparingPayment') : null} />
       {error && !plan ? (
         <p role="alert" className="mb-4 text-center text-[13px] text-danger">
           {error}
         </p>
       ) : null}
-      <TransactionActions
-        hint={en ? 'GatoPago pays the network fee.' : 'GatoPago paga la comisión de red.'}
-      >
+      <TransactionActions hint={t('gatopagoPaysNetworkFee')}>
         <button
           type="button"
           className="btn btn-money btn-block"
@@ -397,25 +345,20 @@ function AccountPay({
             )
           }
         >
-          {en ? 'Pay' : 'Pagar'}
+          {t('pay')}
         </button>
       </TransactionActions>
       {plan ? (
         <ConfirmSheet
-          title={en ? 'Confirm your payment' : 'Confirma tu pago'}
-          amountLabel={en ? 'You will send' : 'Vas a enviar'}
-          amount={formatUsdc(plan.total, en)}
+          title={t('confirmPayment')}
+          amountLabel={t('send')}
+          amount={formatUsdc(plan.total, locale)}
           unit="USDC"
-          warning={
-            en
-              ? 'Check who you are paying: a payment cannot be undone. GatoPago pays the network fee.'
-              : 'Revisa a quién le pagas: un pago no se puede deshacer. GatoPago paga la comisión de red.'
-          }
-          confirmLabel={en ? 'Confirm and pay' : 'Confirmar y pagar'}
+          warning={t('checkWhoPayingPayment')}
+          confirmLabel={t('confirmPay')}
           paymentAction
-          english={en}
           busy={busy}
-          busyLabel={en ? 'Confirm on your device…' : 'Confirma en tu dispositivo…'}
+          busyLabel={t('confirmDevice')}
           error={error}
           onConfirm={() =>
             perform(async () => {
@@ -427,22 +370,13 @@ function AccountPay({
           onCancel={() => setPlan(null)}
         >
           {intent.merchant ? (
-            <ConfirmDestination
-              label={merchantLabel(intent)}
-              address={intent.merchant.address}
-              english={en}
-            />
+            <ConfirmDestination label={merchantLabel(intent)} address={intent.merchant.address} />
           ) : null}
           <ConfirmDetails
             rows={[
-              [en ? 'From' : 'Desde', networkName(plan.network)],
+              [t('from'), networkName(plan.network)],
               ...(plan.total > amount
-                ? ([
-                    [
-                      en ? 'Fees, up to' : 'Comisiones, hasta',
-                      `${formatUsdc(plan.total - amount, en)} USDC`,
-                    ],
-                  ] as const)
+                ? ([[t('feesUp'), `${formatUsdc(plan.total - amount, locale)} USDC`]] as const)
                 : []),
             ]}
           />
@@ -450,7 +384,6 @@ function AccountPay({
             wallet={session.wallet}
             networkId={plan.network}
             calls={paymentCalls(walletNetwork(plan.network), plan.payment, plan.signature)}
-            english={en}
           />
         </ConfirmSheet>
       ) : null}
@@ -462,31 +395,30 @@ function AccountPay({
 function WalletPay({
   intent,
   settings,
-  english: en,
   hasWallet,
   onPaid,
 }: {
   intent: Intent;
   settings: ClientSettings;
-  english: boolean;
   hasWallet: boolean;
   onPaid: (intent: Intent) => void;
 }) {
+  const t = useTranslations('Checkout');
   const [network, setNetwork] = useState(settings.homeNetwork);
   // One wallet prompt at a time: a double tap must not ask the wallet twice.
-  const { busy, error, run } = useAction(en);
+  const { busy, error, run } = useAction();
   if (!hasWallet)
     return (
       <div className="mt-6">
-        <CopyCheckoutLink english={en} />
+        <CopyCheckoutLink />
       </div>
     );
   return (
     <>
       <div className="mt-6 border-t border-border pt-5">
-        <SectionLabel>{en ? 'Where is your USDC?' : '¿Dónde tienes USDC?'}</SectionLabel>
+        <SectionLabel>{t('whereUsdc')}</SectionLabel>
         <SelectMenu
-          label={en ? 'Source network of the USDC' : 'Red de origen del USDC'}
+          label={t('sourceNetworkUsdc')}
           showLabel={false}
           value={network}
           options={settings.networks.map((id) => ({
@@ -495,13 +427,10 @@ function WalletPay({
             network: id,
           }))}
           onChange={setNetwork}
-          english={en}
           disabled={busy}
         />
         <p className="mt-2 text-[12px] leading-relaxed text-text-faint">
-          {en
-            ? 'Choose where you already have USDC. GatoPago takes care of delivering it to the merchant.'
-            : 'Elige dónde ya tienes USDC. GatoPago resuelve la entrega al comercio.'}
+          {t('chooseWhereAlreadyUsdc')}
         </p>
       </div>
       {error ? (
@@ -515,16 +444,10 @@ function WalletPay({
           aria-live="polite"
           className="animate-pulse-soft mt-4 text-center text-[13px] text-text-muted"
         >
-          {en ? 'Confirm the payment in your wallet…' : 'Confirma el pago en tu wallet…'}
+          {t('confirmPaymentWallet')}
         </p>
       ) : null}
-      <TransactionActions
-        hint={
-          en
-            ? "You don't need a GatoPago account. You pay directly from your wallet."
-            : 'No necesitas una cuenta GatoPago. Pagas directamente desde tu wallet.'
-        }
-      >
+      <TransactionActions hint={t('dontNeedGatopagoAccount')}>
         <button
           type="button"
           disabled={busy}
@@ -533,7 +456,7 @@ function WalletPay({
             void run(async () => onPaid(await payWithBrowserWallet(settings, intent, network)))
           }
         >
-          {en ? 'Connect wallet and pay' : 'Conectar wallet y pagar'}
+          {t('connectWalletPay')}
         </button>
       </TransactionActions>
     </>

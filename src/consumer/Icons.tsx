@@ -140,6 +140,16 @@ export function ProfileIcon() {
   );
 }
 
+export function ContactsIcon() {
+  return (
+    <Icon>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20v-1a6.5 6.5 0 0 1 13 0v1" />
+      <path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 13.6a6.5 6.5 0 0 1 3 5.4v1" />
+    </Icon>
+  );
+}
+
 export function SettingsIcon() {
   return (
     <Icon>

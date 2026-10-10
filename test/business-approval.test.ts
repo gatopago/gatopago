@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseSiweMessage } from 'viem/siwe';
+import { businessKeyResource } from '@gatopago/shared/passkey';
 import { approvalMessage, businessRequest } from '../src/consumer/ApproveScreen';
 
 describe('Approving a GatoPago Business sign-in', () => {
@@ -27,5 +28,20 @@ describe('Approving a GatoPago Business sign-in', () => {
       nonce: '0123456789abcdef0123456789abcdef',
       address: '0x75464f762bc50d0A0B127ab5a085504BF102Bb88',
     });
+    expect(message.resources).toBeUndefined();
+  });
+
+  it("names the console's Business key, so the signature approves that key only", () => {
+    const key = `0x${'ab'.repeat(32)}` as const;
+    const message = parseSiweMessage(
+      approvalMessage({
+        webOrigin: 'https://gatopago.com',
+        address: '0x75464f762bc50d0A0B127ab5a085504BF102Bb88',
+        chainId: 421614,
+        request: '0123456789abcdef0123456789abcdef',
+        businessKey: key,
+      }),
+    );
+    expect(message.resources).toEqual([businessKeyResource(key)]);
   });
 });

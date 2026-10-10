@@ -4,15 +4,11 @@ import { useId, useRef, useState, useSyncExternalStore } from 'react';
 import { getPwaSnapshot, getServerPwaSnapshot, requestInstall, subscribePwa } from './browser';
 import { isReloadBlocked, serverReloadBlocked, subscribeReloadGuard } from './reload-guard';
 import './pwa.css';
+import { useTranslations } from 'next-intl';
 
 /** Installing the app; once installed (opened from the home screen) there is nothing to show. */
-export function PwaControls({
-  english: en = false,
-  compact = false,
-}: {
-  english?: boolean;
-  compact?: boolean;
-}) {
+export function PwaControls({ compact = false }: { compact?: boolean }) {
+  const t = useTranslations('PwaControls');
   const pwa = useSyncExternalStore(subscribePwa, getPwaSnapshot, getServerPwaSnapshot);
   const guarded = useSyncExternalStore(subscribeReloadGuard, isReloadBlocked, serverReloadBlocked);
   const [prompting, setPrompting] = useState(false);
@@ -26,37 +22,21 @@ export function PwaControls({
     try {
       const result = await requestInstall();
       if (result === 'instructions') dialog.current?.showModal();
-      if (result === 'accepted')
-        setNotice(
-          en
-            ? 'Open GatoPago from your device’s app launcher.'
-            : 'Abre GatoPago desde el acceso de tu dispositivo.',
-        );
-      if (result === 'dismissed')
-        setNotice(
-          en
-            ? 'Installation cancelled. You can keep using the browser.'
-            : 'Instalación cancelada. Puedes seguir usando el navegador.',
-        );
+      if (result === 'accepted') setNotice(t('openGatopagoDevicesApp'));
+      if (result === 'dismissed') setNotice(t('installationCancelledKeepUsing'));
     } finally {
       setPrompting(false);
     }
   }
   if (pwa.installed) return null;
-  const label = en ? 'Install app' : 'Instalar app';
+  const label = t('installApp');
   return (
     <div className={`pwa-controls${compact ? ' pwa-controls--compact' : ''}`}>
       <button
         type="button"
         className="pwa-button"
         aria-label={label}
-        title={
-          guarded
-            ? en
-              ? 'Available after confirmation'
-              : 'Disponible después de confirmar'
-            : label
-        }
+        title={guarded ? t('availableAfterConfirmation') : label}
         disabled={!pwa.ready || guarded || prompting}
         onClick={() => void install()}
       >
@@ -83,30 +63,18 @@ export function PwaControls({
             {notice}
           </p>
           <button type="button" className="pwa-button" onClick={() => setNotice('')}>
-            {en ? 'Close' : 'Cerrar'}
+            {t('close')}
           </button>
         </div>
       ) : null}
       <dialog ref={dialog} className="pwa-dialog" aria-labelledby={titleId}>
-        <h2 id={titleId}>{en ? 'Install GatoPago' : 'Instalar GatoPago'}</h2>
-        <p>
-          {en
-            ? 'On iPhone or iPad: open this site in Safari, tap Share, then Add to Home Screen. If available, enable Open as Web App.'
-            : 'En iPhone o iPad: abre este sitio en Safari, pulsa Compartir y luego Agregar a inicio. Si aparece, activa Abrir como app web.'}
-        </p>
-        <p>
-          {en
-            ? 'On Android or desktop: open the browser menu and look for Install app or Add to Home Screen. If unavailable, keep using GatoPago in your browser.'
-            : 'En Android o computadora: abre el menú del navegador y busca Instalar aplicación o Agregar a inicio. Si no aparece, sigue usando GatoPago en el navegador.'}
-        </p>
-        <p>
-          {en
-            ? 'Installing does not create a wallet, save a passkey or move funds.'
-            : 'Instalar no crea una wallet, guarda una passkey ni mueve fondos.'}
-        </p>
+        <h2 id={titleId}>{t('installGatopago')}</h2>
+        <p>{t('iphoneIpadOpenSite')}</p>
+        <p>{t('androidDesktopOpenBrowser')}</p>
+        <p>{t('installingDoesNotCreate')}</p>
         <form method="dialog">
           <button className="pwa-button" type="submit">
-            {en ? 'Got it' : 'Entendido'}
+            {t('got')}
           </button>
         </form>
       </dialog>

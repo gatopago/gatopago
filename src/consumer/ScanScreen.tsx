@@ -17,18 +17,19 @@ import { NavigationLink } from './NavigationLink';
 import { PixelRail } from './PixelRail';
 import { SelectMenu } from './SelectMenu';
 import { MeliSprite } from '../marketing/MeliSprite';
+import { useTranslations, useLocale } from 'next-intl';
 
 type Scanned = { address: string; chain: string | null };
 
 export default function ScanScreen({
-  english: en,
   settings,
   session,
 }: {
-  english: boolean;
   settings: ClientSettings;
   session: Session;
 }) {
+  const locale = useLocale();
+  const t = useTranslations('Scan');
   const router = useRouter();
   const [view, setView] = useState<'scan' | 'myqr'>('scan');
   const [scanned, setScanned] = useState<Scanned | null>(null);
@@ -54,22 +55,12 @@ export default function ScanScreen({
       const found = parseConsumerQr(raw, window.location.origin);
       // A Stellar address only where GatoPago has Stellar on.
       const parsed = found?.kind === 'stellar' && !settings.stellar ? null : found;
-      setError(
-        parsed
-          ? ''
-          : found
-            ? en
-              ? 'This QR is a Stellar address, and Stellar is not available here yet.'
-              : 'Este QR es una dirección de Stellar, y Stellar todavía no está disponible aquí.'
-            : en
-              ? 'This QR has no address or GatoPago link we can use.'
-              : 'Este QR no tiene una dirección ni un link de GatoPago que podamos usar.',
-      );
+      setError(parsed ? '' : found ? t('qrStellarAddressStellar') : t('qrNoAddressGatopago'));
       if (parsed?.kind === 'address') setScanned(parsed);
-      else if (parsed) router.push(localizedPath(qrReviewPath(parsed), en));
+      else if (parsed) router.push(localizedPath(qrReviewPath(parsed), locale));
       return !!parsed;
     },
-    [en, router, settings.stellar],
+    [t, locale, router, settings.stellar],
   );
   /** Reads a QR from an image, or from the centered square the preview shows (`square`). */
   const decode = useCallback(
@@ -124,11 +115,7 @@ export default function ScanScreen({
         stop();
         setBusy(false);
         setCamera(false);
-        setError(
-          en
-            ? 'The camera permission took too long. Try again.'
-            : 'El permiso de la cámara tardó demasiado. Reintenta.',
-        );
+        setError(t('cameraPermissionTookToo'));
       }
     }, 15000);
     try {
@@ -175,14 +162,10 @@ export default function ScanScreen({
         stop();
         setBusy(false);
         setCamera(false);
-        setError(
-          en
-            ? 'We could not use the camera. Check its permission in your browser, or choose a photo of the QR.'
-            : 'No pudimos usar la cámara. Revisa el permiso en tu navegador o elige una foto del QR.',
-        );
+        setError(t('couldNotUseCamera'));
       }
     }
-  }, [en, stop, parse, decode]);
+  }, [t, stop, parse, decode]);
   const scanning = view === 'scan' && !scanned;
   useEffect(() => {
     if (!scanning) return;
@@ -228,12 +211,7 @@ export default function ScanScreen({
       if (!raw) throw new Error('No QR');
       parse(raw);
     } catch {
-      if (generation.current === current)
-        setError(
-          en
-            ? 'We could not read a QR in that image. Try a sharper photo (PNG, JPEG or WebP, under 10 MB).'
-            : 'No encontramos un QR en esa imagen. Prueba con una foto más nítida (PNG, JPEG o WebP, de menos de 10 MB).',
-        );
+      if (generation.current === current) setError(t('couldNotReadQr'));
     } finally {
       bitmap?.close();
       setReading(false);
@@ -241,17 +219,10 @@ export default function ScanScreen({
     }
   }
   if (scanned)
-    return (
-      <Review
-        scanned={scanned}
-        settings={settings}
-        english={en}
-        onRestart={() => setScanned(null)}
-      />
-    );
+    return <Review scanned={scanned} settings={settings} onRestart={() => setScanned(null)} />;
   return (
     <>
-      <BackHeader title={en ? 'Scan QR' : 'Escanear QR'} english={en} />
+      <BackHeader title={t('scanQr')} />
       <div className="seg-track seg-track-block mb-5">
         {(['scan', 'myqr'] as const).map((tab) => (
           <button
@@ -265,12 +236,12 @@ export default function ScanScreen({
               setView(tab);
             }}
           >
-            {tab === 'scan' ? (en ? 'Scan' : 'Escanear') : en ? 'My QR' : 'Mi QR'}
+            {tab === 'scan' ? t('scan') : t('myQr')}
           </button>
         ))}
       </div>
       {view === 'myqr' ? (
-        <MyQr settings={settings} session={session} english={en} />
+        <MyQr settings={settings} session={session} />
       ) : (
         <div className="mx-auto flex w-full max-w-[340px] flex-1 flex-col items-center">
           <div
@@ -280,7 +251,7 @@ export default function ScanScreen({
               ref={video}
               muted
               playsInline
-              aria-label={en ? 'Camera preview' : 'Vista de cámara'}
+              aria-label={t('cameraPreview')}
               className={`${camera ? 'block' : 'hidden'} h-full w-full object-cover`}
             />
             {camera ? (
@@ -317,11 +288,7 @@ export default function ScanScreen({
           <p
             className={`min-h-10 text-center text-[14px] ${error && camera ? 'text-danger' : 'text-text-muted'}`}
           >
-            {error && camera
-              ? error
-              : en
-                ? 'Point at a GatoPago QR or any wallet’s QR.'
-                : 'Apunta a un QR de GatoPago o de cualquier wallet.'}
+            {error && camera ? error : t('pointGatopagoQrAny')}
           </p>
           <div className="mt-4 flex w-full flex-col gap-3">
             {!busy && !camera ? (
@@ -334,7 +301,7 @@ export default function ScanScreen({
                   void start();
                 }}
               >
-                {en ? 'Try the camera again' : 'Reintentar la cámara'}
+                {t('tryCameraAgain')}
               </button>
             ) : null}
             <button
@@ -343,22 +310,16 @@ export default function ScanScreen({
               disabled={reading}
               onClick={() => fileInput.current?.click()}
             >
-              {reading
-                ? en
-                  ? 'Reading the photo…'
-                  : 'Leyendo la foto…'
-                : en
-                  ? 'Choose a photo of the QR'
-                  : 'Elegir una foto del QR'}
+              {reading ? t('readingPhoto') : t('choosePhotoQr')}
             </button>
-            <NavigationLink href={localizedPath('/send', en)} className="btn-text w-full">
-              {en ? 'Send without a QR' : 'Enviar sin QR'}
+            <NavigationLink href={localizedPath('/send', locale)} className="btn-text w-full">
+              {t('sendWithoutQr')}
             </NavigationLink>
           </div>
           <input
             ref={fileInput}
             type="file"
-            aria-label={en ? 'Read from a photo' : 'Leer desde una foto'}
+            aria-label={t('readPhoto')}
             accept="image/png,image/jpeg,image/webp"
             className="hidden"
             onChange={(event) => {
@@ -373,15 +334,8 @@ export default function ScanScreen({
 }
 
 /** Your QR to get paid: your @username page, or your address before you choose one. */
-function MyQr({
-  settings,
-  session,
-  english: en,
-}: {
-  settings: ClientSettings;
-  session: Session;
-  english: boolean;
-}) {
+function MyQr({ settings, session }: { settings: ClientSettings; session: Session }) {
+  const t = useTranslations('Scan');
   const { profile } = useProfile();
   return (
     <div className="flex flex-1 flex-col items-center">
@@ -401,21 +355,18 @@ function MyQr({
             </div>
             <p className="mb-1 text-center font-display text-[18px]">@{profile.username}</p>
             <p className="text-center text-[12px] leading-relaxed text-text-muted">
-              {en
-                ? 'Anyone can pay you by scanning this code with GatoPago or their phone camera.'
-                : 'Te pueden pagar escaneando este código con GatoPago o con la cámara del teléfono.'}
+              {t('anyonePayScanningCode')}
             </p>
           </>
         ) : (
           <>
             <p className="mb-4 text-center text-[13px] text-text-muted">
-              {en ? 'Your address to receive USDC' : 'Tu dirección para recibir USDC'}
+              {t('addressReceiveUsdc')}
             </p>
             <AddressQRCard
               address={session.wallet.address}
               chainId={walletNetwork(settings.homeNetwork).chain.id}
               qrSize={200}
-              english={en}
             />
           </>
         )}
@@ -428,14 +379,14 @@ function MyQr({
 function Review({
   scanned,
   settings,
-  english: en,
   onRestart,
 }: {
   scanned: Scanned;
   settings: ClientSettings;
-  english: boolean;
   onRestart: () => void;
 }) {
+  const locale = useLocale();
+  const t = useTranslations('Scan');
   const requested = scanned.chain ? `eip155:${scanned.chain}` : null;
   const supported = !requested || settings.networks.includes(requested);
   const [networkId, setNetworkId] = useState(
@@ -447,27 +398,19 @@ function Review({
   });
   return (
     <>
-      <BackHeader
-        title={en ? 'Review recipient' : 'Revisar destinatario'}
-        english={en}
-        onBack={onRestart}
-      />
+      <BackHeader title={t('reviewRecipient')} onBack={onRestart} />
       <MoneyPanel className="mb-5">
-        <p className="mb-2 text-[13px] text-text-muted">
-          {en ? 'You will send to' : 'Vas a enviar a'}
-        </p>
+        <p className="mb-2 text-[13px] text-text-muted">{t('send')}</p>
         <p className="break-all font-mono text-[13px] leading-relaxed text-text">
           {scanned.address}
         </p>
       </MoneyPanel>
-      <SectionLabel>{en ? 'On which network?' : '¿Por qué red?'}</SectionLabel>
+      <SectionLabel>{t('whichNetwork')}</SectionLabel>
       <p className="mb-3 text-[12px] leading-relaxed text-text-muted">
-        {en
-          ? 'The same address can exist on several networks. Choose the one the recipient uses.'
-          : 'Una misma dirección puede existir en varias redes. Elige la que usa quien recibe.'}
+        {t('sameAddressExistSeveral')}
       </p>
       <SelectMenu
-        label={en ? 'Choose network' : 'Elegir red'}
+        label={t('chooseNetwork')}
         showLabel={false}
         value={networkId}
         options={settings.networks.map((id) => ({
@@ -476,29 +419,22 @@ function Review({
           network: id,
         }))}
         onChange={setNetworkId}
-        english={en}
         className="mb-5"
       />
       {!supported ? (
-        <NoticeCard
-          tone="warning"
-          className="mb-4"
-          title={en ? 'Unsupported network' : 'Red no admitida'}
-        >
-          {en
-            ? `The QR asks for a network GatoPago does not support yet (${scanned.chain}). Choose one of yours.`
-            : `El QR pide una red que GatoPago todavía no admite (${scanned.chain}). Elige una de las tuyas.`}
+        <NoticeCard tone="warning" className="mb-4" title={t('unsupportedNetwork')}>
+          {t('qrAsksNetworkGatopago', { chain: scanned.chain ?? '' })}
         </NoticeCard>
       ) : null}
       <TransactionActions>
         <NavigationLink
-          href={localizedPath(`/send?${transfer}`, en)}
+          href={localizedPath(`/send?${transfer}`, locale)}
           className="btn btn-primary btn-block"
         >
-          {en ? 'Continue to transfer' : 'Continuar al envío'}
+          {t('continueTransfer')}
         </NavigationLink>
         <button type="button" onClick={onRestart} className="btn btn-ghost btn-block mt-3">
-          {en ? 'Scan another QR' : 'Escanear otro QR'}
+          {t('scanAnotherQr')}
         </button>
       </TransactionActions>
     </>

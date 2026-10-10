@@ -85,24 +85,53 @@ function sentPayment(id: string): { network: string; hash: Hex } | null {
   }
 }
 
-/** Tells Flow about the transaction that paid `id` (`PAYMENT_NOT_REGISTERED` until it answers). */
-async function confirm(settings: ClientSettings, id: string, network: string, hash: Hex) {
+/**
+ * Keeps the transaction that pays `id` as soon as there is a hash: if waiting for it or telling Flow
+ * fails, a retry (even after reloading) follows that same transaction instead of paying again.
+ */
+function rememberPayment(id: string, network: string, hash: Hex) {
   try {
     localStorage.setItem(sentKey(id), JSON.stringify({ network, hash }));
   } catch {
     // Without storage a retry pays again, and the router refuses a second payment of the intent.
   }
+}
+
+/** Tells Flow about the transaction that paid `id` (`PAYMENT_NOT_REGISTERED` until it answers). */
+async function confirm(settings: ClientSettings, id: string, network: string, hash: Hex) {
+  rememberPayment(id, network, hash);
   const intent = await api<Intent>(settings.apiOrigin, `/checkout/v1/${id}/confirm`, {
     body: { network, transaction_hash: hash },
   }).catch((error: unknown) => {
     throw new Error('PAYMENT_NOT_REGISTERED', { cause: error });
   });
+  forgetPayment(id);
+  return intent;
+}
+
+function forgetPayment(id: string) {
   try {
     localStorage.removeItem(sentKey(id));
   } catch {
     // Nothing stored.
   }
-  return intent;
+}
+
+/**
+ * Follows a browser wallet's transaction to its end: still pending or unreadable is
+ * `PAYMENT_PENDING` and keeps it for the retry; a revert forgets it, so paying again is possible.
+ */
+async function settle(settings: ClientSettings, id: string, network: string, hash: Hex) {
+  const receipt = await publicClient(settings, network)
+    .waitForTransactionReceipt({ hash })
+    .catch((error: unknown) => {
+      throw new Error('PAYMENT_PENDING', { cause: error });
+    });
+  if (receipt.status === 'reverted') {
+    forgetPayment(id);
+    throw new Error('PAYMENT_REVERTED');
+  }
+  return confirm(settings, id, network, hash);
 }
 
 /**
@@ -164,7 +193,7 @@ export async function payWithBrowserWallet(
   network: string,
 ) {
   const sent = sentPayment(intent.id);
-  if (sent) return confirm(settings, intent.id, sent.network, sent.hash);
+  if (sent) return settle(settings, intent.id, sent.network, sent.hash);
   const provider = (window as { ethereum?: EIP1193Provider }).ethereum;
   if (!provider) throw new Error('NO_BROWSER_WALLET');
   const { chain, usdc } = walletNetwork(network);
@@ -226,8 +255,8 @@ export async function payWithBrowserWallet(
       args: [plan.payment, plan.signature],
     });
   }
-  await client.waitForTransactionReceipt({ hash });
-  return confirm(settings, intent.id, network, hash);
+  rememberPayment(intent.id, network, hash);
+  return settle(settings, intent.id, network, hash);
 }
 
 /**

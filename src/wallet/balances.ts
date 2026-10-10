@@ -16,6 +16,7 @@ import { publicClient, USDC_DECIMALS } from './account';
 import { onMovement } from './push';
 import type { Session } from './session';
 import { knownStellarAccount, stellarAccount, stellarBalance, stellarXlmBalance } from './stellar';
+import type { Locale } from 'next-intl';
 
 const multicall3Abi = parseAbi(['function getEthBalance(address) view returns (uint256)']);
 
@@ -243,46 +244,32 @@ export function useBalances(settings: ClientSettings, session: Session) {
   };
 }
 
-/** A total is shown only when every configured network has a known balance. */
-export function totalUsdc(
-  balances: Readonly<Record<string, bigint | null>>,
-  networks: readonly string[],
-): bigint | null | undefined {
-  let total = 0n;
-  for (const id of networks) {
-    const value = balances[id];
-    if (value == null) return value;
-    total += value;
-  }
-  return total;
-}
-
 /**
  * An exact amount of any coin by its decimals (6 for USDC, 7 for XLM, 18 for ETH): every decimal
  * it has, never rounded and without going through `Number`. What is signed and what a receipt
  * says: one stroop is 0,0000001 XLM, never 0,00.
  */
-export function formatAmount(amount: bigint, decimals: number, en: boolean, minimumDigits = 0) {
+export function formatAmount(amount: bigint, decimals: number, locale: Locale, minimumDigits = 0) {
   const negative = amount < 0n;
   const [whole, fraction = ''] = formatUnits(negative ? -amount : amount, decimals).split('.');
   const digits = fraction.padEnd(minimumDigits, '0');
-  const grouped = new Intl.NumberFormat(en ? 'en' : 'es').format(BigInt(whole));
-  return `${negative ? '-' : ''}${grouped}${digits ? (en ? '.' : ',') + digits : ''}`;
+  const grouped = new Intl.NumberFormat(locale).format(BigInt(whole));
+  return `${negative ? '-' : ''}${grouped}${digits ? (locale === 'en' ? '.' : ',') + digits : ''}`;
 }
 
 /** A coin's balance: up to six decimals, cut rather than rounded so it never shows more. */
-export const formatHolding = (amount: bigint, decimals: number, en: boolean) =>
+export const formatHolding = (amount: bigint, decimals: number, locale: Locale) =>
   decimals <= 6
-    ? formatAmount(amount, decimals, en)
-    : formatAmount(amount / 10n ** BigInt(decimals - 6), 6, en);
+    ? formatAmount(amount, decimals, locale)
+    : formatAmount(amount / 10n ** BigInt(decimals - 6), 6, locale);
 
 /** An exact USDC amount (a transfer, a fee): two to six decimals, in the app's language. */
-export const formatUsdc = (amount: bigint, en: boolean) =>
-  formatAmount(amount, USDC_DECIMALS, en, 2);
+export const formatUsdc = (amount: bigint, locale: Locale) =>
+  formatAmount(amount, USDC_DECIMALS, locale, 2);
 
 /** A balance: two decimals, cut rather than rounded so it never shows more than there is. */
-export const formatBalance = (amount: bigint, en: boolean) =>
-  (Number(amount / 10n ** BigInt(USDC_DECIMALS - 2)) / 100).toLocaleString(en ? 'en' : 'es', {
+export const formatBalance = (amount: bigint, locale: Locale) =>
+  (Number(amount / 10n ** BigInt(USDC_DECIMALS - 2)) / 100).toLocaleString(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });

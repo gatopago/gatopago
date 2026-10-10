@@ -1,3 +1,5 @@
+import { parseUnits } from 'viem';
+
 /**
  * What an amount field keeps from what was typed or pasted: a plain decimal (`1234.56`), or `null`
  * to refuse the change and keep the previous value. Never a different number from the one meant:
@@ -27,4 +29,18 @@ export function amountInput(text: string): string | null {
   const whole = plain.slice(0, point);
   if (whole.includes(decimal) || !groups(whole, group)) return null;
   return `${whole.split(group).join('')}.${plain.slice(point + 1)}`;
+}
+
+/** More decimals than the coin has, other than zeros: an amount it cannot move exactly. */
+export const tooPrecise = (value: string, decimals: number) =>
+  /[1-9]/.test((value.replace(',', '.').split('.')[1] ?? '').slice(decimals));
+
+/**
+ * An amount in the coin's units, exactly as typed: `TOO_MANY_DECIMALS` instead of the rounding
+ * viem's `parseUnits` would apply (`1.9999999` USDC would become 2).
+ */
+export function exactUnits(value: string, decimals: number): bigint {
+  if (tooPrecise(value, decimals)) throw new Error('TOO_MANY_DECIMALS');
+  const [whole, fraction = ''] = value.replace(',', '.').split('.');
+  return parseUnits(`${whole || '0'}.${fraction.slice(0, decimals) || '0'}`, decimals);
 }

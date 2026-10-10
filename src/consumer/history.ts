@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { isReloadBlocked } from '../pwa/reload-guard';
 import { localizedPath } from './routes';
+import { useLocale } from 'next-intl';
 
 /** How the current screen was reached: it sets the direction of its entrance. */
 type Direction = 'forward' | 'back' | 'tab' | 'none';
@@ -32,10 +33,23 @@ function useScreen() {
   return query.size ? `${pathname}?${query}` : pathname;
 }
 
-function record(screen: string) {
-  if (visited.at(-1) === screen) return;
-  if (visited.at(-2) === screen) {
-    visited.pop();
+/** Whether the next screen comes from the browser's own history (back, forward, a swipe). */
+let traversing = false;
+
+/**
+ * Records the screen the app arrived at. Through the browser's history it may go back several
+ * screens at once: the record goes back to that screen, wherever it is. Otherwise, going to the
+ * screen just before is going back too (a link to the parent).
+ */
+export function record(screen: string, traversed = false): Direction {
+  if (visited.at(-1) === screen) return direction;
+  const back = traversed
+    ? visited.lastIndexOf(screen)
+    : visited.at(-2) === screen
+      ? visited.length - 2
+      : -1;
+  if (back >= 0) {
+    visited.length = back + 1;
     direction = 'back';
   } else {
     direction = next ?? (visited.length === 0 ? 'none' : isTab(screen) ? 'tab' : 'forward');
@@ -43,13 +57,22 @@ function record(screen: string) {
   }
   next = null;
   listeners.forEach((listener) => listener());
+  return direction;
 }
 
 /** Keeps the record of visited screens; mounted once by the account's layout. */
 export function useNavigationRecord(): Direction {
   const screen = useScreen();
+  useEffect(() => {
+    const traverse = () => (traversing = true);
+    window.addEventListener('popstate', traverse);
+    return () => window.removeEventListener('popstate', traverse);
+  }, []);
   // Before paint, so the new screen enters from the right side.
-  useLayoutEffect(() => record(screen), [screen]);
+  useLayoutEffect(() => {
+    record(screen, traversing);
+    traversing = false;
+  }, [screen]);
   return useSyncExternalStore(
     (listener) => {
       listeners.add(listener);
@@ -64,7 +87,8 @@ export function useNavigationRecord(): Direction {
  * Goes to the previous screen when the app came from it, as the browser's back does; a screen
  * opened directly (a link, a reload) goes to `fallback` instead, its parent.
  */
-export function useBack(fallback: string, english: boolean) {
+export function useBack(fallback: string) {
+  const locale = useLocale();
   const router = useRouter();
   const screen = useScreen();
   const leaving = useRef(false);
@@ -78,9 +102,9 @@ export function useBack(fallback: string, english: boolean) {
       // Opened directly: the parent replaces it, so the browser's back does not return here.
       visited.splice(0, visited.length);
       next = 'back';
-      router.replace(localizedPath(fallback, english));
+      router.replace(localizedPath(fallback, locale));
     }
-  }, [router, screen, fallback, english]);
+  }, [router, screen, fallback, locale]);
 }
 
 /** Whether this screen is one of the main tabs, which have the account's header and tab bar. */

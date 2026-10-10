@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import createNextIntlPlugin from 'next-intl/plugin';
 import { settings } from './src/lib/settings';
 import { pwaHeaders } from './src/pwa/manifest';
 
@@ -61,4 +62,5 @@ const config: NextConfig = {
     ];
   },
 };
-export default config;
+// next-intl reads its request configuration from `src/i18n/request.ts`.
+export default createNextIntlPlugin()(config);

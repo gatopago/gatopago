@@ -7,6 +7,7 @@ import { MeliSprite } from '../src/marketing/MeliSprite';
 import { PasskeyAccess } from '../src/auth/PasskeyAccess';
 import { PwaControls } from '../src/pwa/PwaControls';
 import { pwaMetadata } from '../src/pwa/manifest';
+import { withTexts } from './translations';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({}),
@@ -67,23 +68,24 @@ describe('Unified GatoPago presentation', () => {
 
   it('keeps the cat and tagline beside the sign-in options', () => {
     const html = renderToStaticMarkup(
-      createElement(PasskeyAccess, {
-        settings: {
-          webOrigin: 'https://gatopago.com',
-          apiOrigin: 'https://api.gatopago.com',
-          businessOrigin: 'https://business.gatopago.com',
-          networks: ['eip155:421614'],
-          homeNetwork: 'eip155:421614',
-          rpcUrls: {},
-          turnstileSiteKey: '1x00000000000000000000AA',
-          meraSessionMinutes: 15,
-          passkeyRpId: 'localhost',
-          stellar: null,
-          push: null,
-        },
-        english: false,
-        onSignedIn: () => {},
-      }),
+      withTexts(
+        createElement(PasskeyAccess, {
+          settings: {
+            webOrigin: 'https://gatopago.com',
+            apiOrigin: 'https://api.gatopago.com',
+            businessOrigin: 'https://business.gatopago.com',
+            networks: ['eip155:421614'],
+            homeNetwork: 'eip155:421614',
+            rpcUrls: {},
+            turnstileSiteKey: '1x00000000000000000000AA',
+            meraSessionMinutes: 15,
+            passkeyRpId: 'localhost',
+            stellar: null,
+            push: null,
+          },
+          onSignedIn: () => {},
+        }),
+      ),
     );
     // auth.css hides the hero art unless the panel shows the access options.
     expect(html).toContain('auth-panel auth-panel--access-options');
@@ -91,7 +93,7 @@ describe('Unified GatoPago presentation', () => {
   });
 
   it('keeps the compact installation control accessible and the proper web icon formats', () => {
-    const html = renderToStaticMarkup(createElement(PwaControls, { compact: true }));
+    const html = renderToStaticMarkup(withTexts(createElement(PwaControls, { compact: true })));
     expect(html).toContain('aria-label="Instalar app"');
     expect(html).toContain('pwa-controls--compact');
     expect(JSON.stringify(pwaMetadata.icons)).toContain('image/svg+xml');

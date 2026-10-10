@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { copy } from './copy';
+import type { Locale, Messages } from 'next-intl';
 import { CatGlyph } from './CatGlyph';
 import { MeliSprite } from './MeliSprite';
 import { LandingInteractions } from './LandingInteractions';
@@ -7,11 +7,12 @@ import { localizedPath } from '../consumer/routes';
 import { LanguageLink } from '../lib/LanguageLink';
 import { settings } from '../lib/settings';
 
-export function Landing({ lang }: { lang: 'es' | 'en' }) {
+/** The landing in `lang`, with its texts (`Landing` of the catalog) read by the page. */
+export function Landing({ lang, copy: t }: { lang: Locale; copy: Messages['Landing'] }) {
   const isSpanish = lang === 'es';
   const localeHref = isSpanish ? '/en' : '/';
   const localeLabel = isSpanish ? 'EN' : 'ES';
-  const appHref = localizedPath('/app', !isSpanish);
+  const appHref = localizedPath('/app', lang);
   const legalPrefix = isSpanish ? '' : '/en';
   // Static pages: each language has its own path.
   const demoPaymentPath = isSpanish ? '/pay/demo-cafe-norte' : '/en/pay/demo-cafe-norte';
@@ -34,7 +35,6 @@ export function Landing({ lang }: { lang: 'es' | 'en' }) {
   }
 );
 const intent = await response.json();`;
-  const t = copy[lang];
   return (
     <>
       <a className="meli-skip-link" href="#main-content">
@@ -205,10 +205,7 @@ const intent = await response.json();`;
             </div>
           </section>
 
-          <aside
-            className="meli-signal-strip"
-            aria-label={isSpanish ? 'Principios de producto' : 'Product principles'}
-          >
+          <aside className="meli-signal-strip" aria-label={t.labels.principles}>
             <div className="meli-container meli-signal-strip__grid">
               {t.signals.map(([title, text], index) => (
                 <div key={title} className="meli-signal">
@@ -326,7 +323,7 @@ const intent = await response.json();`;
                 </ul>
                 <Link
                   className="meli-button meli-button--brand mt-8"
-                  href={localizedPath('/login', !isSpanish)}
+                  href={localizedPath('/login', lang)}
                   prefetch={false}
                 >
                   {t.account.action}
@@ -349,11 +346,7 @@ const intent = await response.json();`;
                       <strong>{t.account.greeting}</strong>
                       <small>@dani</small>
                     </div>
-                    <button
-                      type="button"
-                      aria-label={isSpanish ? 'Notificaciones de ejemplo' : 'Example notifications'}
-                      disabled
-                    >
+                    <button type="button" aria-label={t.labels.notifications} disabled>
                       <span aria-hidden="true">•</span>
                     </button>
                   </div>
@@ -419,10 +412,7 @@ const intent = await response.json();`;
                 </p>
                 <h2 id="receive-title">{t.receive.title}</h2>
                 <p>{t.receive.copy}</p>
-                <div
-                  className="meli-channel-list"
-                  aria-label={isSpanish ? 'Canales para compartir' : 'Sharing channels'}
-                >
+                <div className="meli-channel-list" aria-label={t.labels.sharing}>
                   {t.receive.channels.map((channel, index) => (
                     <span className={index === 3 ? 'is-future' : undefined} key={channel}>
                       {channel}
@@ -698,11 +688,7 @@ const intent = await response.json();`;
                 </div>
                 <small className="meli-api-note">{t.developers.note}</small>
               </div>
-              <div
-                className="meli-code-window"
-                role="figure"
-                aria-label={isSpanish ? 'Ejemplo de API' : 'API example'}
-              >
+              <div className="meli-code-window" role="figure" aria-label={t.labels.apiExample}>
                 <div className="meli-code-window__bar">
                   <span></span>
                   <span></span>
@@ -822,7 +808,7 @@ const intent = await response.json();`;
             </div>
             <div>
               <strong>{t.footer.company}</strong>
-              <a href="#faq">{isSpanish ? 'Preguntas frecuentes' : 'FAQ'}</a>
+              <a href="#faq">{t.labels.faq}</a>
               <LanguageLink href={localeHref} language={isSpanish ? 'en' : 'es'} data-locale-link>
                 {localeLabel}
               </LanguageLink>

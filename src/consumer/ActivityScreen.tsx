@@ -2,6 +2,7 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useLocale, useTranslations, type Locale } from 'next-intl';
 import type { ClientSettings } from '../lib/settings';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { MeliSprite } from '../marketing/MeliSprite';
@@ -33,21 +34,22 @@ const icons = {
 function ActivityRow({
   movement,
   hidden,
-  english: en,
   onOpen,
 }: {
   movement: Movement;
   hidden: boolean;
-  english: boolean;
   onOpen: () => void;
 }) {
+  const locale = useLocale();
+  const t = useTranslations('Activity');
+  const words = useTranslations('Movements');
   const received = movement.direction === 'received';
   const crossing = movement.kind === 'crosschain';
   const earn = movement.kind === 'earn';
   const swap = movement.kind === 'swap';
-  const { title, detail } = presentMovement(movement, en);
-  const amount = formatAmount(BigInt(movement.amount), decimalsOf(movement), en, 2);
-  const date = movementDate(movement.timestamp, en);
+  const { title, detail } = presentMovement(movement, words);
+  const amount = formatAmount(BigInt(movement.amount), decimalsOf(movement), locale, 2);
+  const date = movementDate(movement.timestamp, locale, t);
   return (
     <button
       type="button"
@@ -99,15 +101,19 @@ function ActivityRow({
 }
 
 /** "Today, 14:32", "Yesterday", or the day: recent movements read like a conversation. */
-function movementDate(seconds: number, en: boolean) {
+function movementDate(
+  seconds: number,
+  locale: Locale,
+  t: ReturnType<typeof useTranslations<'Activity'>>,
+) {
   const date = new Date(seconds * 1000);
   const days = Math.round(
     (new Date().setHours(0, 0, 0, 0) - new Date(date).setHours(0, 0, 0, 0)) / 86_400_000,
   );
-  const time = date.toLocaleTimeString(en ? 'en' : 'es', { hour: 'numeric', minute: '2-digit' });
-  if (days === 0) return `${en ? 'Today' : 'Hoy'}, ${time}`;
-  if (days === 1) return en ? 'Yesterday' : 'Ayer';
-  return date.toLocaleDateString(en ? 'en' : 'es', {
+  const time = date.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
+  if (days === 0) return t('todayAt', { time });
+  if (days === 1) return t('yesterday');
+  return date.toLocaleDateString(locale, {
     day: 'numeric',
     month: 'short',
     ...(date.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}),
@@ -119,14 +125,14 @@ export function RecentActivity({
   settings,
   session,
   hidden,
-  english: en,
 }: {
   settings: ClientSettings;
   session: Session;
   hidden: boolean;
-  english: boolean;
 }) {
-  const { movements, error } = useActivity(settings, session, en);
+  const t = useTranslations('Activity');
+  const words = useTranslations('Movements');
+  const { movements, error } = useActivity(settings, session);
   const [open, setOpen] = useState<Movement | null>(null);
   if (!movements && !error)
     return (
@@ -138,14 +144,10 @@ export function RecentActivity({
     return (
       <div className="px-6 py-7 text-center">
         <MeliSprite variant="head-curious" className="mx-auto mb-3 w-16" />
-        <p className="text-[14px] font-semibold">
-          {error || (en ? 'No movements yet' : 'Todavía no hay movimientos')}
-        </p>
+        <p className="text-[14px] font-semibold">{error || t('noMovementsYet')}</p>
         {!error ? (
           <p className="mt-1 text-[12px] leading-relaxed text-text-muted">
-            {en
-              ? 'When you send, receive or grow your money, you will see it here.'
-              : 'Cuando envíes, recibas o hagas crecer tu dinero, lo verás aquí.'}
+            {t('whenSendReceiveGrow')}
           </p>
         ) : null}
       </div>
@@ -157,12 +159,11 @@ export function RecentActivity({
           key={movement.id}
           movement={movement}
           hidden={hidden}
-          english={en}
           onOpen={() => setOpen(movement)}
         />
       ))}
       {open ? (
-        <Receipt receipt={movementReceipt(open, en)} english={en} onClose={() => setOpen(null)} />
+        <Receipt receipt={movementReceipt(open, words)} onClose={() => setOpen(null)} />
       ) : null}
     </div>
   );
@@ -171,21 +172,9 @@ export function RecentActivity({
 type Period = 'all' | 'today' | 'week' | 'month' | 'prev-month' | 'custom';
 type TypeFilter = 'all' | 'sent' | 'received' | 'swap';
 
-const PERIODS: [Period, string, string][] = [
-  ['all', 'Todas las fechas', 'All dates'],
-  ['today', 'Hoy', 'Today'],
-  ['week', 'Última semana', 'Last week'],
-  ['month', 'Este mes', 'This month'],
-  ['prev-month', 'Mes anterior', 'Previous month'],
-  ['custom', 'Rango personalizado', 'Custom range'],
-];
+const PERIODS: Period[] = ['all', 'today', 'week', 'month', 'prev-month', 'custom'];
 
-const TYPES: [TypeFilter, string, string][] = [
-  ['all', 'Todos', 'All'],
-  ['received', 'Recibidos', 'Received'],
-  ['sent', 'Enviados', 'Sent'],
-  ['swap', 'Cambios', 'Swaps'],
-];
+const TYPES: TypeFilter[] = ['all', 'received', 'sent', 'swap'];
 
 function periodBounds(period: Period, from: string, to: string) {
   const now = new Date();
@@ -219,16 +208,16 @@ function periodBounds(period: Period, from: string, to: string) {
 export function ActivityScreen({
   settings,
   session,
-  english: en,
 }: {
   settings: ClientSettings;
   session: Session;
-  english: boolean;
 }) {
+  const t = useTranslations('Activity');
+  const words = useTranslations('Movements');
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const { movements, hasMore, loadingMore, loadMore, error } = useActivity(settings, session, en);
+  const { movements, hasMore, loadingMore, loadMore, error } = useActivity(settings, session);
   // Older movements load on their own as the end of the list comes near; the button stays for
   // the keyboard and where the browser cannot tell. Watched again after each page, so a short
   // list keeps filling while its end is still on screen.
@@ -253,16 +242,10 @@ export function ActivityScreen({
     const value = params.get(name) as T | null;
     return value && values.includes(value) ? value : 'all';
   };
-  const period = pick<Period>(
-    'period',
-    PERIODS.map(([value]) => value),
-  );
+  const period = pick<Period>('period', PERIODS);
   const from = params.get('from') ?? '';
   const to = params.get('to') ?? '';
-  const type = pick<TypeFilter>(
-    'type',
-    TYPES.map(([value]) => value),
-  );
+  const type = pick<TypeFilter>('type', TYPES);
 
   /** Defaults ("all", empty) leave the URL, so the plain view stays `/statement`. */
   function setFilter(patch: Record<string, string>) {
@@ -289,21 +272,10 @@ export function ActivityScreen({
 
   return (
     <>
-      <TabHeader
-        title={en ? 'Activity' : 'Actividad'}
-        description={
-          en
-            ? 'Everything that came in and went out of your account.'
-            : 'Todo lo que entró y salió de tu cuenta.'
-        }
-      />
+      <TabHeader title={t('activity')} description={t('everythingCameWentOut')} />
 
-      <div
-        className="seg-track seg-track-block mb-2.5"
-        role="group"
-        aria-label={en ? 'Movement type' : 'Tipo de movimiento'}
-      >
-        {TYPES.map(([value, es, english]) => (
+      <div className="seg-track seg-track-block mb-2.5" role="group" aria-label={t('movementType')}>
+        {TYPES.map((value) => (
           <button
             key={value}
             type="button"
@@ -312,20 +284,19 @@ export function ActivityScreen({
             aria-pressed={type === value}
             onClick={() => setFilter({ type: value })}
           >
-            {en ? english : es}
+            {t(`types.${value}`)}
           </button>
         ))}
       </div>
       <div className="mb-3">
         <SelectMenu
-          label={en ? 'Period' : 'Período'}
+          label={t('period')}
           showLabel={false}
           value={period}
-          options={PERIODS.map(([value, es, english]) => ({ value, label: en ? english : es }))}
+          options={PERIODS.map((value) => ({ value, label: t(`periods.${value}`) }))}
           onChange={(value) =>
             setFilter({ period: value, ...(value !== 'custom' ? { from: '', to: '' } : {}) })
           }
-          english={en}
           className="min-w-0"
         />
       </div>
@@ -333,8 +304,8 @@ export function ActivityScreen({
         <div className="mb-3 flex gap-2.5">
           {(
             [
-              ['from', en ? 'From' : 'Desde', from],
-              ['to', en ? 'To' : 'Hasta', to],
+              ['from', t('from'), from],
+              ['to', t('to'), to],
             ] as const
           ).map(([name, label, value]) => (
             <label key={name} className="flex-1 border border-border bg-surface px-3.5 py-2.5">
@@ -362,26 +333,13 @@ export function ActivityScreen({
         <div className="flex flex-col items-center px-6 py-14 text-center">
           <CatGlyph className="mb-4 w-10 opacity-40" decorative />
           <p className="text-[14px] text-text-muted">
-            {movements?.length
-              ? en
-                ? 'Nothing matches these filters.'
-                : 'Nada coincide con estos filtros.'
-              : en
-                ? 'No movements yet. When you send or receive money, you will see it here.'
-                : 'Todavía no hay movimientos. Cuando envíes o recibas dinero, lo verás aquí.'}
+            {movements?.length ? t('nothingMatchesTheseFilters') : t('noMovementsYetWhen')}
           </p>
         </div>
       ) : (
         <>
           <p className="mb-2 px-1 text-[12px] text-text-faint">
-            {filtered.length}{' '}
-            {filtered.length === 1
-              ? en
-                ? 'transaction'
-                : 'movimiento'
-              : en
-                ? 'transactions'
-                : 'movimientos'}
+            {t('movements', { count: filtered.length })}
           </p>
           <div className="meli-paper-card flex flex-col">
             {filtered.map((movement) => (
@@ -389,7 +347,6 @@ export function ActivityScreen({
                 key={movement.id}
                 movement={movement}
                 hidden={hidden}
-                english={en}
                 onOpen={() => setOpen(movement)}
               />
             ))}
@@ -404,17 +361,11 @@ export function ActivityScreen({
           onClick={loadMore}
           className="btn btn-ghost btn-block mt-5 disabled:opacity-50"
         >
-          {loadingMore
-            ? en
-              ? 'Loading…'
-              : 'Cargando…'
-            : en
-              ? 'Load older movements'
-              : 'Cargar movimientos anteriores'}
+          {loadingMore ? t('loading') : t('loadOlderMovements')}
         </button>
       ) : null}
       {open ? (
-        <Receipt receipt={movementReceipt(open, en)} english={en} onClose={() => setOpen(null)} />
+        <Receipt receipt={movementReceipt(open, words)} onClose={() => setOpen(null)} />
       ) : null}
     </>
   );

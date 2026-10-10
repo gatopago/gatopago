@@ -1,22 +1,31 @@
 'use client';
 
-import Link from 'next/link';
 import type { ComponentProps } from 'react';
-import { rememberLanguage, type Language } from './language';
+import type { Locale } from 'next-intl';
+import { rememberLanguage } from './language';
 
-/** A language switch: it goes to the page in `language` and keeps that choice for next visits. */
+/**
+ * A language switch: it keeps the choice for the next visits and loads the page in `language`
+ * entirely, since the layout that holds the texts renders again in it. With `replace`, the page in
+ * the other language takes this one's place in the history.
+ */
 export function LanguageLink({
   language,
+  replace = false,
   onClick,
   ...props
-}: ComponentProps<typeof Link> & { language: Language }) {
+}: Omit<ComponentProps<'a'>, 'hrefLang'> & { href: string; language: Locale; replace?: boolean }) {
   return (
-    <Link
+    <a
       {...props}
       hrefLang={language}
       onClick={(event) => {
         rememberLanguage(language);
         onClick?.(event);
+        if (replace && !event.defaultPrevented) {
+          event.preventDefault();
+          location.replace(props.href);
+        }
       }}
     />
   );

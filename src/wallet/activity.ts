@@ -7,9 +7,10 @@ import type { ClientSettings } from '../lib/settings';
 import { walletNetwork, XLM_DECIMALS } from '@gatopago/shared/networks';
 import { shortAddress, USDC_DECIMALS } from './account';
 import { api } from './api';
-import { failureMessage } from './messages';
+import { useFailureMessage } from './messages';
 import { onMovement } from './push';
 import type { Session } from './session';
+import type { useTranslations } from 'next-intl';
 
 /** A USDC movement of the account, as Wallet Core indexes it from the chain. */
 export interface Movement {
@@ -69,7 +70,8 @@ function firstPage(apiOrigin: string, token: string): Promise<ActivityPage> {
 }
 
 /** The account's movements, newest first, a page at a time. */
-export function useActivity(settings: ClientSettings, session: Session, en: boolean) {
+export function useActivity(settings: ClientSettings, session: Session) {
+  const messageFor = useFailureMessage();
   const cached = recent.get(session.token);
   const [movements, setMovements] = useState<Movement[] | null>(cached?.movements ?? null);
   const [cursor, setCursor] = useState<string | null>(cached?.cursor ?? null);
@@ -111,13 +113,13 @@ export function useActivity(settings: ClientSettings, session: Session, en: bool
         setError('');
       })
       .catch((failure: unknown) => {
-        if (active) setError(failureMessage(failure, en));
+        if (active) setError(messageFor(failure));
       });
     // The shared GET may finish for the next screen; the API still bounds it to 20 seconds.
     return () => {
       active = false;
     };
-  }, [settings.apiOrigin, en, revision, session.token]);
+  }, [settings.apiOrigin, messageFor, revision, session.token]);
 
   function loadMore() {
     if (!cursor || loadingMore) return;
@@ -133,7 +135,7 @@ export function useActivity(settings: ClientSettings, session: Session, en: bool
         setCursor(next_cursor);
       })
       .catch((failure: unknown) => {
-        if (reading === snapshot.current) setError(failureMessage(failure, en));
+        if (reading === snapshot.current) setError(messageFor(failure));
       })
       .finally(() => {
         if (reading === snapshot.current) setLoadingMore(false);
@@ -143,73 +145,30 @@ export function useActivity(settings: ClientSettings, session: Session, en: bool
   return { movements, hasMore: cursor !== null, loadingMore, loadMore, error };
 }
 
+/** The words of a movement's row and receipt (`useTranslations('Movements')`). */
+export type MovementTexts = ReturnType<typeof useTranslations<'Movements'>>;
+
 /** V2's row presentation: who first, then what happened. */
-export function presentMovement(movement: Movement, en: boolean) {
+export function presentMovement(movement: Movement, t: MovementTexts) {
   const sent = movement.direction === 'sent';
   const identity =
     movement.counterparty_display_name ||
     (movement.counterparty_username ? `@${movement.counterparty_username}` : null);
-  if (movement.kind === 'swap')
-    return {
-      title: en ? 'Swap' : 'Cambio de moneda',
-      detail: 'Uniswap',
-    };
+  if (movement.kind === 'swap') return { title: t('swap'), detail: 'Uniswap' };
   if (movement.kind === 'settlement')
-    return {
-      title: en ? 'Instant settlement' : 'Liquidación instantánea',
-      detail: sent
-        ? en
-          ? 'Sent through Agora, at a fixed price'
-          : 'Enviado con Agora, a precio fijo'
-        : en
-          ? 'Received through Agora, at a fixed price'
-          : 'Recibido con Agora, a precio fijo',
-    };
+    return { title: t('settlement'), detail: t(sent ? 'sentAgora' : 'receivedAgora') };
   if (movement.kind === 'earn')
-    return {
-      title: en ? 'Grow' : 'Crecer',
-      detail: sent
-        ? en
-          ? 'Deposited in Aave'
-          : 'Depositado en Aave'
-        : en
-          ? 'Withdrawn from Aave'
-          : 'Retirado de Aave',
-    };
+    return { title: t('grow'), detail: t(sent ? 'depositedAave' : 'withdrawnAave') };
   const detail =
     movement.kind === 'crosschain'
-      ? sent
-        ? en
-          ? 'Sent to another network'
-          : 'Enviado a otra red'
-        : en
-          ? 'Arrived from another network'
-          : 'Llegó desde otra red'
+      ? t(sent ? 'sentOtherNetwork' : 'arrivedOtherNetwork')
       : movement.kind === 'payment'
-        ? sent
-          ? en
-            ? 'Merchant payment'
-            : 'Pago a comercio'
-          : en
-            ? 'Payment received'
-            : 'Cobro recibido'
-        : sent
-          ? en
-            ? 'Payment sent'
-            : 'Pago enviado'
-          : identity
-            ? en
-              ? 'Payment received'
-              : 'Pago recibido'
-            : en
-              ? 'Deposit received'
-              : 'Depósito recibido';
+        ? t(sent ? 'merchantPayment' : 'collected')
+        : t(sent ? 'paymentSent' : identity ? 'paymentReceived' : 'depositReceived');
   const title =
     identity ??
     (movement.kind === 'crosschain'
-      ? en
-        ? 'Between networks'
-        : 'Entre redes'
+      ? t('betweenNetworks')
       : movement.counterparty
         ? `Wallet ${shortAddress(movement.counterparty)}`
         : 'GatoPago');
@@ -229,7 +188,7 @@ export function decimalsOf(movement: Movement) {
   return tokens?.find(({ symbol }) => symbol === movement.currency)?.decimals ?? USDC_DECIMALS;
 }
 
-export function movementReceipt(movement: Movement, en: boolean): ReceiptData {
+export function movementReceipt(movement: Movement, t: MovementTexts): ReceiptData {
   return {
     kind:
       movement.kind === 'swap'
@@ -243,7 +202,7 @@ export function movementReceipt(movement: Movement, en: boolean): ReceiptData {
     counterparty: movement.counterparty_username
       ? `@${movement.counterparty_username}`
       : movement.counterparty,
-    reference: presentMovement(movement, en).detail,
+    reference: presentMovement(movement, t).detail,
     hash: movement.transaction_hash,
     networkId: movement.network,
     date: movement.timestamp * 1000,

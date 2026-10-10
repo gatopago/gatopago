@@ -10,6 +10,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
+import { useLocale } from 'next-intl';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ConsumerFrame } from '../consumer/ConsumerFrame';
 import { useNavigationRecord } from '../consumer/history';
@@ -39,7 +40,7 @@ export function AccountShell({
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const en = params.get('lang') === 'en';
+  const locale = useLocale();
   const search = params.toString();
   // The session lives in this browser: unknown while rendering on the server.
   const session = useSyncExternalStore(subscribeSession, currentSession, () => undefined);
@@ -49,19 +50,19 @@ export function AccountShell({
     if (session === undefined) return;
     signedOutOnArrival.current ??= session === null;
     if (session !== null) return;
-    const login = new URLSearchParams(en ? { lang: 'en' } : {});
+    const login = new URLSearchParams(locale === 'en' ? { lang: 'en' } : {});
     // A link opened signed out (a send to @someone) continues there after signing in; signing out
     // from the app does not bring the member back to where they left.
     if (signedOutOnArrival.current && pathname !== '/app')
       login.set('next', search ? `${pathname}?${search}` : pathname);
     router.replace(login.size ? `/login?${login}` : '/login');
-  }, [session, router, en, pathname, search]);
+  }, [session, router, locale, pathname, search]);
 
   if (!session)
     return (
-      <ConsumerFrame english={en}>
+      <ConsumerFrame>
         <div className="auth-content">
-          <ScreenLoading kind={pathname === '/app' ? 'account' : 'form'} english={en} />
+          <ScreenLoading kind={pathname === '/app' ? 'account' : 'form'} />
         </div>
       </ConsumerFrame>
     );
@@ -76,10 +77,8 @@ export function AccountShell({
         key={session.wallet.address.toLowerCase()}
         settings={settings}
         session={session}
-        english={en}
       >
         <ConsumerFrame
-          english={en}
           navigation
           account={{
             address: session.wallet.address,
@@ -98,13 +97,7 @@ export function AccountShell({
 }
 
 /** A screen of the signed-in app, rendered inside `AccountShell`. */
-export function AccountView({
-  view,
-  english,
-}: {
-  view: Exclude<ConsumerView, 'login'>;
-  english: boolean;
-}) {
+export function AccountView({ view }: { view: Exclude<ConsumerView, 'login'> }) {
   const account = useContext(AccountContext);
   if (!account) return null;
   return (
@@ -112,11 +105,10 @@ export function AccountView({
       fallback={
         <ScreenLoading
           kind={view === 'account' ? 'account' : view === 'receive' ? 'detail' : 'form'}
-          english={english}
         />
       }
     >
-      <ConsumerContent view={view} english={english} {...account} />
+      <ConsumerContent view={view} {...account} />
     </Suspense>
   );
 }

@@ -88,15 +88,11 @@ afterEach(() => {
 
 describe('session state', () => {
   it('ignores corrupt or obsolete stored data without deleting the passkey', async () => {
-    const { currentSession, knownWallet } = await import('../src/wallet/session');
+    const { currentSession } = await import('../src/wallet/session');
     storage.set('gatopago.session', '{broken');
-    storage.set('gatopago.wallet', '{broken');
     expect(currentSession()).toBeNull();
-    expect(knownWallet()).toBeNull();
     storage.set('gatopago.session', JSON.stringify({ token: 'old', expiresAt: session.expiresAt }));
     expect(currentSession()).toBeNull();
-    storage.set('gatopago.wallet', JSON.stringify(session.wallet));
-    expect(knownWallet()).toEqual(session.wallet);
   });
 
   it('retains a page-only session when storage is blocked, and signs out correctly', async () => {
@@ -111,15 +107,12 @@ describe('session state', () => {
         throw new Error('Storage blocked');
       },
     });
-    const { saveSession, currentSession, knownWallet, signOut } =
-      await import('../src/wallet/session');
+    const { saveSession, currentSession, signOut } = await import('../src/wallet/session');
     saveSession(session);
     expect(currentSession()).toEqual(session);
     expect(currentSession()).toBe(currentSession());
-    expect(knownWallet()).toEqual(session.wallet);
     signOut();
     expect(currentSession()).toBeNull();
-    expect(knownWallet()).toEqual(session.wallet);
   });
 
   it('shares one storage listener and notifies once per sign-in or sign-out', async () => {
@@ -194,7 +187,7 @@ describe('shared balance reads', () => {
     balances.multicall.mockImplementation((id: string) =>
       id === networks[0] ? values(5n) : slow.promise,
     );
-    const { useBalances, totalUsdc } = await import('../src/wallet/balances');
+    const { useBalances } = await import('../src/wallet/balances');
     useBalances(settings, session);
     useBalances(settings, session);
     await vi.waitFor(() => expect(balances.get().usdc[networks[0]]).toBe(5n));
@@ -202,22 +195,21 @@ describe('shared balance reads', () => {
     expect(balances.get().native[networks[0]]).toBe(2n);
     expect(balances.get().saved[networks[0]]).toBeNull();
     expect(balances.get().usdc[networks[1]]).toBeUndefined();
-    expect(totalUsdc(balances.get().usdc, networks)).toBeUndefined();
     slow.resolve(values(7n));
     await vi.waitFor(() => expect(balances.get().refreshing).toBe(false));
-    expect(totalUsdc(balances.get().usdc, networks)).toBe(12n);
+    expect(balances.get().usdc[networks[1]]).toBe(7n);
     useBalances(settings, session);
     expect(balances.multicall).toHaveBeenCalledTimes(2);
   });
 
   it('reads every network at once while Wallet Core has not answered the Stellar account', async () => {
     balances.multicall.mockImplementation(() => values(5n));
-    const { useBalances, totalUsdc } = await import('../src/wallet/balances');
+    const { useBalances } = await import('../src/wallet/balances');
     const withStellar = { ...settings, stellar: { network: 'stellar:testnet', rpcUrl: '' } };
     const read = useBalances(withStellar as ClientSettings, session);
     await vi.waitFor(() => expect(balances.get().refreshing).toBe(false));
     expect(balances.multicall).toHaveBeenCalledTimes(2);
-    expect(totalUsdc(balances.get().usdc, networks)).toBe(10n);
+    expect(networks.map((id) => balances.get().usdc[id])).toEqual([5n, 5n]);
     // Stellar is still unknown: not a zero.
     expect(read.stellarUsdc).toBeUndefined();
   });
@@ -227,11 +219,11 @@ describe('shared balance reads', () => {
       if (id === networks[1]) throw new Error('RPC unavailable');
       return values(5n);
     });
-    const { useBalances, totalUsdc } = await import('../src/wallet/balances');
+    const { useBalances } = await import('../src/wallet/balances');
     useBalances(settings, session);
     await vi.waitFor(() => expect(balances.get().refreshing).toBe(false));
+    expect(balances.get().usdc[networks[0]]).toBe(5n);
     expect(balances.get().usdc[networks[1]]).toBeNull();
-    expect(totalUsdc(balances.get().usdc, networks)).toBeNull();
   });
 
   it('coalesces movement refreshes during an older read into one fresh batch', async () => {

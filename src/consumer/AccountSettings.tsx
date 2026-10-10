@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import type { ClientSettings } from '../lib/settings';
 import { disablePush, enablePush, pushEnabled, pushSupported } from '../wallet/push';
 import { signOut, type Session } from '../wallet/session';
 import { LanguageLink } from '../lib/LanguageLink';
+import { localizedPath } from './routes';
 import { BackHeader } from './Primitives';
 import { SettingsSection } from './SettingsSection';
 import { BellIcon } from './Icons';
@@ -33,15 +34,13 @@ const GlobeIcon = () => (
 export function AccountSettings({
   settings,
   session,
-  english: en,
 }: {
   settings: ClientSettings;
   session: Session;
-  english: boolean;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const t = useTranslations('Settings');
-  const suffix = en ? '?lang=en' : '';
   const [pushAvailable, setPushAvailable] = useState(false);
   const [pushOn, setPushOn] = useState(() => typeof window !== 'undefined' && pushEnabled());
   const [pushBusy, setPushBusy] = useState(false);
@@ -51,7 +50,7 @@ export function AccountSettings({
   }, [settings]);
   return (
     <>
-      <BackHeader title={t('title')} english={en} />
+      <BackHeader title={t('title')} />
       <div>
         {pushOn ? (
           <SettingsSection title={t('notifications')} tone="growth" icon={<BellIcon />}>
@@ -91,7 +90,7 @@ export function AccountSettings({
                 onClick={() => {
                   setPushBusy(true);
                   setPushFailed(false);
-                  enablePush(settings, session, en)
+                  enablePush(settings, session, locale)
                     .catch(() => false)
                     .then((on) => {
                       setPushOn(on);
@@ -100,7 +99,7 @@ export function AccountSettings({
                     .finally(() => setPushBusy(false));
                 }}
               >
-                {pushBusy ? t('turningOn') : t('turnOn')}
+                {pushBusy ? t('turning') : t('turnOn')}
               </button>
             </div>
           </SettingsSection>
@@ -112,8 +111,8 @@ export function AccountSettings({
                 language="es"
                 href="/settings"
                 replace
-                aria-current={!en ? 'page' : undefined}
-                data-active={!en}
+                aria-current={locale === 'es' ? 'page' : undefined}
+                data-active={locale === 'es'}
                 className="seg-item"
               >
                 Español
@@ -122,8 +121,8 @@ export function AccountSettings({
                 language="en"
                 href="/settings?lang=en"
                 replace
-                aria-current={en ? 'page' : undefined}
-                data-active={en}
+                aria-current={locale === 'en' ? 'page' : undefined}
+                data-active={locale === 'en'}
                 className="seg-item"
               >
                 English
@@ -138,7 +137,7 @@ export function AccountSettings({
             // Signed out here at once; this device stops getting notifications in the background.
             void disablePush(settings, session);
             signOut();
-            router.replace(`/login${suffix}`);
+            router.replace(localizedPath('/login', locale));
           }}
         >
           {t('signOut')}

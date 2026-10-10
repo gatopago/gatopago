@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { LanguageLink } from '../lib/LanguageLink';
-import { privacy, terms } from './legal-copy';
+import type { Locale } from 'next-intl';
+import { getMessages } from 'next-intl/server';
 
 const privacyEmail = 'privacy@gatopago.com';
 
@@ -21,8 +22,10 @@ function Paragraph({ text }: { text: string }) {
   );
 }
 
-export function LegalDocument({ kind, lang }: { kind: 'terms' | 'privacy'; lang: 'es' | 'en' }) {
-  const c = (kind === 'terms' ? terms : privacy)[lang];
+export async function LegalDocument({ kind, lang }: { kind: 'terms' | 'privacy'; lang: Locale }) {
+  const messages = await getMessages({ locale: lang });
+  const c = kind === 'terms' ? messages.Terms : messages.Privacy;
+  const t = messages.Legal;
   const en = lang === 'en';
   return (
     <div className="min-h-dvh bg-canvas text-text">
@@ -35,14 +38,12 @@ export function LegalDocument({ kind, lang }: { kind: 'terms' | 'privacy'; lang:
           language={en ? 'es' : 'en'}
           className="border-2 border-text p-3 font-mono text-sm"
         >
-          {en ? 'ES' : 'EN'}
+          {t.otherLanguage}
         </LanguageLink>
       </header>
       <main id="main-content" className="mx-auto max-w-3xl px-6 pb-16 leading-relaxed">
         <aside className="mb-8 border-l-4 border-info bg-info/10 p-4 text-sm" role="note">
-          {en
-            ? 'GatoPago is in public beta and runs only on test networks, with test funds. If anything here changes, we will update this page and its date.'
-            : 'GatoPago está en beta pública y funciona solo con redes y fondos de prueba. Si algo de este texto cambia, actualizaremos esta página y su fecha.'}
+          {t.note}
         </aside>
         <h1 className="font-display text-4xl font-bold">{c.title}</h1>
         <p className="my-4 text-sm text-text-muted">{c.updated}</p>
@@ -63,7 +64,7 @@ export function LegalDocument({ kind, lang }: { kind: 'terms' | 'privacy'; lang:
           </section>
         ))}
         <Link href={en ? '/en' : '/'} className="mt-10 inline-block underline underline-offset-4">
-          {en ? 'Back to home' : 'Volver al inicio'}
+          {t.back}
         </Link>
       </main>
     </div>

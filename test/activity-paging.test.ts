@@ -41,7 +41,7 @@ vi.mock('../src/wallet/push', () => ({
     return () => {};
   },
 }));
-vi.mock('../src/wallet/messages', () => ({ failureMessage: () => 'failed' }));
+vi.mock('../src/wallet/messages', () => ({ useFailureMessage: () => () => 'failed' }));
 
 import { useActivity } from '../src/wallet/activity';
 
@@ -54,7 +54,7 @@ const settle = () => new Promise((done) => setTimeout(done));
 
 /** Renders once; `runEffects` then runs that render's effects (subscription, first page). */
 function useRendered() {
-  return useActivity(settings, session, false);
+  return useActivity(settings, session);
 }
 const runEffects = () => react.effects.splice(0).forEach((effect) => effect());
 
