@@ -2,7 +2,6 @@ import type { Locale } from 'next-intl';
 import { ConsumerFrame } from '../consumer/ConsumerFrame';
 import { NavigationLink } from '../consumer/NavigationLink';
 import { Panel } from '../consumer/Primitives';
-import { localizedPath } from '../consumer/routes';
 import { getTranslations } from 'next-intl/server';
 
 /** What a GatoPago payment request looks like, with example data (linked from the landing). */
@@ -24,10 +23,7 @@ export async function DemoPayment({ locale }: { locale: Locale }) {
         <p className="mb-5 text-center text-[13px] leading-relaxed text-text-muted">
           {t('description')}
         </p>
-        <NavigationLink
-          href={localizedPath('/login', locale)}
-          className="btn btn-primary btn-block"
-        >
+        <NavigationLink href={'/login'} className="btn btn-primary btn-block">
           {t('createAccount')}
         </NavigationLink>
       </div>

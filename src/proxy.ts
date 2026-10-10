@@ -1,44 +1,33 @@
 import { randomBytes } from 'node:crypto';
+import createMiddleware from 'next-intl/middleware';
 import { NextResponse, type NextRequest } from 'next/server';
-import {
-  englishLocation,
-  LANGUAGE_COOKIE,
-  LANGUAGE_HEADER,
-  preferredLanguage,
-} from './lib/language';
+import { routing } from './i18n/routing';
 import { settings } from './lib/settings';
 import { documentCsp, documentSecurityHeaders } from './security/content-policy';
 import { NONCE_HEADER } from './security/nonce';
 import { STATIC_PAGES, staticCsp, staticSecurityHeaders } from './security/static-pages';
 
+/** The address's language (`/en/…`), or the browser's on a first visit: next-intl's own routing. */
+const i18nRouting = createMiddleware(routing);
+
 /**
- * A page opened without a language, by someone who chose English or whose browser prefers it,
- * goes to its English version. Only full page loads (GET or HEAD of a document), never Next's
- * own fetches; a 307, because where it goes depends on who asks. No browser preference (most
- * crawlers) keeps the Spanish default, and a choice made with a language switch always wins.
+ * Links from before English had its own addresses (`/statement?lang=en`, in notifications already
+ * delivered and bookmarks) open in English, whatever the browser prefers.
  */
-function languageRedirect(request: NextRequest) {
-  if (request.method !== 'GET' && request.method !== 'HEAD') return null;
-  const { headers, nextUrl } = request;
-  if (headers.has('rsc') || headers.has('next-router-prefetch') || nextUrl.searchParams.has('_rsc'))
-    return null;
-  const destination = headers.get('sec-fetch-dest');
-  if (destination ? destination !== 'document' : !headers.get('accept')?.includes('text/html'))
-    return null;
-  const chosen = request.cookies.get(LANGUAGE_COOKIE)?.value;
-  const language =
-    chosen === 'es' || chosen === 'en' ? chosen : preferredLanguage(headers.get('accept-language'));
-  if (language !== 'en') return null;
-  const target = englishLocation(nextUrl.pathname, nextUrl.searchParams);
-  return target ? NextResponse.redirect(new URL(target, request.url), 307) : null;
+function englishAddress({ nextUrl }: NextRequest) {
+  if (nextUrl.searchParams.get('lang') !== 'en') return null;
+  const url = nextUrl.clone();
+  url.searchParams.delete('lang');
+  if (!/^\/en(\/|$)/.test(url.pathname)) url.pathname = `/en${url.pathname.replace(/\/$/, '')}`;
+  return NextResponse.redirect(url, 307);
 }
 
 export function proxy(request: NextRequest) {
-  const english = languageRedirect(request);
+  const english = englishAddress(request);
   if (english) return english;
   // Prerendered pages carry no nonce: their own policy, and the CDN may keep them.
   if (STATIC_PAGES.has(request.nextUrl.pathname)) {
-    const response = NextResponse.next();
+    const response = i18nRouting(request);
     response.headers.set(
       'Content-Security-Policy',
       staticCsp({
@@ -61,14 +50,11 @@ export function proxy(request: NextRequest) {
     development: process.env.NODE_ENV === 'development',
     secure: request.nextUrl.protocol === 'https:',
   });
-  const headers = new Headers(request.headers);
-
-  headers.set(NONCE_HEADER, nonce);
-  // Always set here, never taken from the visitor's own request.
-  headers.set(LANGUAGE_HEADER, request.nextUrl.searchParams.get('lang') === 'en' ? 'en' : 'es');
-  headers.set('Content-Security-Policy', csp);
-  headers.delete('Content-Security-Policy-Report-Only');
-  const response = NextResponse.next({ request: { headers } });
+  // The page reads them from its request: next-intl passes the request's headers on.
+  request.headers.set(NONCE_HEADER, nonce);
+  request.headers.set('Content-Security-Policy', csp);
+  request.headers.delete('Content-Security-Policy-Report-Only');
+  const response = i18nRouting(request);
   response.headers.set('Content-Security-Policy', csp);
   for (const [name, value] of Object.entries(documentSecurityHeaders))
     response.headers.set(name, value);
@@ -77,6 +63,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static/|_next/image(?:/|$)|brand/|pwa/|sw\\.js$|manifest\\.webmanifest$|offline$|favicon\\.(?:svg|ico)$|og\\.png$|Logo_gatopago\\.svg$|apple-touch-icon\\.png$).*)',
+    '/((?!_next/static/|_next/image(?:/|$)|brand/|pwa/|tokens/|sw\\.js$|manifest\\.webmanifest$|offline$|favicon\\.(?:svg|ico)$|og/|Logo_gatopago\\.svg$|apple-touch-icon\\.png$).*)',
   ],
 };

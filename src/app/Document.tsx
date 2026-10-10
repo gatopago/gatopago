@@ -39,7 +39,7 @@ export function Document({
   children: ReactNode;
 }) {
   return (
-    <html lang={lang} className={recursive.variable}>
+    <html lang={lang} className={recursive.variable} data-scroll-behavior="smooth">
       <body>
         <NonceProvider nonce={nonce}>
           <PwaBootstrap

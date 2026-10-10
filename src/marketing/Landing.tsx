@@ -1,22 +1,18 @@
-import Link from 'next/link';
+import { getPathname, Link } from '../i18n/navigation';
 import type { Locale, Messages } from 'next-intl';
 import { CatGlyph } from './CatGlyph';
 import { MeliSprite } from './MeliSprite';
 import { LandingInteractions } from './LandingInteractions';
-import { localizedPath } from '../consumer/routes';
-import { LanguageLink } from '../lib/LanguageLink';
 import { settings } from '../lib/settings';
 
 /** The landing in `lang`, with its texts (`Landing` of the catalog) read by the page. */
 export function Landing({ lang, copy: t }: { lang: Locale; copy: Messages['Landing'] }) {
   const isSpanish = lang === 'es';
-  const localeHref = isSpanish ? '/en' : '/';
+  const otherLocale = isSpanish ? 'en' : 'es';
   const localeLabel = isSpanish ? 'EN' : 'ES';
-  const appHref = localizedPath('/app', lang);
-  const legalPrefix = isSpanish ? '' : '/en';
+  const appHref = '/app';
   // Static pages: each language has its own path.
-  const demoPaymentPath = isSpanish ? '/pay/demo-cafe-norte' : '/en/pay/demo-cafe-norte';
-  const docsHref = isSpanish ? '/docs' : '/en/docs';
+  const demoPaymentPath = '/pay/demo-cafe-norte';
   const businessHref = settings.businessOrigin;
   const apiExample = `const response = await fetch(
   API_ORIGIN + "/v1/payment_intents",
@@ -44,7 +40,7 @@ const intent = await response.json();`;
       <div className="meli-landing" data-locale={lang}>
         <header className="meli-nav-shell" data-nav-shell>
           <nav className="meli-nav" aria-label={t.nav.aria}>
-            <Link className="meli-brand" href={isSpanish ? '/' : '/en/'} aria-label={t.nav.home}>
+            <Link className="meli-brand" href="/" aria-label={t.nav.home}>
               <CatGlyph className="meli-brand__glyph" decorative />
               <span className="meli-brand__word">GatoPago</span>
               <span className="meli-brand__alpha">Beta</span>
@@ -60,15 +56,15 @@ const intent = await response.json();`;
             </div>
 
             <div className="meli-nav__actions">
-              <LanguageLink
+              <Link
                 className="meli-locale"
-                href={localeHref}
-                language={isSpanish ? 'en' : 'es'}
+                href="/"
+                locale={otherLocale}
                 aria-label={t.nav.language}
                 data-locale-link
               >
                 {localeLabel}
-              </LanguageLink>
+              </Link>
               <Link
                 className="meli-button meli-button--brand meli-nav__cta"
                 href={appHref}
@@ -153,7 +149,6 @@ const intent = await response.json();`;
                     <i aria-hidden="true"></i>
                     {t.hero.alpha}
                   </li>
-                  <li>{t.hero.network}</li>
                   <li>{t.hero.funds}</li>
                 </ul>
               </div>
@@ -220,6 +215,38 @@ const intent = await response.json();`;
               ))}
             </div>
           </aside>
+
+          <section
+            className="meli-section meli-section--ink meli-problem"
+            id="problem"
+            aria-labelledby="problem-title"
+          >
+            <div className="meli-container meli-split meli-split--problem">
+              <div className="meli-section-heading">
+                <p className="meli-kicker meli-kicker--light">
+                  <span aria-hidden="true"></span>
+                  {t.problem.kicker}
+                </p>
+                <h2 id="problem-title">
+                  {t.problem.titleLead}
+                  <br />
+                  <em>{t.problem.titleAccent}</em>
+                </h2>
+                <p>{t.problem.copy}</p>
+              </div>
+              <div className="meli-control-stack">
+                {t.problem.moments.map(([title, text], index) => (
+                  <article key={title} className="meli-control-card meli-problem-card">
+                    <span className="meli-control-card__index">0{index + 1}</span>
+                    <div>
+                      <h3>{title}</h3>
+                      <p>{text}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
 
           <section
             className="meli-section meli-section--milk meli-cycle"
@@ -323,7 +350,7 @@ const intent = await response.json();`;
                 </ul>
                 <Link
                   className="meli-button meli-button--brand mt-8"
-                  href={localizedPath('/login', lang)}
+                  href={'/login'}
                   prefetch={false}
                 >
                   {t.account.action}
@@ -439,7 +466,7 @@ const intent = await response.json();`;
                     </span>
                   </div>
                   <p className="meli-receipt-label">{t.receive.linkLabel}</p>
-                  <code>{demoPaymentPath}</code>
+                  <code>{getPathname({ href: demoPaymentPath, locale: lang })}</code>
                   <div className="meli-receipt-main">
                     <div>
                       <span>{t.receive.amountLabel}</span>
@@ -677,7 +704,7 @@ const intent = await response.json();`;
                   ))}
                 </ul>
                 <div className="meli-developer-actions">
-                  <Link className="meli-button meli-button--brand" href={docsHref}>
+                  <Link className="meli-button meli-button--brand" href="/docs">
                     {t.developers.docs}
                     <span aria-hidden="true">→</span>
                   </Link>
@@ -789,7 +816,7 @@ const intent = await response.json();`;
         <footer className="meli-footer">
           <div className="meli-container meli-footer__grid">
             <div className="meli-footer__brand">
-              <Link className="meli-brand" href={isSpanish ? '/' : '/en/'}>
+              <Link className="meli-brand" href="/">
                 <CatGlyph className="meli-brand__glyph" decorative />
                 <span className="meli-brand__word">GatoPago</span>
               </Link>
@@ -809,19 +836,22 @@ const intent = await response.json();`;
             <div>
               <strong>{t.footer.company}</strong>
               <a href="#faq">{t.labels.faq}</a>
-              <LanguageLink href={localeHref} language={isSpanish ? 'en' : 'es'} data-locale-link>
+              <Link href="/" locale={otherLocale} data-locale-link>
                 {localeLabel}
-              </LanguageLink>
+              </Link>
             </div>
             <div>
               <strong>{t.footer.legal}</strong>
-              <Link href={`${legalPrefix}/terms`}>{t.footer.terms}</Link>
-              <Link href={`${legalPrefix}/privacy`}>{t.footer.privacy}</Link>
+              <Link href="/terms">{t.footer.terms}</Link>
+              <Link href="/privacy">{t.footer.privacy}</Link>
             </div>
           </div>
           <div className="meli-container meli-footer__bottom">
             <span>
-              © {new Date().getFullYear()} {t.footer.rights}
+              © {new Date().getFullYear()} {t.footer.rights} {t.footer.madeBy}{' '}
+              <a href="https://instagram.com/danelerr" target="_blank" rel="noopener noreferrer">
+                {t.footer.author}
+              </a>
             </span>
             <span className="meli-footer__pixels" aria-hidden="true">
               ■ ■ □ ■

@@ -8,10 +8,10 @@ import { api } from '../wallet/api';
 import { useFailureMessage } from '../wallet/messages';
 import type { Session } from '../wallet/session';
 import { NavigationLink } from './NavigationLink';
+import { UsernameInput } from './NormalizedInput';
 import { BackHeader } from './Primitives';
-import { localizedPath } from './routes';
 import { RowSkeletonList } from './Skeleton';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 
 interface Contact {
   username: string;
@@ -28,7 +28,6 @@ export function ContactsScreen({
   session: Session;
 }) {
   const messageFor = useFailureMessage();
-  const locale = useLocale();
   const t = useTranslations('Contacts');
   const [contacts, setContacts] = useState<Contact[] | null>(null);
   // The list could not be read: shown as such (with a retry), never as "no contacts yet".
@@ -186,17 +185,12 @@ export function ContactsScreen({
       >
         <div className="flex h-12 min-w-0 flex-1 items-center gap-1.5 border-2 border-text bg-surface px-4">
           <span className="shrink-0 text-[14px] text-text-faint">@</span>
-          <input
-            type="text"
+          <UsernameInput
             name="username"
             autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
             aria-label={t('usernameAdd')}
             value={username}
-            onChange={(event) =>
-              setUsername(event.target.value.replace(/[^a-z0-9_]/gi, '').toLowerCase())
-            }
+            onChange={setUsername}
             placeholder={t('username')}
             maxLength={30}
             className="min-w-0 flex-1 bg-transparent text-[14px] text-text placeholder:text-text-faint"
@@ -255,7 +249,7 @@ export function ContactsScreen({
               className="flex items-center gap-3.5 border-b border-border px-3 py-3 last:border-b-0"
             >
               <NavigationLink
-                href={localizedPath(`/@${contact.username}`, locale)}
+                href={`/@${contact.username}`}
                 className="flex min-w-0 flex-1 items-center gap-3.5 text-left"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center border border-text bg-cat-500 font-display uppercase text-on-cat">
@@ -292,7 +286,7 @@ export function ContactsScreen({
               ) : (
                 <>
                   <NavigationLink
-                    href={localizedPath(`/send?username=${contact.username}`, locale)}
+                    href={`/send?username=${contact.username}`}
                     className="shrink-0 px-2 py-1.5 text-[13px] font-semibold text-cat-300"
                   >
                     {t('pay')}

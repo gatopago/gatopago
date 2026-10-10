@@ -10,8 +10,8 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
-import { useLocale } from 'next-intl';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from '../i18n/navigation';
 import { ConsumerFrame } from '../consumer/ConsumerFrame';
 import { useNavigationRecord } from '../consumer/history';
 import type { ConsumerView } from '../consumer/routes';
@@ -40,7 +40,6 @@ export function AccountShell({
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const locale = useLocale();
   const search = params.toString();
   // The session lives in this browser: unknown while rendering on the server.
   const session = useSyncExternalStore(subscribeSession, currentSession, () => undefined);
@@ -50,13 +49,15 @@ export function AccountShell({
     if (session === undefined) return;
     signedOutOnArrival.current ??= session === null;
     if (session !== null) return;
-    const login = new URLSearchParams(locale === 'en' ? { lang: 'en' } : {});
     // A link opened signed out (a send to @someone) continues there after signing in; signing out
     // from the app does not bring the member back to where they left.
-    if (signedOutOnArrival.current && pathname !== '/app')
-      login.set('next', search ? `${pathname}?${search}` : pathname);
-    router.replace(login.size ? `/login?${login}` : '/login');
-  }, [session, router, locale, pathname, search]);
+    const next = signedOutOnArrival.current && pathname !== '/app';
+    router.replace(
+      next
+        ? `/login?${new URLSearchParams({ next: search ? `${pathname}?${search}` : pathname })}`
+        : '/login',
+    );
+  }, [session, router, pathname, search]);
 
   if (!session)
     return (

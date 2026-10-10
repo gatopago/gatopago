@@ -15,7 +15,7 @@ import {
   splitCalls,
   type Payout,
 } from '@gatopago/shared/rules';
-import { amountInput, exactUnits, tooPrecise } from '../lib/amount';
+import { exactUnits, tooPrecise } from '../lib/amount';
 import { useFailureMessage } from '../wallet/messages';
 import type { ClientSettings } from '../lib/settings';
 import { networkName, shortAddress, USDC_DECIMALS } from '../wallet/account';
@@ -25,6 +25,7 @@ import { send } from '../wallet/operations';
 import type { Group } from '../wallet/groups';
 import { useGroups } from './useGroups';
 import { ElsewhereNote } from './ElsewhereNote';
+import { AmountInput } from './NormalizedInput';
 import { RecipientShortcuts } from './RecipientShortcuts';
 import { TokenSelect } from './TokenSelect';
 import type { Session } from '../wallet/session';
@@ -37,7 +38,6 @@ import {
   type ReceiptData,
 } from './PaymentSheets';
 import { BackHeader, MoneyPanel, TransactionActions } from './Primitives';
-import { localizedPath } from './routes';
 import { StageOverlay } from './StageOverlay';
 import { useTranslations, useLocale } from 'next-intl';
 
@@ -335,10 +335,7 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
         <BackHeader title={title} to="/move" />
         <ReceiptScreen receipt={receipt}>
           <ConfirmDetails rows={breakdown(receipt.review)} />
-          <NavigationLink
-            href={localizedPath('/app', locale)}
-            className="btn btn-ghost btn-block mt-4"
-          >
+          <NavigationLink href={'/app'} className="btn btn-ghost btn-block mt-4">
             {t('goHome')}
           </NavigationLink>
           <button type="button" className="btn-text mt-1 w-full" onClick={() => setReceipt(null)}>
@@ -381,16 +378,12 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
             <label className="mb-2 block text-[13px] font-semibold" htmlFor="team-split">
               {t('amountSplit', { symbol })}
             </label>
-            <input
+            <AmountInput
               id="team-split"
-              inputMode="decimal"
               placeholder="0"
               value={splitting}
               disabled={busy}
-              onChange={(event) => {
-                const next = amountInput(event.target.value);
-                if (next !== null) setSplitting(next);
-              }}
+              onChange={setSplitting}
               className="meli-field tabular h-12 text-[15px] placeholder:text-text-faint"
             />
             <p className="mt-2 text-[12px] leading-relaxed text-text-muted">
@@ -518,21 +511,18 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
                   className="meli-field h-12 min-w-0 flex-1 text-[14px] placeholder:text-text-faint"
                 />
                 <div className="relative w-24 shrink-0">
-                  <input
+                  <AmountInput
                     aria-label={
                       mode === 'shares'
                         ? t('sharePerson', { index: index + 1 })
                         : t('amountPerson', { index: index + 1 })
                     }
                     placeholder="0"
-                    inputMode="decimal"
                     value={mode === 'shares' ? member.share : member.amount}
                     disabled={busy}
-                    onChange={(event) => {
-                      const next = amountInput(event.target.value);
-                      if (next !== null)
-                        update(member.id, { [mode === 'shares' ? 'share' : 'amount']: next });
-                    }}
+                    onChange={(next) =>
+                      update(member.id, { [mode === 'shares' ? 'share' : 'amount']: next })
+                    }
                     className={`meli-field tabular h-12 w-full text-right text-[14px] placeholder:text-text-faint ${mode === 'shares' ? '!pr-7' : ''}`}
                   />
                   {mode === 'shares' ? (
@@ -632,16 +622,12 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
                 {t('growAave')}
               </label>
               <div className="relative w-24 shrink-0">
-                <input
+                <AmountInput
                   id="team-save"
                   placeholder="0"
-                  inputMode="decimal"
                   value={saveShare}
                   disabled={busy}
-                  onChange={(event) => {
-                    const next = amountInput(event.target.value);
-                    if (next !== null) setSaveShare(next);
-                  }}
+                  onChange={setSaveShare}
                   className="meli-field tabular h-12 w-full !pr-7 text-right text-[14px] placeholder:text-text-faint"
                 />
                 <span

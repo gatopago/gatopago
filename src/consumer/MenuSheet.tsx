@@ -11,9 +11,8 @@ import {
   SupportIcon,
 } from './Icons';
 import { NavigationLink } from './NavigationLink';
-import { localizedPath } from './routes';
 import { Sheet } from './Sheet';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 
 export function MenuSheet({
   businessOrigin,
@@ -23,7 +22,6 @@ export function MenuSheet({
   businessOrigin: string;
   onClose: () => void;
 }) {
-  const locale = useLocale();
   const t = useTranslations('MenuSheet');
   const items = [
     { href: '/profile', label: t('profile'), icon: ProfileIcon, tone: 'brand' },
@@ -60,7 +58,7 @@ export function MenuSheet({
         {items.map((item) => (
           <NavigationLink
             key={item.href}
-            href={localizedPath(item.href, locale)}
+            href={item.href}
             onClick={onClose}
             className="meli-menu-row"
           >

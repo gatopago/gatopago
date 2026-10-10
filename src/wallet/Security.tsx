@@ -6,7 +6,6 @@ import { encodeFunctionData, type Hex } from 'viem';
 import { gatopagoAccountAbi, keyOwner, ownersAfter, signApproval } from '@gatopago/shared/wallet';
 import { NavigationLink } from '../consumer/NavigationLink';
 import { BackHeader } from '../consumer/Primitives';
-import { localizedPath } from '../consumer/routes';
 import { Sheet } from '../consumer/Sheet';
 import { ScreenLoading } from '../consumer/Skeleton';
 import { StageOverlay } from '../consumer/StageOverlay';
@@ -19,7 +18,7 @@ import { useFailureMessage } from './messages';
 import { addOwnerCall, newBackupKey } from './passkey';
 import { saveSession, type Session } from './session';
 import { approveStellarKey, registerStellarKey, syncStellarSigners } from './stellar';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { BusinessAccess } from '../consumer/BusinessAccess';
 
 /**
@@ -29,7 +28,6 @@ import { BusinessAccess } from '../consumer/BusinessAccess';
  */
 export function Security({ settings, session }: { settings: ClientSettings; session: Session }) {
   const messageFor = useFailureMessage();
-  const locale = useLocale();
   const t = useTranslations('Security');
   const { wallet } = session;
   const current = keyOwner(wallet.owner).toLowerCase();
@@ -276,7 +274,7 @@ export function Security({ settings, session }: { settings: ClientSettings; sess
           <BusinessAccess settings={settings} session={session} />
 
           <NavigationLink
-            href={localizedPath('/settings/security/recovery', locale)}
+            href={'/settings/security/recovery'}
             className="interactive-surface flex min-h-12 items-center justify-between border border-border bg-surface px-4 text-[14px]"
           >
             {t('howKeysWork')}

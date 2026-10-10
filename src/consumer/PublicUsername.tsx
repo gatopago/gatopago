@@ -9,10 +9,9 @@ import { useFailureMessage } from '../wallet/messages';
 import { ConsumerFrame } from './ConsumerFrame';
 import { NavigationLink } from './NavigationLink';
 import { Panel } from './Primitives';
-import { localizedPath } from './routes';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { ScreenLoading } from './Skeleton';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 
 /** `/@username`: who receives payments to this username, and where. */
 export function PublicUsername({
@@ -23,7 +22,6 @@ export function PublicUsername({
   settings: ClientSettings;
 }) {
   const messageFor = useFailureMessage();
-  const locale = useLocale();
   const t = useTranslations('PublicUsername');
   const [recipient, setRecipient] = useState<Recipient | null>(null);
   const [error, setError] = useState('');
@@ -90,7 +88,7 @@ export function PublicUsername({
             </Panel>
             <NavigationLink
               className="auth-primary btn btn-primary btn-block"
-              href={localizedPath(`/send?username=${recipient.username}`, locale)}
+              href={`/send?username=${recipient.username}`}
             >
               {t('payGatopago')}
             </NavigationLink>

@@ -21,6 +21,8 @@ const config: NextConfig = {
   agentRules: false,
   logging: { browserToTerminal: false, serverFunctions: false },
   poweredByHeader: false,
+  // The shared-link cards (`/og/…`) read their fonts and the cat from the repo at run time.
+  outputFileTracingIncludes: { '/og/**/*': ['./src/og/assets/**/*', './public/Logo_gatopago.svg'] },
   // Static pages have one path per language; links from before used `?lang=en`.
   async redirects() {
     return ['/docs', '/pay/demo-cafe-norte'].map((source) => ({
@@ -47,7 +49,6 @@ const config: NextConfig = {
         '/pwa/:path*',
         '/favicon.svg',
         '/favicon.ico',
-        '/og.png',
         '/Logo_gatopago.svg',
         '/apple-touch-icon.png',
       ].map((source) => ({

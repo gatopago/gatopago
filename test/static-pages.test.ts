@@ -6,21 +6,26 @@ import { proxy } from '../src/proxy';
 import { NONCE_HEADER } from '../src/security/nonce';
 import { STATIC_PAGES, staticCsp } from '../src/security/static-pages';
 
-/** Every page.tsx under a route group, as the URL it serves. */
+/** Every page.tsx under `[locale]` of a route group, as the URLs it serves: Spanish and `/en`. */
 function pages(root: string): { path: string; file: string }[] {
   return readdirSync(root, { withFileTypes: true, recursive: true })
     .filter((entry) => entry.isFile() && entry.name === 'page.tsx')
-    .map((entry) => {
+    .flatMap((entry) => {
       const file = join(entry.parentPath, entry.name);
       const segments = file
         .slice(root.length)
         .split(/[\\/]/)
         .filter((segment) => segment && segment !== 'page.tsx' && !/^\(.*\)$/.test(segment));
-      return { path: '/' + segments.join('/'), file };
+      expect(segments[0]).toBe('[locale]');
+      const path = segments.slice(1).join('/');
+      return [
+        { path: `/${path}`, file },
+        { path: path ? `/en/${path}` : '/en', file },
+      ];
     });
 }
 
-const staticPages = [...pages('src/app/(static)'), ...pages('src/app/(en)')];
+const staticPages = pages('src/app/(static)');
 const directives = (value: string) =>
   Object.fromEntries(
     value.split('; ').map((part) => {

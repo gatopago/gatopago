@@ -57,7 +57,8 @@
     "notifications": "Notifications",
     "notificationsOn": "Payment notifications on",
     "notificationsHelp": "We let you know right away when you receive a payment or a deposit.",
-    "notificationsFailed": "Notifications were not turned on. Check your browser's notification permission.",
+    "notificationsBlocked": "Your browser did not allow notifications. Allow them for this site in your browser settings and try again.",
+    "notificationsFailed": "We could not turn on notifications on this device. Try again in a moment.",
     "turnOn": "Turn on payment notifications",
     "turning": "Turning on…",
     "language": "Language",
@@ -330,15 +331,15 @@
     "move": "Move",
     "chooseWhatDoSee": "Choose what to do. You will see every detail before confirming.",
     "receive": "Receive",
-    "requestPaymentShareAccount": "Request a payment or share your account",
+    "requestPaymentShareAccount": "A payment link or your account",
     "send": "Send",
-    "usernameWalletExchange": "To a @username, a wallet or an exchange",
+    "usernameWalletExchange": "To a @username, wallet or exchange",
     "groupPayment": "Group payment",
-    "severalPeopleOnceBalance": "Several people at once, from your balance or your savings",
+    "severalPeopleOnceBalance": "Several people in one payment",
     "swap": "Swap",
     "betweenUsdcOtherCoins": "Between USDC and other coins",
     "betweenNetworks": "Between networks",
-    "moveUsdcOneNetwork": "Move your USDC from one network to another"
+    "moveUsdcOneNetwork": "Move your USDC between networks"
   },
   "PaymentSheets": {
     "confirmFingerprintFaceDevice": "Your key signs it. If your signing session expired, we ask for your fingerprint, face or device PIN.",
@@ -921,13 +922,12 @@
     },
     "hero": {
       "eyebrow": "GatoPago · dollars in motion",
-      "titleLead": "Your dollars already",
-      "titleAccent": "know how to move.",
-      "copy": "Receive, send, and pay in digital dollars from an account only you control. No seed phrases and no network fees.",
+      "titleLead": "Money without borders.",
+      "titleAccent": "Always yours.",
+      "copy": "Receive, send, and pay in digital dollars from an account only you control. Sign in with your fingerprint, and sending costs you no fees.",
       "primary": "Open GatoPago",
       "secondary": "See how it works",
       "alpha": "Public beta",
-      "network": "Arbitrum · Avalanche · Monad",
       "funds": "With test funds",
       "nap": "Nap mode",
       "napOn": "Nap mode is on",
@@ -937,11 +937,31 @@
       "packet": "Payment on the move"
     },
     "signals": [
-      ["You are in control", "Only your keys can move your money."],
-      ["No seed phrases", "Sign in with your phone’s fingerprint or face."],
-      ["No network fees", "GatoPago pays the gas for you."],
-      ["One account, many networks", "The same address on Arbitrum, Avalanche and Monad."]
+      ["You are in control", "Only you can move your money. Not even GatoPago."],
+      ["No passwords, no odd phrases", "Sign in with your phone’s fingerprint or face."],
+      ["Sending is free", "GatoPago covers the fee on every transfer."],
+      [
+        "No lock-in",
+        "Your money comes and goes whenever you want: to another wallet or an exchange."
+      ]
     ],
+    "problem": {
+      "kicker": "The problem",
+      "titleLead": "Your money shouldn’t stop",
+      "titleAccent": "at the border.",
+      "copy": "A message crosses the world in seconds. Money takes days and loses a part along the way. With GatoPago, your digital dollars arrive in seconds, in full, and stay yours.",
+      "moments": [
+        [
+          "You get paid from abroad",
+          "You work for a client in another country, and getting paid costs you days and fees."
+        ],
+        ["Your family sends you money", "What they send you loses a part along the way."],
+        [
+          "You want to save in dollars",
+          "Getting them and keeping them is hard, and the apps that give them to you take control."
+        ]
+      ]
+    },
     "cycle": {
       "kicker": "A payment’s journey",
       "title": "This is how your money moves.",
@@ -962,14 +982,14 @@
           "number": "02",
           "label": "Available",
           "short": "Ready to send or pay.",
-          "detail": "Your balance is ready to use. You do not need to know about contracts or networks to move it.",
+          "detail": "Your balance is ready to use. You do not need to know anything technical to move it.",
           "status": "Balance ready"
         },
         {
           "id": "growing",
           "number": "03",
           "label": "Growing",
-          "short": "Part of it earns interest on Aave.",
+          "short": "Part of it earns interest.",
           "detail": "You choose how much to move and see the rate before confirming. Withdraw it whenever you want.",
           "status": "Earning interest"
         },
@@ -978,7 +998,7 @@
           "number": "04",
           "label": "Use",
           "short": "Send, pay, or swap.",
-          "detail": "Money moves when you decide. GatoPago prepares the path; your key confirms it.",
+          "detail": "Money moves when you decide. GatoPago prepares the path; you confirm it with your fingerprint.",
           "status": "You choose the next step"
         }
       ],
@@ -987,7 +1007,7 @@
     "account": {
       "kicker": "The account",
       "greeting": "Hi, Dani",
-      "title": "An account, not a blockchain dashboard.",
+      "title": "An account, not a dashboard for experts.",
       "copy": "Create it in seconds with your phone’s fingerprint or face, and pick your @username to get paid.",
       "concept": "What your account looks like",
       "available": "Available",
@@ -1024,7 +1044,7 @@
       "growing": "Growing",
       "amount": "280.00 USDC",
       "route": "Where it grows",
-      "routeValue": "Aave V3",
+      "routeValue": "Lending market",
       "rate": "Rate",
       "rateValue": "Variable",
       "exit": "Withdrawal",
@@ -1034,19 +1054,19 @@
     "control": {
       "kicker": "Control without friction",
       "title": "The experience is simple. The control is yours.",
-      "copy": "Your account lives on the blockchain and answers only to your keys. Not even GatoPago can move your money.",
+      "copy": "Your account answers only to you. Not even GatoPago can move your money.",
       "items": [
         [
-          "Passkey",
+          "Your fingerprint is your key",
           "Sign in with your fingerprint or face. Every transfer asks for its own confirmation."
         ],
         [
-          "Backup keys",
-          "Add another key on another device or password manager and always keep access to your account."
+          "Backup on another device",
+          "Add another phone or computer as a backup and always keep access to your account."
         ],
         [
           "Everything in sight",
-          "Destination, network and amount before you confirm, and the receipt on the blockchain after."
+          "Who, how much and what for before you confirm, and your receipt after."
         ]
       ],
       "demo": "Try the confirmation",
@@ -1059,8 +1079,8 @@
       "rows": [
         ["Destination", "@cafe.norte"],
         ["Note", "Breakfast"],
-        ["Network", "Arbitrum"],
-        ["Network fee", "Free"]
+        ["Arrives", "In seconds"],
+        ["Fee", "Free"]
       ],
       "disclaimer": "This is how you review every payment before confirming it.",
       "cancel": "Go back",
@@ -1080,8 +1100,13 @@
     "developers": {
       "kicker": "GatoPago for Developers",
       "title": "Give your payments more lives.",
-      "copy": "Payment intents, checkout, sandbox, and signed webhooks to get paid in USDC without building a wallet from scratch.",
-      "features": ["Payment intents", "Idempotency", "Signed webhooks", "Test sandbox"],
+      "copy": "Get paid in digital dollars from your website or app, without building a wallet from scratch.",
+      "features": [
+        "Charges from your server",
+        "No double charges",
+        "Signed payment alerts",
+        "Test environment"
+      ],
       "docs": "Read the documentation",
       "pilot": "Open the console",
       "response": "intent created",
@@ -1093,23 +1118,23 @@
       "items": [
         [
           "What is GatoPago?",
-          "A digital-dollar (USDC) account you control with your phone’s passkey. No seed phrases and no network fees."
+          "A digital-dollar account only you control, opened with your phone’s fingerprint. Get paid, save and send money with no odd phrases and no fees to send."
         ],
         [
           "Can I use real money?",
-          "Not yet. GatoPago is in public beta on test networks (Arbitrum Sepolia, Avalanche Fuji and Monad testnet). Use it with test funds."
+          "Not yet. GatoPago is in public beta and runs on test funds with no real value."
         ],
         [
           "Who controls my money?",
-          "Only you. Your account lives on the blockchain and every movement is confirmed by your key. GatoPago cannot move your funds."
+          "Only you. You confirm every movement yourself, with your fingerprint. GatoPago cannot move your funds."
         ],
         [
           "What if I change phones?",
-          "Your passkey syncs with your password manager, so you sign in the same way on the new one. For extra peace of mind, add a backup key in Security."
+          "Your key is saved with your phone’s passwords, so you sign in the same way on the new one. For extra peace of mind, add a backup in Security."
         ],
         [
-          "Who pays for gas?",
-          "GatoPago. Creating your account and sending money cost you no network fees."
+          "How much does sending cost?",
+          "Nothing. Creating your account and sending money cost you no fees: GatoPago covers them."
         ]
       ]
     },
@@ -1121,15 +1146,17 @@
       "secondary": "Back to the journey"
     },
     "footer": {
-      "line": "Your dollars already know how to move. Your account stays under your control.",
+      "line": "Your money stays yours. GatoPago takes care of the way.",
       "product": "Product",
       "company": "GatoPago",
       "legal": "Legal",
       "links": ["How it works", "The account", "Grow", "Developers"],
       "terms": "Terms",
       "privacy": "Privacy",
-      "status": "Public beta · test networks",
-      "rights": "GatoPago. Made with care in Bolivia."
+      "status": "Public beta · test funds",
+      "rights": "GatoPago.",
+      "madeBy": "Made by",
+      "author": "Daniel Cueto"
     },
     "labels": {
       "principles": "Product principles",
@@ -1309,8 +1336,8 @@
   },
   "Metadata": {
     "home": {
-      "title": "GatoPago — Your dollars already know how to move",
-      "description": "Receive, send, and pay digital dollars from an account only you control. No seed phrases and no network fees."
+      "title": "GatoPago · Money without borders. Always yours.",
+      "description": "Receive, send, and pay digital dollars from an account only you control. Sign in with your fingerprint, and sending costs you no fees."
     },
     "docs": {
       "title": "API documentation · GatoPago",
@@ -1318,6 +1345,49 @@
     },
     "privacy": "Privacy Policy — GatoPago",
     "terms": "Terms of Service — GatoPago",
-    "demo": "Payment example · GatoPago"
+    "demo": "Payment example · GatoPago",
+    "pay": {
+      "title": "{merchant} is charging you {amount} USDC",
+      "titleUnnamed": "You are being charged {amount} USDC",
+      "description": "{concept} · Pay with GatoPago or any wallet.",
+      "descriptionPlain": "Pay with GatoPago or any wallet.",
+      "fallback": "You got a GatoPago payment link"
+    },
+    "profile": {
+      "title": "Pay @{username} on GatoPago",
+      "description": "{name} gets paid in digital dollars with GatoPago.",
+      "descriptionPlain": "Gets paid in digital dollars with GatoPago."
+    }
+  },
+  "Og": {
+    "site": "gatopago.com",
+    "status": "Public beta · test funds",
+    "home": {
+      "kicker": "Get paid, save and send digital dollars",
+      "titleLead": "Money without borders.",
+      "titleAccent": "Always yours.",
+      "copy": "A digital-dollar account only you control. Sign in with your fingerprint."
+    },
+    "developers": {
+      "kicker": "GatoPago for developers",
+      "titleLead": "Give your payments",
+      "titleAccent": "more lives.",
+      "copy": "Get paid in digital dollars from your website or app, without building a wallet from scratch."
+    },
+    "payment": {
+      "label": "Payment link",
+      "charges": "is charging you",
+      "unnamed": "You are being charged",
+      "payWith": "Pay with GatoPago or any wallet",
+      "fallbackTitle": "You got a payment link",
+      "fallbackCopy": "Open it to see the amount and pay."
+    },
+    "profile": {
+      "kicker": "GatoPago profile",
+      "lead": "Pay",
+      "copy": "{name} gets paid in digital dollars with GatoPago.",
+      "copyPlain": "Gets paid in digital dollars with GatoPago.",
+      "fallbackTitle": "Pay with GatoPago"
+    }
   }
 }

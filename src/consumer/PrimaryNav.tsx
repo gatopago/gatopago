@@ -1,10 +1,9 @@
 'use client';
 
 import { NavigationLink as Link } from './NavigationLink';
-import { usePathname } from 'next/navigation';
+import { usePathname } from '../i18n/navigation';
 import { ActivityIcon, GrowIcon, HomeIcon, MoveIcon } from './Icons';
-import { useLocale, useTranslations } from 'next-intl';
-import { localizedPath } from './routes';
+import { useTranslations } from 'next-intl';
 
 const destinations = [
   { href: '/app', key: 'home', icon: HomeIcon },
@@ -15,7 +14,6 @@ const destinations = [
 
 export function PrimaryNav() {
   const t = useTranslations('PrimaryNav');
-  const locale = useLocale();
   const pathname = usePathname();
   return (
     <nav
@@ -37,7 +35,7 @@ export function PrimaryNav() {
           return (
             <Link
               key={item.href}
-              href={localizedPath(item.href, locale)}
+              href={item.href}
               className={className}
               aria-current={active ? 'page' : undefined}
             >

@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { consumerRoutes, localizedPath, safeNext } from '../src/consumer/routes';
+import { consumerRoutes, safeNext } from '../src/consumer/routes';
 import { parseConsumerQr, qrReviewPath, reviewedRecipient } from '../src/consumer/qr';
 import { RecoveryScreen } from '../src/consumer/AccountScreens';
 import { MoveMenu } from '../src/consumer/MoveMenu';
@@ -14,7 +14,8 @@ vi.mock('../src/marketing/MeliSprite', () => ({
 }));
 vi.mock('../src/marketing/CatGlyph', () => ({ CatGlyph: () => createElement('span') }));
 vi.mock('../src/pwa/PwaControls', () => ({ PwaControls: () => null }));
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (original) => ({
+  ...(await original<typeof import('next/navigation')>()),
   usePathname: () => '/app',
   useRouter: () => ({ back: () => {}, replace: () => {} }),
   useSearchParams: () => new URLSearchParams(),
@@ -25,7 +26,7 @@ describe('Next migration inventory', () => {
     '%s has its own App Router entry for %s',
     (path, view) => {
       // The signed-in screens share the (account) layout; the URL is the same.
-      const file = resolve(`src/app/(es)/(account)${path}/page.tsx`);
+      const file = resolve(`src/app/(app)/[locale]/(account)${path}/page.tsx`);
       expect(existsSync(file)).toBe(true);
       expect(readFileSync(file, 'utf8')).toContain(`view="${view}"`);
     },
@@ -45,17 +46,15 @@ describe('Next migration inventory', () => {
       );
     }
   });
-  it('preserves existing query parameters and replaces the locale once', () => {
-    expect(localizedPath('/move?flow=receive&lang=es', 'en')).toBe('/move?flow=receive&lang=en');
-    expect(localizedPath('/move?flow=receive&lang=en', 'es')).toBe('/move?flow=receive');
-  });
   it.each(['/pay/[linkId]'])('does not revive the retired payment link API for %s', (path) => {
-    expect(existsSync(resolve(`src/app/(es)${path}/page.tsx`))).toBe(false);
+    expect(existsSync(resolve(`src/app/(app)/[locale]${path}/page.tsx`))).toBe(false);
     expect(consumerRoutes).not.toHaveProperty(path);
     expect(readFileSync('src/app/[...missing]/route.ts', 'utf8')).toContain('status: 404');
   });
   it('keeps the marketing receipt separate from consumer payment routes', () => {
-    expect(existsSync(resolve('src/app/(static)/pay/demo-cafe-norte/page.tsx'))).toBe(true);
+    expect(existsSync(resolve('src/app/(static)/[locale]/pay/demo-cafe-norte/page.tsx'))).toBe(
+      true,
+    );
     expect(consumerRoutes).not.toHaveProperty('/pay/demo-cafe-norte');
     expect(parseConsumerQr('/pay/demo-cafe-norte', 'https://gatopago.com')).toBeNull();
   });
@@ -166,7 +165,7 @@ describe('Untrusted QR review', () => {
 });
 
 describe('Return after signing in', () => {
-  it.each(['/pay/pi_0123456789abcdef0123456789abcdef', '/send?username=maria&lang=en'])(
+  it.each(['/pay/pi_0123456789abcdef0123456789abcdef', '/send?username=maria'])(
     'continues to %s',
     (path) => expect(safeNext(path)).toBe(path),
   );

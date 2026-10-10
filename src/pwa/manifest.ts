@@ -1,8 +1,12 @@
 import type { Metadata, MetadataRoute, Viewport } from 'next';
 
+/**
+ * The brand's symbol on Milk, drawn in whole-pixel blocks (the kit's avatar recipe). The head
+ * keeps within Android's safe circle, so the same files serve as maskable icons.
+ */
 export const PWA_ICONS = {
-  small: '/pwa/meli-192-91b3cbaae29a.png',
-  large: '/pwa/meli-512-0d337e9a85f2.png',
+  small: '/pwa/gatopago-192-85b6c3aa8067.png',
+  large: '/pwa/gatopago-512-ab25daf8adfd.png',
 } as const;
 
 export const pwaMetadata: Metadata = {
@@ -32,7 +36,7 @@ export function pwaManifest(): MetadataRoute.Manifest {
     scope: '/',
     name: 'GatoPago',
     short_name: 'GatoPago',
-    description: 'Tus dólares digitales, bajo tu control.',
+    description: 'Dinero sin fronteras. Siempre tuyo.',
     display: 'standalone',
     background_color: '#fff8f0',
     theme_color: '#0b0b0f',
@@ -43,6 +47,8 @@ export function pwaManifest(): MetadataRoute.Manifest {
     icons: [
       { src: PWA_ICONS.small, sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: PWA_ICONS.large, sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: PWA_ICONS.small, sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+      { src: PWA_ICONS.large, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   };
 }

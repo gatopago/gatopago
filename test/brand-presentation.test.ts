@@ -9,7 +9,8 @@ import { PwaControls } from '../src/pwa/PwaControls';
 import { pwaMetadata } from '../src/pwa/manifest';
 import { withTexts } from './translations';
 
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (original) => ({
+  ...(await original<typeof import('next/navigation')>()),
   useRouter: () => ({}),
   usePathname: () => '/login',
   useSearchParams: () => new URLSearchParams(),

@@ -10,12 +10,12 @@ import { crosschainCalls, crosschainFee } from '@gatopago/shared/crosschain';
 import { walletNetwork } from '@gatopago/shared/networks';
 import { NavigationLink } from '../consumer/NavigationLink';
 import { BackHeader, MoneyPanel, TransactionActions } from '../consumer/Primitives';
-import { AmountInput, SelectMenu } from '../consumer/SelectMenu';
+import { AmountInput } from '../consumer/NormalizedInput';
+import { SelectMenu } from '../consumer/SelectMenu';
 import { CrosschainTimeline } from '../consumer/CrosschainTimeline';
 import { ConfirmDetails, ConfirmSheet, SigningDetails } from '../consumer/PaymentSheets';
 import { StageOverlay } from '../consumer/StageOverlay';
 import { TxResult } from '../consumer/TxResult';
-import { localizedPath } from '../consumer/routes';
 import type { ClientSettings } from '../lib/settings';
 import { cctpNetwork, networkName, USDC_DECIMALS } from './account';
 import { send } from './operations';
@@ -188,10 +188,7 @@ export function Crosschain({ settings, session }: { settings: ClientSettings; se
               }
             />
           </div>
-          <NavigationLink
-            href={localizedPath('/app', locale)}
-            className="btn btn-primary btn-block"
-          >
+          <NavigationLink href={'/app'} className="btn btn-primary btn-block">
             {t('goHome')}
           </NavigationLink>
           <button type="button" className="btn-text mt-1 w-full" onClick={() => setMoved(null)}>
@@ -311,10 +308,7 @@ export function Crosschain({ settings, session }: { settings: ClientSettings; se
                 {t.rich('receiveElsewhere', {
                   homeNetwork: networkName(settings.homeNetwork),
                   link: (chunks) => (
-                    <NavigationLink
-                      href={localizedPath('/receive', locale)}
-                      className="-my-3 inline-block py-3 underline"
-                    >
+                    <NavigationLink href={'/receive'} className="-my-3 inline-block py-3 underline">
                       {chunks}
                     </NavigationLink>
                   ),

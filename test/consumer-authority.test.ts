@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { RecoveryScreen } from '../src/consumer/AccountScreens';
 import { withTexts } from './translations';
 
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (original) => ({
+  ...(await original<typeof import('next/navigation')>()),
   usePathname: () => '/settings/security/recovery',
   useRouter: () => ({ back: () => {}, replace: () => {} }),
   useSearchParams: () => new URLSearchParams(),
@@ -23,7 +24,7 @@ describe('Consumer authority: one key, optional equivalent backups, no guardian 
       expect(html).not.toContain(
         english ? 'Review my recovery policy' : 'Revisar mi política de recuperación',
       );
-      expect(html).toContain('href="/settings/security');
+      expect(html).toContain(`href="${english ? '/en' : ''}/settings/security`);
     },
   );
 });

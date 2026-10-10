@@ -7,7 +7,8 @@ import { isAddress, isAddressEqual, type Address, type Hex } from 'viem';
 import { exactUnits, tooPrecise } from '../lib/amount';
 import { useFailureMessage } from './messages';
 import { BackHeader, MoneyPanel, TransactionActions } from '../consumer/Primitives';
-import { AmountInput, SelectMenu } from '../consumer/SelectMenu';
+import { AmountInput, UsernameInput } from '../consumer/NormalizedInput';
+import { SelectMenu } from '../consumer/SelectMenu';
 import { RecipientShortcuts } from '../consumer/RecipientShortcuts';
 import { TokenIcon } from '../consumer/TokenIcon';
 import type { ClientSettings } from '../lib/settings';
@@ -28,7 +29,6 @@ import {
   type ReceiptData,
 } from '../consumer/PaymentSheets';
 import { NavigationLink } from '../consumer/NavigationLink';
-import { localizedPath } from '../consumer/routes';
 import { CrosschainTimeline } from '../consumer/CrosschainTimeline';
 import { StageOverlay } from '../consumer/StageOverlay';
 import type { Session } from './session';
@@ -332,10 +332,7 @@ export function Send({ settings, session }: { settings: ClientSettings; session:
               />
             </div>
           ) : null}
-          <NavigationLink
-            href={localizedPath('/app', locale)}
-            className="btn btn-ghost btn-block mt-4"
-          >
+          <NavigationLink href={'/app'} className="btn btn-ghost btn-block mt-4">
             {t('goHome')}
           </NavigationLink>
           <button
@@ -448,30 +445,31 @@ export function Send({ settings, session }: { settings: ClientSettings; session:
                   @
                 </span>
               ) : null}
-              <input
-                name="destination"
-                autoComplete="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                aria-label={destination === 'address' ? 'Wallet' : t('usernameLabel')}
-                placeholder={
-                  destination === 'username'
-                    ? t('usernameWord')
-                    : xlm || networkId === stellarId
-                      ? 'G… / C…'
-                      : '0x…'
-                }
-                value={recipient}
-                disabled={busy}
-                onChange={(event) =>
-                  setRecipient(
-                    destination === 'username'
-                      ? event.target.value.replace(/[^a-z0-9_]/gi, '').toLowerCase()
-                      : event.target.value.trim(),
-                  )
-                }
-                className={`meli-field h-12 text-[15px] placeholder:text-text-faint ${destination === 'address' ? 'font-mono text-[13px]' : '!pl-8'}`}
-              />
+              {destination === 'username' ? (
+                <UsernameInput
+                  name="destination"
+                  autoComplete="off"
+                  aria-label={t('usernameLabel')}
+                  placeholder={t('usernameWord')}
+                  value={recipient}
+                  disabled={busy}
+                  onChange={setRecipient}
+                  className="meli-field h-12 text-[15px] placeholder:text-text-faint !pl-8"
+                />
+              ) : (
+                <input
+                  name="destination"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  aria-label="Wallet"
+                  placeholder={xlm || networkId === stellarId ? 'G… / C…' : '0x…'}
+                  value={recipient}
+                  disabled={busy}
+                  onChange={(event) => setRecipient(event.target.value.trim())}
+                  className="meli-field h-12 text-[15px] placeholder:text-text-faint font-mono text-[13px]"
+                />
+              )}
             </div>
             {destination === 'username' ? (
               <RecipientShortcuts

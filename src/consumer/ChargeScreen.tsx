@@ -18,8 +18,7 @@ import { downloadCard, shareCard } from './exportCard';
 import { NavigationLink } from './NavigationLink';
 import { Receipt } from './PaymentSheets';
 import { BackHeader, MoneyPanel, SectionLabel, TransactionActions } from './Primitives';
-import { localizedPath } from './routes';
-import { AmountInput } from './SelectMenu';
+import { AmountInput } from './NormalizedInput';
 import { RowSkeletonList } from './Skeleton';
 import { TokenIcon } from './TokenIcon';
 import { useTranslations, useLocale } from 'next-intl';
@@ -305,7 +304,7 @@ export function ChargeScreen({
         <p className="mb-4 text-center text-[12px] text-text-muted">
           {t.rich('withoutAmountLinkUses', {
             link: (chunks) => (
-              <NavigationLink href={localizedPath('/profile', locale)} className="underline">
+              <NavigationLink href={'/profile'} className="underline">
                 {chunks}
               </NavigationLink>
             ),
@@ -415,10 +414,7 @@ export function ChargeScreen({
           }}
           action={
             <NavigationLink
-              href={localizedPath(
-                `/team?${new URLSearchParams({ split: paid.amount, reference: paid.description ?? '' })}`,
-                locale,
-              )}
+              href={`/team?${new URLSearchParams({ split: paid.amount, reference: paid.description ?? '' })}`}
               className="btn-text mt-2 w-full text-[#fff8f0]"
             >
               {t('splitPaymentAmongSeveral')}

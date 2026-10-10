@@ -12,7 +12,6 @@ import { balanceHidden, rememberBalanceHidden } from '../consumer/PaymentSheets'
 import { TokenSelect } from '../consumer/TokenSelect';
 import { Skeleton } from '../consumer/Skeleton';
 import { NavigationLink } from '../consumer/NavigationLink';
-import { localizedPath } from '../consumer/routes';
 import type { ClientSettings } from '../lib/settings';
 import { networkName } from './account';
 import { formatBalance, formatHolding, useBalances } from './balances';
@@ -153,7 +152,7 @@ export function Home({ settings, session }: { settings: ClientSettings; session:
         </div>
         {growing ? (
           <NavigationLink
-            href={localizedPath('/earn', locale)}
+            href={'/earn'}
             className="mt-4 flex items-center justify-between gap-3 border-t border-[rgb(255_248_240/.14)] pt-3 text-[12px]"
           >
             <span className="flex items-center gap-2 text-text-muted">
@@ -179,7 +178,7 @@ export function Home({ settings, session }: { settings: ClientSettings; session:
         {actions.map((item) => (
           <NavigationLink
             key={item.href}
-            href={localizedPath(item.href, locale)}
+            href={item.href}
             className="meli-quick-action interactive-surface"
           >
             <span>
@@ -195,7 +194,7 @@ export function Home({ settings, session }: { settings: ClientSettings; session:
             {t('recentActivity')}
           </h2>
           <NavigationLink
-            href={localizedPath('/statement', locale)}
+            href={'/statement'}
             className="btn-text min-h-11 text-[13px] text-cat-700"
           >
             {t('seeAll')}
@@ -205,7 +204,7 @@ export function Home({ settings, session }: { settings: ClientSettings; session:
       </section>
       {growing ? null : (
         <NavigationLink
-          href={localizedPath('/earn', locale)}
+          href={'/earn'}
           className="meli-paper-card meli-paper-card--strong interactive-surface relative mt-6 grid grid-cols-[1fr_76px] items-center gap-3 overflow-hidden p-4 text-left"
         >
           <span>

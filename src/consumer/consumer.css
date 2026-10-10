@@ -1237,3 +1237,34 @@
     opacity: 0;
   }
 }
+
+/*
+ * Small phones (360 px, like a Galaxy S23): denser lists and titles, so the same content takes less
+ * of the screen. Last in the file, so it wins over each component's own sizes; touch targets stay
+ * at 40 px or more.
+ */
+@media (max-width: 389px) {
+  .consumer-ui .tab-header {
+    margin-bottom: 16px;
+  }
+  .consumer-ui .tab-header__title {
+    font-size: 26px;
+  }
+  .consumer-ui .tab-header .meli-sprite {
+    width: 60px;
+  }
+  .consumer-ui .meli-path-card-app {
+    min-height: 72px;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+  .consumer-ui .meli-path-card-app > :first-child {
+    width: 40px;
+    height: 40px;
+  }
+  .consumer-ui .activity-row > :first-child {
+    width: 36px;
+    height: 36px;
+  }
+}

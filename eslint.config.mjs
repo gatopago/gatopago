@@ -25,4 +25,6 @@ export default defineConfig([
     plugins: { 'react-hooks': hooks, '@next/next': next },
     rules: { ...hooks.configs.recommended.rules, ...next.configs['core-web-vitals'].rules },
   },
+  // The shared-link cards are drawn by Satori, which takes plain <img> tags, never next/image.
+  { files: ['src/og/**'], rules: { '@next/next/no-img-element': 'off' } },
 ]);

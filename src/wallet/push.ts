@@ -45,6 +45,9 @@ export async function pushSupported(settings: ClientSettings) {
 export const pushEnabled = () =>
   'Notification' in window && Notification.permission === 'granted' && stored() !== null;
 
+/** How long the PWA's worker may take to activate before turning notifications on fails. */
+const WORKER_WAIT_MS = 15_000;
+
 async function register(settings: ClientSettings, session: Session, locale: Locale) {
   const push = settings.push!;
   const [{ initializeApp, getApps }, { getMessaging, getToken }] = await Promise.all([
@@ -52,10 +55,18 @@ async function register(settings: ClientSettings, session: Session, locale: Loca
     import('firebase/messaging'),
   ]);
   const app = getApps()[0] ?? initializeApp(push.firebase);
-  // The PWA's worker receives the pushes (public/sw.js); Firebase only creates the subscription.
-  const registration =
-    (await navigator.serviceWorker.getRegistration('/')) ??
-    (await navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }));
+  // The PWA's worker receives the pushes (public/sw.js); Firebase only creates the subscription,
+  // which needs that worker active: right after installing or updating it may not be yet.
+  if (!(await navigator.serviceWorker.getRegistration('/')))
+    await navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' });
+  // `ready` never fails: a worker that cannot activate would leave the button waiting forever.
+  let waiting: ReturnType<typeof setTimeout> | undefined;
+  const registration = await Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, reject) => {
+      waiting = setTimeout(() => reject(new Error('WORKER_NOT_READY')), WORKER_WAIT_MS);
+    }),
+  ]).finally(() => clearTimeout(waiting));
   const token = await getToken(getMessaging(app), {
     vapidKey: push.vapidKey,
     serviceWorkerRegistration: registration,
@@ -83,11 +94,25 @@ async function register(settings: ClientSettings, session: Session, locale: Loca
   return true;
 }
 
+/**
+ * How turning notifications on ended: `dismissed` when the person closed the browser's prompt
+ * without answering (asking again is enough), `blocked` when the browser denied the permission
+ * (only its settings change that), `failed` when it was given but Firebase or GatoPago could not
+ * register this device.
+ */
+export type PushOutcome = 'on' | 'dismissed' | 'blocked' | 'failed';
+
 /** Asks for permission and registers this device. Call it from a tap (browsers require it). */
-export async function enablePush(settings: ClientSettings, session: Session, locale: Locale) {
-  if (!(await pushSupported(settings))) return false;
-  if ((await Notification.requestPermission()) !== 'granted') return false;
-  return register(settings, session, locale);
+export async function enablePush(
+  settings: ClientSettings,
+  session: Session,
+  locale: Locale,
+): Promise<PushOutcome> {
+  if (!(await pushSupported(settings))) return 'failed';
+  const permission = await Notification.requestPermission();
+  if (permission === 'denied') return 'blocked';
+  if (permission !== 'granted') return 'dismissed';
+  return (await register(settings, session, locale).catch(() => false)) ? 'on' : 'failed';
 }
 
 /**

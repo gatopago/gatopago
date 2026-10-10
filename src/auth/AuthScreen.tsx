@@ -1,15 +1,16 @@
 'use client';
 
 import { useSyncExternalStore, type ReactNode } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { useRouter } from '../i18n/navigation';
 import { ConsumerFrame } from '../consumer/ConsumerFrame';
 import { NavigationLink } from '../consumer/NavigationLink';
-import { localizedPath, safeNext } from '../consumer/routes';
+import { safeNext } from '../consumer/routes';
 import type { ClientSettings } from '../lib/settings';
 import { currentSession, signOut, subscribeSession } from '../wallet/session';
 import { PasskeyAccess } from './PasskeyAccess';
 import { ScreenLoading } from '../consumer/Skeleton';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 
 /** `/login`: sign in or create an account with a passkey. The signed-in app is `AccountShell`. */
 export function AuthScreen({
@@ -21,7 +22,6 @@ export function AuthScreen({
   art: ReactNode;
 }) {
   const t = useTranslations('Auth');
-  const locale = useLocale();
   const router = useRouter();
   // The session lives in this browser: unknown while rendering on the server.
   const session = useSyncExternalStore(subscribeSession, currentSession, () => undefined);
@@ -36,7 +36,7 @@ export function AuthScreen({
           <section>
             <NavigationLink
               className="auth-primary btn btn-primary btn-block"
-              href={next ?? localizedPath('/app', locale)}
+              href={next ?? '/app'}
             >
               {next ? t('continue') : t('continueMyAccount')}
             </NavigationLink>
@@ -47,9 +47,7 @@ export function AuthScreen({
         ) : (
           <PasskeyAccess
             settings={settings}
-            onSignedIn={(path) =>
-              router.replace(path === '/app' && next ? next : localizedPath(path, locale))
-            }
+            onSignedIn={(path) => router.replace(path === '/app' && next ? next : path)}
           />
         )}
       </AccessContent>

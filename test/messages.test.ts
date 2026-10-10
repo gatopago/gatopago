@@ -69,9 +69,10 @@ describe('the texts in the browser', () => {
 
   it('come from the layouts, in one language: nothing the browser loads imports a catalog', () => {
     const code = new Map(sources);
-    // The catalogs, next-intl's request configuration and its server functions.
+    // The catalogs, next-intl's request configuration and its server functions (its routing and
+    // navigation are for the browser).
     const catalog =
-      /from '[^']*(messages\/[^']*\.json|\/i18n\/[^']*)'|from 'next-intl\/server'|import\(`[^`]*messages\//;
+      /from '[^']*(messages\/[^']*\.json|\/i18n\/(request|messages))'|from 'next-intl\/server'|import\(`[^`]*messages\//;
     const resolve = (from: string, specifier: string) => {
       const base = join(dirname(from), specifier).replaceAll('\\', '/');
       return [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`].find((name) => code.has(name));

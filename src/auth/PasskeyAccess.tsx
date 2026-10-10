@@ -4,10 +4,9 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { useAction } from '../wallet/useAction';
 import type { ClientSettings } from '../lib/settings';
 import { api } from '../wallet/api';
-import { newAccountWallet } from '../wallet/passkey';
 import type { Wallet } from '../wallet/session';
-import { enter as enterWithPasskey, signIn } from '../wallet/signIn';
 import { Turnstile, type TurnstileHandle } from './Turnstile';
+import { UsernameInput } from '../consumer/NormalizedInput';
 import { PixelRail } from '../consumer/PixelRail';
 import { StageOverlay } from '../consumer/StageOverlay';
 import { MeliSprite } from '../marketing/MeliSprite';
@@ -68,14 +67,28 @@ export function PasskeyAccess({
     };
   }, [settings.apiOrigin]);
   const verification = useRef<TurnstileHandle>(null);
-  // Mera loads after the page shows, so the passkey prompt opens right on the tap.
+  /**
+   * The passkey and wallet code (Mera, viem, the SDK) loads after the page shows, so the screen comes
+   * up sooner. The buttons that open the passkey prompt wait for it: the prompt has to open right on
+   * the tap (Safari cancels one opened later). If it fails to load, a tap tries again and says why.
+   */
+  const [ready, setReady] = useState(false);
   useEffect(() => {
-    void import('../wallet/mera');
+    let active = true;
+    Promise.all([import('../wallet/signIn'), import('../wallet/mera')])
+      .catch(() => {})
+      .finally(() => {
+        if (active) setReady(true);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   /** The phone lists its passkeys: whichever account is chosen signs in. */
   function enter() {
     perform(async () => {
+      const { enter: enterWithPasskey } = await import('../wallet/signIn');
       await enterWithPasskey(
         settings,
         () => new Promise((resolve, reject) => setVerifying({ resolve, reject })),
@@ -99,6 +112,10 @@ export function PasskeyAccess({
     const checker = verification.current;
     if (!checker) return;
     perform(async () => {
+      const [{ newAccountWallet }, { signIn }] = await Promise.all([
+        import('../wallet/passkey'),
+        import('../wallet/signIn'),
+      ]);
       const wallet = created ?? (await newAccountWallet(settings, username));
       setCreated(wallet);
       const turnstile = await checker.token(AbortSignal.timeout(60_000));
@@ -145,7 +162,7 @@ export function PasskeyAccess({
           <button
             type="button"
             className="auth-primary btn btn-primary btn-block"
-            disabled={busy}
+            disabled={busy || !ready}
             onClick={enter}
           >
             {busy ? t('signing') : t('sign')}
@@ -212,19 +229,15 @@ export function PasskeyAccess({
               <span className="mb-2 block">{t('username')}</span>
               <span className="flex h-12 items-center gap-1 border-2 border-text bg-surface px-3.5">
                 <span className="text-[15px] text-text-faint">@</span>
-                <input
+                <UsernameInput
                   autoComplete="username"
-                  autoCapitalize="none"
-                  spellCheck={false}
                   required
                   pattern="[a-z][a-z0-9_]{2,29}"
                   maxLength={30}
                   value={username}
                   disabled={busy || created !== null}
                   aria-describedby="username-help"
-                  onChange={(event) =>
-                    setUsername(event.target.value.replace(/[^a-z0-9_]/gi, '').toLowerCase())
-                  }
+                  onChange={setUsername}
                   className="min-w-0 flex-1 bg-transparent text-[15px] text-text"
                 />
               </span>
@@ -274,7 +287,7 @@ export function PasskeyAccess({
           </div>
           <div className="mt-2 flex w-full flex-col items-center gap-4">
             <Turnstile ref={verification} siteKey={settings.turnstileSiteKey} />
-            <button className="btn btn-primary btn-block" disabled={busy} type="submit">
+            <button className="btn btn-primary btn-block" disabled={busy || !ready} type="submit">
               {busy
                 ? t('creatingAccount')
                 : created

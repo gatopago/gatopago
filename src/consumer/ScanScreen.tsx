@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '../i18n/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { walletNetwork } from '@gatopago/shared/networks';
 import type { ClientSettings } from '../lib/settings';
@@ -12,12 +12,11 @@ import { AddressQRCard } from './AddressQRCard';
 import { openScanCamera, qrDetector } from './camera';
 import { BackHeader, MoneyPanel, NoticeCard, SectionLabel, TransactionActions } from './Primitives';
 import { parseConsumerQr, qrReviewPath } from './qr';
-import { localizedPath } from './routes';
 import { NavigationLink } from './NavigationLink';
 import { PixelRail } from './PixelRail';
 import { SelectMenu } from './SelectMenu';
 import { MeliSprite } from '../marketing/MeliSprite';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 
 type Scanned = { address: string; chain: string | null };
 
@@ -28,7 +27,6 @@ export default function ScanScreen({
   settings: ClientSettings;
   session: Session;
 }) {
-  const locale = useLocale();
   const t = useTranslations('Scan');
   const router = useRouter();
   const [view, setView] = useState<'scan' | 'myqr'>('scan');
@@ -57,10 +55,10 @@ export default function ScanScreen({
       const parsed = found?.kind === 'stellar' && !settings.stellar ? null : found;
       setError(parsed ? '' : found ? t('qrStellarAddressStellar') : t('qrNoAddressGatopago'));
       if (parsed?.kind === 'address') setScanned(parsed);
-      else if (parsed) router.push(localizedPath(qrReviewPath(parsed), locale));
+      else if (parsed) router.push(qrReviewPath(parsed));
       return !!parsed;
     },
-    [t, locale, router, settings.stellar],
+    [t, router, settings.stellar],
   );
   /** Reads a QR from an image, or from the centered square the preview shows (`square`). */
   const decode = useCallback(
@@ -312,7 +310,7 @@ export default function ScanScreen({
             >
               {reading ? t('readingPhoto') : t('choosePhotoQr')}
             </button>
-            <NavigationLink href={localizedPath('/send', locale)} className="btn-text w-full">
+            <NavigationLink href={'/send'} className="btn-text w-full">
               {t('sendWithoutQr')}
             </NavigationLink>
           </div>
@@ -385,7 +383,6 @@ function Review({
   settings: ClientSettings;
   onRestart: () => void;
 }) {
-  const locale = useLocale();
   const t = useTranslations('Scan');
   const requested = scanned.chain ? `eip155:${scanned.chain}` : null;
   const supported = !requested || settings.networks.includes(requested);
@@ -427,10 +424,7 @@ function Review({
         </NoticeCard>
       ) : null}
       <TransactionActions>
-        <NavigationLink
-          href={localizedPath(`/send?${transfer}`, locale)}
-          className="btn btn-primary btn-block"
-        >
+        <NavigationLink href={`/send?${transfer}`} className="btn btn-primary btn-block">
           {t('continueTransfer')}
         </NavigationLink>
         <button type="button" onClick={onRestart} className="btn btn-ghost btn-block mt-3">

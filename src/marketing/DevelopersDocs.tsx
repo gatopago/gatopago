@@ -1,9 +1,8 @@
-import Link from 'next/link';
+import { Link } from '../i18n/navigation';
 import type { Locale } from 'next-intl';
 import type { ReactNode } from 'react';
 import { CatGlyph } from './CatGlyph';
 import { CodeBlock } from './CodeBlock';
-import { LanguageLink } from '../lib/LanguageLink';
 import { getTranslations } from 'next-intl/server';
 import './docs.css';
 
@@ -118,7 +117,7 @@ export function verifyGatoPago(rawBody, header, secret) {
     <div className="min-h-dvh bg-canvas text-text">
       <header className="sticky top-0 z-10 border-b border-border bg-canvas/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
-          <Link href={en ? '/en#api' : '/#api'} className="flex items-center gap-2.5">
+          <Link href="/#api" className="flex items-center gap-2.5">
             <CatGlyph className="w-7" decorative />
             <span className="font-display text-[17px] font-bold">GatoPago</span>
             <span className="border border-border px-1.5 py-0.5 font-mono text-[10px] tracking-[0.1em] text-cat-700 uppercase">
@@ -126,13 +125,13 @@ export function verifyGatoPago(rawBody, header, secret) {
             </span>
           </Link>
           <nav className="flex items-center gap-2">
-            <LanguageLink
-              href={en ? '/docs' : '/en/docs'}
-              language={en ? 'es' : 'en'}
+            <Link
+              href="/docs"
+              locale={en ? 'es' : 'en'}
               className="flex min-h-10 items-center border border-border px-3 font-mono text-[13px]"
             >
               {t('otherLanguage')}
-            </LanguageLink>
+            </Link>
             <a
               href={consoleHref}
               className="hidden min-h-10 items-center border-2 border-cat-500 bg-cat-500 px-4 text-[14px] font-bold shadow-[3px_3px_0_var(--color-cat-700)] sm:flex"
@@ -272,7 +271,7 @@ export function verifyGatoPago(rawBody, header, secret) {
             >
               {t('createKey')}
             </a>
-            <Link href={en ? '/en' : '/'} className="text-[14px] text-text-muted underline">
+            <Link href="/" className="text-[14px] text-text-muted underline">
               {t('back')}
             </Link>
           </div>

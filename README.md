@@ -110,11 +110,11 @@ Core's `FIREBASE_SERVICE_ACCOUNT` from the same project.
 Pages are served with a per-request CSP nonce that allows connections only to Wallet Core and Flow,
 the networks' RPCs (Stellar's when it is on), Circle's Iris API and, when notifications are configured, Firebase. Installing the PWA is optional; its service worker caches only public assets.
 
-The public pages (landing, `/docs`, legal and the payment example, in `app/(static)` and
-`app/(en)`) are prerendered and cached by the CDN. They carry no session and nothing a visitor
+The public pages (landing, `/docs`, legal and the payment example, in `app/(static)/[locale]`) are
+prerendered in both languages and cached by the CDN. They carry no session and nothing a visitor
 writes, so they get a static CSP without a nonce: inline scripts from this site only, no other
 origin and no eval (`src/security/static-pages.ts`; a test keeps its list equal to those pages).
-Each language has its own path there (`/docs`, `/en/docs`); `?lang=en` redirects to it.
+The app (`app/(app)/[locale]`) renders per request with a nonce CSP.
 
 Texts are in Spanish and English with [next-intl](https://next-intl.dev) and its plugin, one
 catalog per language in `src/messages/{es,en}.json`: `useTranslations` in client components,
@@ -122,6 +122,12 @@ catalog per language in `src/messages/{es,en}.json`: `useTranslations` in client
 the request, and each layout hands its client components only the namespaces they read
 (`src/i18n/messages.ts`): the public pages' texts never reach the app, and no client module imports
 a catalog. Keys are checked when compiling, and `test/messages.test.ts` keeps both languages with
-the same keys and values. The app's pages take their language from `?lang=en`; a first visit from a
-browser that does not prefer Spanish is sent to the English version, unless the visitor already
-chose a language with the switch (cookie `gatopago-language`, see `src/proxy.ts`).
+the same keys and values.
+
+Every page has an address per language, with next-intl's routing (`src/i18n/routing.ts`, run by
+`src/proxy.ts`): Spanish at the site's own addresses (`/send`), English under `/en` (`/en/send`).
+Links and navigation come from `src/i18n/navigation.ts`, which adds the prefix. An address without
+a language follows the browser on a first visit (Spanish when it says nothing, as crawlers do); a
+language chosen with the switch, or an `/en` link opened, is kept in next-intl's cookie
+(`NEXT_LOCALE`) and wins from then on. Links from before English had its own addresses
+(`/statement?lang=en`) redirect to `/en/…`.

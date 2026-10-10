@@ -11,7 +11,8 @@ import { PrimaryNav } from '../src/consumer/PrimaryNav';
 import { MoveMenu } from '../src/consumer/MoveMenu';
 
 let searchParams = new URLSearchParams();
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (original) => ({
+  ...(await original<typeof import('next/navigation')>()),
   usePathname: () => '/send',
   useRouter: () => ({ back: () => {}, replace: () => {} }),
   useSearchParams: () => searchParams,
@@ -24,11 +25,11 @@ vi.mock('../src/marketing/MeliSprite', () => ({
 describe('Consumer presentation migration', () => {
   it('restores the four V2 navigation sections', () => {
     const html = renderToStaticMarkup(withTexts(createElement(PrimaryNav), 'en'));
-    expect(html).toContain('href="/app?lang=en"');
-    expect(html).toContain('href="/move?lang=en"');
-    expect(html).toContain('href="/statement?lang=en"');
+    expect(html).toContain('href="/en/app"');
+    expect(html).toContain('href="/en/move"');
+    expect(html).toContain('href="/en/statement"');
     expect(html).toContain('aria-current="page"');
-    expect(html).toContain('href="/earn?lang=en"');
+    expect(html).toContain('href="/en/earn"');
   });
   it('opens receiving from Move with a request or the account', () => {
     searchParams = new URLSearchParams('flow=receive');
@@ -75,7 +76,7 @@ describe('Consumer presentation migration', () => {
       expect(html).toContain(locale === 'en' ? 'aria-label="Back"' : 'aria-label="Volver"');
       // Security lives in the menu only, not repeated in Settings.
       expect(html).not.toContain('/settings/security');
-      expect(html).toContain(`href="/settings${locale === 'en' ? '' : '?lang=en'}"`);
+      expect(html).toContain(`href="/${locale === 'en' ? 'es' : 'en'}/settings"`);
       expect(html).toContain('meli-paper-card');
       expect(html).not.toContain('workers.dev');
     }

@@ -14,10 +14,9 @@ import type { Session } from '../wallet/session';
 import { useAction } from '../wallet/useAction';
 import { NavigationLink } from './NavigationLink';
 import { BackHeader, MoneyPanel, NoticeCard, TransactionActions } from './Primitives';
-import { localizedPath } from './routes';
 import { StageOverlay } from './StageOverlay';
 import { TxResult } from './TxResult';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 
 /** A sign-in request of GatoPago Business: 32 hex characters, from the console's QR. */
 export const businessRequest = (value: string | null) =>
@@ -81,7 +80,6 @@ function ApproveRequest({
   session: Session;
 }) {
   const messageFor = useFailureMessage();
-  const locale = useLocale();
   const t = useTranslations('Approve');
   const [login, setLogin] = useState<Login | null>(null);
   const [state, setState] = useState<'reading' | 'ready' | 'approved' | 'expired'>(
@@ -145,7 +143,7 @@ function ApproveRequest({
   }
 
   const home = (
-    <NavigationLink href={localizedPath('/app', locale)} className="btn btn-primary btn-block mt-6">
+    <NavigationLink href={'/app'} className="btn btn-primary btn-block mt-6">
       {t('goHome')}
     </NavigationLink>
   );
@@ -230,7 +228,7 @@ function ApproveRequest({
         >
           {t('approve')}
         </button>
-        <NavigationLink href={localizedPath('/app', locale)} className="btn-text mt-1 w-full">
+        <NavigationLink href={'/app'} className="btn-text mt-1 w-full">
           {t('notMe')}
         </NavigationLink>
       </TransactionActions>

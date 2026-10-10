@@ -1,7 +1,6 @@
 'use client';
 
-import { useId, useRef, useState, type InputHTMLAttributes } from 'react';
-import { amountInput } from '../lib/amount';
+import { useId, useRef, useState } from 'react';
 import { ChevronDownIcon } from './Icons';
 import { Sheet } from './Sheet';
 import { NetworkIcon } from './TokenIcon';
@@ -115,34 +114,6 @@ export function SelectMenu({
         </Sheet>
       ) : null}
     </div>
-  );
-}
-
-/**
- * Amount entry for every mobile keyboard: a decimal keypad that may only offer a comma. What it
- * keeps is decided by `amountInput`: a typed or pasted amount is kept as meant, or refused.
- */
-export function AmountInput({
-  value,
-  onChange,
-  ...props
-}: Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'inputMode' | 'value' | 'onChange'> & {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <input
-      {...props}
-      type="text"
-      inputMode="decimal"
-      autoComplete="off"
-      value={value}
-      onChange={(event) => {
-        // What would mean another number is refused: the field keeps the previous value.
-        const next = amountInput(event.target.value);
-        if (next !== null) onChange(next);
-      }}
-    />
   );
 }
 

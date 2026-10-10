@@ -3,8 +3,7 @@
 import { AddressQRCard } from './AddressQRCard';
 import { NavigationLink } from './NavigationLink';
 import { Sheet } from './Sheet';
-import { localizedPath } from './routes';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 
 /** The account at a glance, from the header: its QR and address. The profile is in the menu. */
 export function AccountDetailsSheet({
@@ -14,7 +13,6 @@ export function AccountDetailsSheet({
   address: string;
   onClose: () => void;
 }) {
-  const locale = useLocale();
   const t = useTranslations('AccountDetailsSheet');
   return (
     <Sheet titleId="account-details-title" onClose={onClose}>
@@ -26,7 +24,7 @@ export function AccountDetailsSheet({
         {t.rich('exchangeHint', {
           link: (chunks) => (
             <NavigationLink
-              href={localizedPath('/receive', locale)}
+              href={'/receive'}
               onClick={onClose}
               className="-my-3 inline-block py-3 font-semibold text-cat-700 underline underline-offset-2"
             >

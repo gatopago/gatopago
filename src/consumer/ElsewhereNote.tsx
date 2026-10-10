@@ -7,7 +7,6 @@ import { cctpNetwork, networkName } from '../wallet/account';
 import { formatBalance, useBalances } from '../wallet/balances';
 import type { Session } from '../wallet/session';
 import { NavigationLink } from './NavigationLink';
-import { localizedPath } from './routes';
 import { NetworkIcon } from './TokenIcon';
 import { useTranslations, useLocale } from 'next-intl';
 
@@ -98,7 +97,6 @@ function BringLink({
   className: string;
   children: ReactNode;
 }) {
-  const locale = useLocale();
   // `null` when Circle could not say: that does not hide the link (the move screen checks again).
   const [fee, setFee] = useState<bigint | null>(null);
   useEffect(() => {
@@ -113,7 +111,7 @@ function BringLink({
   if (fee !== null && amount <= fee) return null;
   return (
     <NavigationLink
-      href={localizedPath(`/crosschain?from=${encodeURIComponent(from)}`, locale)}
+      href={`/crosschain?from=${encodeURIComponent(from)}`}
       className={`font-semibold text-cat-700 underline underline-offset-2 ${className}`}
     >
       {children}

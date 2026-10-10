@@ -1,5 +1,4 @@
-import Link from 'next/link';
-import { LanguageLink } from '../lib/LanguageLink';
+import { Link } from '../i18n/navigation';
 import type { Locale } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 
@@ -30,16 +29,16 @@ export async function LegalDocument({ kind, lang }: { kind: 'terms' | 'privacy';
   return (
     <div className="min-h-dvh bg-canvas text-text">
       <header className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-8">
-        <Link href={en ? '/en' : '/'} className="font-display text-xl font-bold">
+        <Link href="/" className="font-display text-xl font-bold">
           GatoPago
         </Link>
-        <LanguageLink
-          href={en ? `/${kind}` : `/en/${kind}`}
-          language={en ? 'es' : 'en'}
+        <Link
+          href={`/${kind}`}
+          locale={en ? 'es' : 'en'}
           className="border-2 border-text p-3 font-mono text-sm"
         >
           {t.otherLanguage}
-        </LanguageLink>
+        </Link>
       </header>
       <main id="main-content" className="mx-auto max-w-3xl px-6 pb-16 leading-relaxed">
         <aside className="mb-8 border-l-4 border-info bg-info/10 p-4 text-sm" role="note">
@@ -63,7 +62,7 @@ export async function LegalDocument({ kind, lang }: { kind: 'terms' | 'privacy';
             ) : null}
           </section>
         ))}
-        <Link href={en ? '/en' : '/'} className="mt-10 inline-block underline underline-offset-4">
+        <Link href="/" className="mt-10 inline-block underline underline-offset-4">
           {t.back}
         </Link>
       </main>

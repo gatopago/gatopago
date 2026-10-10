@@ -16,7 +16,6 @@ import {
   SigningDetails,
 } from '../consumer/PaymentSheets';
 import { MoneyPanel, SectionLabel, TransactionActions } from '../consumer/Primitives';
-import { localizedPath } from '../consumer/routes';
 import { SelectMenu } from '../consumer/SelectMenu';
 import { ScreenLoading } from '../consumer/Skeleton';
 import { StageOverlay } from '../consumer/StageOverlay';
@@ -123,7 +122,7 @@ function Request({
     paidHere ||
     (!!session && !!payment?.payer && isAddressEqual(payment.payer, session.wallet.address));
   const home = (
-    <NavigationLink href={localizedPath('/app', locale)} className="btn btn-ghost btn-block mt-4">
+    <NavigationLink href={'/app'} className="btn btn-ghost btn-block mt-4">
       {t('goHome')}
     </NavigationLink>
   );
@@ -217,10 +216,7 @@ function Pay({
   const [hasWallet] = useState(() => typeof window !== 'undefined' && 'ethereum' in window);
   const amount = parseUnits(intent.amount, USDC_DECIMALS);
   // Signing in comes back to this payment.
-  const signIn = localizedPath(
-    `/login?next=${encodeURIComponent(localizedPath(`/pay/${intent.id}`, locale))}`,
-    locale,
-  );
+  const signIn = `/login?next=${encodeURIComponent(`/pay/${intent.id}`)}`;
   return (
     <>
       <MoneyPanel className="mb-6 flex flex-col items-center text-center">

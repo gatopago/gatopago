@@ -4,13 +4,11 @@ import type { ReactNode } from 'react';
 import { ChevronDownIcon } from './Icons';
 import { BackHeader, Panel } from './Primitives';
 import { NavigationLink } from './NavigationLink';
-import { localizedPath } from './routes';
 import { MeliSprite } from '../marketing/MeliSprite';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 
 /** `/settings/security/recovery`: how keys work, what to do if one is lost, and the questions. */
 export function RecoveryScreen() {
-  const locale = useLocale();
   const t = useTranslations('AccountScreens');
   return (
     <>
@@ -43,7 +41,7 @@ export function RecoveryScreen() {
             {t.rich('withoutAnyOtherKey', {
               link: (chunks) => (
                 <NavigationLink
-                  href={localizedPath('/settings/security', locale)}
+                  href={'/settings/security'}
                   className="-my-3 inline-block py-3 font-semibold text-cat-700 underline underline-offset-2"
                 >
                   {chunks}

@@ -16,7 +16,7 @@ import type { Session } from '../wallet/session';
 import { ElsewhereNote } from './ElsewhereNote';
 import { ConfirmSheet, SigningDetails } from './PaymentSheets';
 import { MoneyPanel, TabHeader } from './Primitives';
-import { AmountInput } from './SelectMenu';
+import { AmountInput } from './NormalizedInput';
 import { TxResult } from './TxResult';
 import { useTranslations, useLocale } from 'next-intl';
 

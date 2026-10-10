@@ -5,7 +5,7 @@ import { documentSecurityHeaders } from './content-policy';
  * visitor writes, so there is nothing to inject. Next's inline bootstrap scripts carry no nonce
  * there, so their policy allows inline scripts from this site only: no other origin and no eval.
  * Every other page renders per request with the nonce policy (`documentCsp`). A test keeps this
- * list equal to the pages under `app/(static)` and `app/(en)`.
+ * list equal to the pages under `app/(static)/[locale]`, in both languages.
  */
 export const STATIC_PAGES: ReadonlySet<string> = new Set([
   '/',

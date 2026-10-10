@@ -1,10 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from '../i18n/navigation';
 import { isReloadBlocked } from '../pwa/reload-guard';
-import { localizedPath } from './routes';
-import { useLocale } from 'next-intl';
 
 /** How the current screen was reached: it sets the direction of its entrance. */
 type Direction = 'forward' | 'back' | 'tab' | 'none';
@@ -28,9 +27,8 @@ const isTab = (screen: string) => {
 /** A screen is its path and its query (`/move?flow=receive`), whatever the language. */
 function useScreen() {
   const pathname = usePathname();
-  const query = new URLSearchParams(useSearchParams());
-  query.delete('lang');
-  return query.size ? `${pathname}?${query}` : pathname;
+  const query = useSearchParams().toString();
+  return query ? `${pathname}?${query}` : pathname;
 }
 
 /** Whether the next screen comes from the browser's own history (back, forward, a swipe). */
@@ -88,7 +86,6 @@ export function useNavigationRecord(): Direction {
  * opened directly (a link, a reload) goes to `fallback` instead, its parent.
  */
 export function useBack(fallback: string) {
-  const locale = useLocale();
   const router = useRouter();
   const screen = useScreen();
   const leaving = useRef(false);
@@ -102,9 +99,9 @@ export function useBack(fallback: string) {
       // Opened directly: the parent replaces it, so the browser's back does not return here.
       visited.splice(0, visited.length);
       next = 'back';
-      router.replace(localizedPath(fallback, locale));
+      router.replace(fallback);
     }
-  }, [router, screen, fallback, locale]);
+  }, [router, screen, fallback]);
 }
 
 /** Whether this screen is one of the main tabs, which have the account's header and tab bar. */

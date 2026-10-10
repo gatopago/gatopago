@@ -1,5 +1,3 @@
-import type { Locale } from 'next-intl';
-
 export const consumerRoutes = {
   '/app': 'account',
   '/move': 'move',
@@ -20,13 +18,6 @@ export const consumerRoutes = {
   '/approve': 'approve',
 } as const;
 export type ConsumerView = 'login' | (typeof consumerRoutes)[keyof typeof consumerRoutes];
-
-export function localizedPath(path: string, locale: Locale): string {
-  const url = new URL(path, 'https://gatopago.invalid');
-  if (locale === 'en') url.searchParams.set('lang', 'en');
-  else url.searchParams.delete('lang');
-  return url.pathname + url.search + url.hash;
-}
 
 /** Where to go after signing in: a path on this site only, never another origin. */
 export function safeNext(value: string | null): string | null {

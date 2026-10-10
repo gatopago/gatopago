@@ -2,10 +2,9 @@
 
 import type { ReactNode, Ref } from 'react';
 import { NavigationLink } from './NavigationLink';
-import { localizedPath } from './routes';
 import { BackIcon, ChevronIcon } from './Icons';
 import { useBack } from './history';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 
 /**
  * A screen's top bar, fixed while it scrolls: back to where the member came from (`to`, the
@@ -167,10 +166,9 @@ export function OptionCard({
   tone?: keyof typeof tones;
   badge?: string;
 }) {
-  const locale = useLocale();
   return (
     <NavigationLink
-      href={localizedPath(href, locale)}
+      href={href}
       className="meli-path-card-app interactive-surface w-full p-4 text-left"
     >
       <span

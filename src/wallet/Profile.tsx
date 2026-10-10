@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { walletNetwork } from '@gatopago/shared/networks';
+import { UsernameInput } from '../consumer/NormalizedInput';
 import { BackHeader, NoticeCard } from '../consumer/Primitives';
 import { SettingsSection } from '../consumer/SettingsSection';
 import { ScreenLoading } from '../consumer/Skeleton';
@@ -220,19 +221,14 @@ function ProfileEditor({
               <span className="text-[14px] text-text-faint">
                 {new URL(settings.webOrigin).host}/@
               </span>
-              <input
-                type="text"
+              <UsernameInput
                 required
                 autoComplete="username"
-                autoCapitalize="none"
-                spellCheck={false}
                 aria-label={t('username')}
                 pattern="[a-z][a-z0-9_]{2,29}"
                 maxLength={30}
                 value={username}
-                onChange={(event) =>
-                  setUsername(event.target.value.replace(/[^a-z0-9_]/gi, '').toLowerCase())
-                }
+                onChange={setUsername}
                 className="min-w-0 flex-1 bg-transparent text-[14px] text-text"
               />
             </div>

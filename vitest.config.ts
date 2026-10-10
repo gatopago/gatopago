@@ -3,6 +3,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
+    // next-intl imports `next/navigation` without an extension, as a bundler resolves it.
+    server: { deps: { inline: ['next-intl'] } },
     include: ['test/**/*.test.ts'],
     env: {
       GATOPAGO_WEB_ORIGIN: 'https://gatopago.com',

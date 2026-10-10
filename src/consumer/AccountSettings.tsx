@@ -1,13 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '../i18n/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import type { ClientSettings } from '../lib/settings';
 import { disablePush, enablePush, pushEnabled, pushSupported } from '../wallet/push';
 import { signOut, type Session } from '../wallet/session';
-import { LanguageLink } from '../lib/LanguageLink';
-import { localizedPath } from './routes';
+import { NavigationLink } from './NavigationLink';
 import { BackHeader } from './Primitives';
 import { SettingsSection } from './SettingsSection';
 import { BellIcon } from './Icons';
@@ -44,7 +43,7 @@ export function AccountSettings({
   const [pushAvailable, setPushAvailable] = useState(false);
   const [pushOn, setPushOn] = useState(() => typeof window !== 'undefined' && pushEnabled());
   const [pushBusy, setPushBusy] = useState(false);
-  const [pushFailed, setPushFailed] = useState(false);
+  const [pushProblem, setPushProblem] = useState<'blocked' | 'failed' | null>(null);
   useEffect(() => {
     void pushSupported(settings).then(setPushAvailable);
   }, [settings]);
@@ -78,9 +77,9 @@ export function AccountSettings({
               <p className="mb-3 text-[13px] leading-relaxed text-text-muted">
                 {t('notificationsHelp')}
               </p>
-              {pushFailed ? (
+              {pushProblem ? (
                 <p role="alert" className="mb-3 text-[12px] leading-relaxed text-pending">
-                  {t('notificationsFailed')}
+                  {t(pushProblem === 'blocked' ? 'notificationsBlocked' : 'notificationsFailed')}
                 </p>
               ) : null}
               <button
@@ -89,12 +88,14 @@ export function AccountSettings({
                 className="btn btn-primary btn-sm"
                 onClick={() => {
                   setPushBusy(true);
-                  setPushFailed(false);
+                  setPushProblem(null);
                   enablePush(settings, session, locale)
-                    .catch(() => false)
-                    .then((on) => {
-                      setPushOn(on);
-                      setPushFailed(!on);
+                    .catch(() => 'failed' as const)
+                    .then((outcome) => {
+                      setPushOn(outcome === 'on');
+                      setPushProblem(
+                        outcome === 'blocked' || outcome === 'failed' ? outcome : null,
+                      );
                     })
                     .finally(() => setPushBusy(false));
                 }}
@@ -107,8 +108,8 @@ export function AccountSettings({
         <SettingsSection title={t('language')} tone="neutral" icon={<GlobeIcon />}>
           <div className="p-5">
             <nav className="seg-track seg-track-block" aria-label={t('language')}>
-              <LanguageLink
-                language="es"
+              <NavigationLink
+                locale="es"
                 href="/settings"
                 replace
                 aria-current={locale === 'es' ? 'page' : undefined}
@@ -116,17 +117,17 @@ export function AccountSettings({
                 className="seg-item"
               >
                 Español
-              </LanguageLink>
-              <LanguageLink
-                language="en"
-                href="/settings?lang=en"
+              </NavigationLink>
+              <NavigationLink
+                locale="en"
+                href="/settings"
                 replace
                 aria-current={locale === 'en' ? 'page' : undefined}
                 data-active={locale === 'en'}
                 className="seg-item"
               >
                 English
-              </LanguageLink>
+              </NavigationLink>
             </nav>
           </div>
         </SettingsSection>
@@ -137,7 +138,7 @@ export function AccountSettings({
             // Signed out here at once; this device stops getting notifications in the background.
             void disablePush(settings, session);
             signOut();
-            router.replace(localizedPath('/login', locale));
+            router.replace('/login');
           }}
         >
           {t('signOut')}

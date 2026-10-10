@@ -1339,7 +1339,7 @@ body:has(.meli-landing) {
   position: relative;
   padding: 26px;
   border: 2px solid rgb(255 248 240 / 76%);
-  border-radius: 28px;
+  border-radius: 0;
   background: var(--meli-milk);
   color: var(--meli-ink);
   box-shadow:
@@ -1353,7 +1353,7 @@ body:has(.meli-landing) {
   left: 50%;
   width: 72px;
   height: 5px;
-  border-radius: 99px;
+  border-radius: 0;
   background: var(--meli-oat);
   content: '';
   transform: translateX(-50%);
@@ -2393,7 +2393,7 @@ body:has(.meli-landing) {
   aspect-ratio: 1.586;
   padding: clamp(22px, 4vw, 34px);
   border: 2px solid var(--meli-ink);
-  border-radius: 18px;
+  border-radius: 0;
   background:
     linear-gradient(135deg, transparent 0 68%, rgb(159 41 46 / 34%) 68% 77%, transparent 77%),
     var(--meli-cat-fire);
@@ -2445,7 +2445,7 @@ body:has(.meli-landing) {
   justify-content: center;
   margin-top: 28px;
   border: 2px solid var(--meli-ink);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--meli-pending);
 }
 
@@ -2977,6 +2977,16 @@ body:has(.meli-landing) {
     'wght' 540;
 }
 
+.meli-footer__bottom a {
+  color: var(--meli-milk);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.meli-footer__bottom a:hover {
+  color: var(--meli-cat-fire);
+}
+
 .meli-footer__pixels {
   color: var(--meli-cat-fire);
   letter-spacing: 5px;
@@ -3350,7 +3360,7 @@ body:has(.meli-landing) {
 
   .meli-app-frame {
     padding: 18px;
-    border-radius: 22px;
+    border-radius: 0;
     box-shadow:
       8px 8px 0 var(--meli-cat-shadow),
       16px 16px 0 rgb(248 82 57 / 15%);

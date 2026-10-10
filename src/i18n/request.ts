@@ -1,20 +1,14 @@
 import { hasLocale } from 'next-intl';
 import { getRequestConfig } from 'next-intl/server';
-import { headers } from 'next/headers';
-import { LANGUAGE_HEADER, LOCALES, TIME_ZONE } from '../lib/language';
+import { routing, TIME_ZONE } from './routing';
 
 /**
- * next-intl's configuration for each request. A prerendered page names its language
- * (`setRequestLocale`, or `locale` in `getTranslations`); a page rendered per request takes the one
- * the proxy read from `?lang`. Only that language's texts are loaded.
+ * next-intl's configuration for each request: the language of its address (`/en/…`), or the one a
+ * prerendered page or `getTranslations` names. Only that language's texts are loaded.
  */
 export default getRequestConfig(async ({ locale, requestLocale }) => {
   const requested = locale ?? (await requestLocale);
-  const language = hasLocale(LOCALES, requested)
-    ? requested
-    : (await headers()).get(LANGUAGE_HEADER) === 'en'
-      ? 'en'
-      : 'es';
+  const language = hasLocale(routing.locales, requested) ? requested : routing.defaultLocale;
   return {
     locale: language,
     timeZone: TIME_ZONE,
