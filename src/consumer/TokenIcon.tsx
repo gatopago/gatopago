@@ -1,8 +1,9 @@
 import Image from 'next/image';
+import { networkName } from '../wallet/account';
 
-/** Token images: USDC and ETH from the V2 client; AUSD, MON and XLM from CoinGecko. */
+/** Token images: USDC and ETH from the V2 client; AUSD, MON, XLM and ARB from CoinGecko. */
 export function TokenIcon({ symbol, size = 28 }: { symbol: string; size?: number }) {
-  if (['USDC', 'ETH', 'AUSD', 'MON', 'XLM'].includes(symbol))
+  if (['USDC', 'ETH', 'AUSD', 'MON', 'XLM', 'ARB'].includes(symbol))
     return (
       <Image
         src={`/tokens/${symbol.toLowerCase()}.webp`}
@@ -33,4 +34,16 @@ export function TokenIcon({ symbol, size = 28 }: { symbol: string; size?: number
       {symbol.slice(0, 3)}
     </span>
   );
+}
+
+/** A network's logo: its native coin's, except Arbitrum, whose coin is ETH. */
+const networkLogos: Record<string, string> = {
+  Arbitrum: 'ARB',
+  Avalanche: 'AVAX',
+  Monad: 'MON',
+  Stellar: 'XLM',
+};
+export function NetworkIcon({ id, size = 28 }: { id: string; size?: number }) {
+  const name = networkName(id);
+  return <TokenIcon symbol={networkLogos[name.split(' ')[0]] ?? name} size={size} />;
 }

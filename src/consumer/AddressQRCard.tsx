@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { useCopy } from '../lib/useCopy';
 import { shortAddress } from '../wallet/account';
 
 /** V2's address QR with its copy row, shared by every "show my address" surface. */
@@ -16,7 +16,7 @@ export function AddressQRCard({
   english: boolean;
   qrSize?: number;
 }) {
-  const [copied, setCopied] = useState(false);
+  const { copy, label } = useCopy(en);
   return (
     <>
       <div
@@ -36,17 +36,12 @@ export function AddressQRCard({
       </div>
       <button
         type="button"
-        onClick={() =>
-          void navigator.clipboard?.writeText(address).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          })
-        }
+        onClick={() => copy(address)}
         className="interactive-surface flex w-full items-center justify-between gap-2 border-2 border-text bg-surface px-4 py-3 shadow-[4px_4px_0_var(--color-border)]"
       >
         <span className="truncate font-mono text-[13px] text-text">{shortAddress(address)}</span>
         <span className="shrink-0 text-[12px] font-semibold text-cat-300">
-          {copied ? (en ? 'Copied ✓' : 'Copiada ✓') : en ? 'Copy address' : 'Copiar dirección'}
+          {label(en ? 'Copy address' : 'Copiar dirección')}
         </span>
       </button>
     </>

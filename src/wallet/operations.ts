@@ -14,6 +14,7 @@ import {
   gatopagoAccountAbi,
 } from '@gatopago/shared/wallet';
 import type { ClientSettings } from '../lib/settings';
+import { holdPageReload } from '../pwa/reload-guard';
 import { gatopagoAccount, publicClient } from './account';
 import { invalidateActivity } from './activity';
 import { api, type Approvals } from './api';
@@ -30,45 +31,51 @@ export async function send(
   networkId: string,
   calls: readonly { to: Address; data: Hex; value?: bigint }[],
 ): Promise<Hex> {
-  const account = await gatopagoAccount(settings, session.wallet, networkId);
-  const bundler = bundlerClient(settings, session, networkId, account);
-  await settlePending(account, bundler, networkId, session.token);
-  await applyApprovals(settings, session, networkId, account, bundler);
-  // One sequence (key 0) for spending: operations land in order.
-  const nonce = await account.getNonce({ key: 0n });
-  const prepared = await bundler.prepareUserOperation({ calls, nonce });
-  const userOperation = { ...prepared, signature: await account.signUserOperation(prepared) };
-  const hash = getUserOperationHash({
-    chainId: walletNetwork(networkId).chain.id,
-    entryPointAddress: account.entryPoint.address,
-    entryPointVersion: account.entryPoint.version,
-    userOperation,
-  });
-  // Remembered before it is sent: if the answer is lost, this same operation is the one to look for.
-  remember(account.address, networkId, { hash, expiresAt: Date.now() + PENDING_MS });
+  // Nothing reloads the page or leaves the screen until the result is known (`reload-guard`).
+  const release = holdPageReload();
   try {
-    await bundler.request(
-      {
-        method: 'eth_sendUserOperation',
-        params: [formatUserOperationRequest(userOperation), account.entryPoint.address],
-      },
-      { retryCount: 0 },
-    );
-  } catch (error) {
-    if (!refused(error)) throw new Error('OPERATION_PENDING', { cause: error });
+    const account = await gatopagoAccount(settings, session.wallet, networkId);
+    const bundler = bundlerClient(settings, session, networkId, account);
+    await settlePending(account, bundler, networkId, session.token);
+    await applyApprovals(settings, session, networkId, account, bundler);
+    // One sequence (key 0) for spending: operations land in order.
+    const nonce = await account.getNonce({ key: 0n });
+    const prepared = await bundler.prepareUserOperation({ calls, nonce });
+    const userOperation = { ...prepared, signature: await account.signUserOperation(prepared) };
+    const hash = getUserOperationHash({
+      chainId: walletNetwork(networkId).chain.id,
+      entryPointAddress: account.entryPoint.address,
+      entryPointVersion: account.entryPoint.version,
+      userOperation,
+    });
+    // Remembered before it is sent: if the answer is lost, this same operation is the one to look for.
+    remember(account.address, networkId, { hash, expiresAt: Date.now() + PENDING_MS });
+    try {
+      await bundler.request(
+        {
+          method: 'eth_sendUserOperation',
+          params: [formatUserOperationRequest(userOperation), account.entryPoint.address],
+        },
+        { retryCount: 0 },
+      );
+    } catch (error) {
+      if (!refused(error)) throw new Error('OPERATION_PENDING', { cause: error });
+      forget(account.address, networkId);
+      throw error;
+    }
+    let result;
+    try {
+      result = await bundler.waitForUserOperationReceipt({ hash });
+    } catch (error) {
+      throw new Error('OPERATION_PENDING', { cause: error });
+    }
     forget(account.address, networkId);
-    throw error;
+    if (!result.success) throw new Error('OPERATION_REVERTED');
+    invalidateActivity(session.token);
+    return result.receipt.transactionHash;
+  } finally {
+    release();
   }
-  let result;
-  try {
-    result = await bundler.waitForUserOperationReceipt({ hash });
-  } catch (error) {
-    throw new Error('OPERATION_PENDING', { cause: error });
-  }
-  forget(account.address, networkId);
-  if (!result.success) throw new Error('OPERATION_REVERTED');
-  invalidateActivity(session.token);
-  return result.receipt.transactionHash;
 }
 
 /**

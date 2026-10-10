@@ -26,6 +26,9 @@ export async function planTransfer(
   crossNetwork: boolean,
 ): Promise<Transfer> {
   if ((balances[to] ?? 0n) >= amount) return { from: to, to, recipient, amount, fee: 0n };
+  // Gathering from other networks only helps when, all together, they cover it.
+  const total = Object.values(balances).reduce<bigint>((sum, balance) => sum + (balance ?? 0n), 0n);
+  if (total < amount) throw new Error('INSUFFICIENT_FUNDS');
   if (!crossNetwork) throw new Error('BALANCE_ON_OTHER_NETWORK');
   const sources = Object.entries(balances)
     .filter(([id, balance]) => id !== to && (balance ?? 0n) > amount)

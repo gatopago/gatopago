@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { CatGlyph } from './CatGlyph';
 import { CodeBlock } from './CodeBlock';
+import { LanguageLink } from '../lib/LanguageLink';
 import './docs.css';
 
 const STATUSES: [status: string, es: string, en: string][] = [
@@ -187,13 +188,13 @@ export function verifyGatoPago(rawBody, header, secret) {
             </span>
           </Link>
           <nav className="flex items-center gap-2">
-            <Link
+            <LanguageLink
               href={en ? '/docs' : '/en/docs'}
-              hrefLang={en ? 'es' : 'en'}
+              language={en ? 'es' : 'en'}
               className="flex min-h-10 items-center border border-border px-3 font-mono text-[13px]"
             >
               {en ? 'ES' : 'EN'}
-            </Link>
+            </LanguageLink>
             <a
               href={consoleHref}
               className="hidden min-h-10 items-center border-2 border-cat-500 bg-cat-500 px-4 text-[14px] font-bold shadow-[3px_3px_0_var(--color-cat-700)] sm:flex"

@@ -1,113 +1,35 @@
-import { WebAuthnP256 } from 'ox';
-import { bytesToHex, hexToBytes, type Address, type Hex } from 'viem';
-import { createWebAuthnCredential } from 'viem/account-abstraction';
+import { encodeFunctionData, hexToBytes, type Address, type Hex } from 'viem';
 import { walletContracts } from '@gatopago/shared/networks';
 import {
   capturingWebAuthnClient,
+  findAccount,
   isPrfUnavailable,
-  passkeyAccount,
-  type PasskeyAssertion,
+  PASSKEY_PROMPT_MS,
 } from '@gatopago/shared/passkey';
-import { gatopagoAccountFactoryAbi, keyOwner, passkeyOwner } from '@gatopago/shared/wallet';
+import { gatopagoAccountAbi, gatopagoAccountFactoryAbi, keyOwner } from '@gatopago/shared/wallet';
 import type { ClientSettings } from '../lib/settings';
 import { api, ApiError, type Approvals } from './api';
 import { publicClient } from './account';
+import type { MeraKeys } from './mera';
 import type { Wallet } from './session';
 
-const random = (size: number) => crypto.getRandomValues(new Uint8Array(size));
-
 /**
- * Creates a passkey for GatoPago. A backup passkey stores its account address as the WebAuthn
- * user handle, so a device that has never seen it can find the account.
+ * Every account is Mera's: each of its passkeys gives a PRF output from which Mera derives the key
+ * that owns the account (and its Stellar key). A passkey without PRF cannot be one of them.
  */
-export async function createPasskey(
-  settings: ClientSettings,
-  name: string,
-  account?: Address,
-  /** `cross-platform` asks for a physical security key (USB, NFC, Bluetooth). */
-  attachment?: AuthenticatorAttachment,
-) {
-  const credential = await createWebAuthnCredential({
-    rp: { id: settings.passkeyRpId, name: 'GatoPago' },
-    user: { id: account ? hexToBytes(account) : random(16), name },
-    authenticatorSelection: {
-      residentKey: 'required',
-      userVerification: 'required',
-      authenticatorAttachment: attachment,
-    },
-  });
-  return { credentialId: credential.id, publicKey: credential.publicKey };
-}
 
-/** A new account: its address derives from the passkey through the factory. */
-export async function newWallet(settings: ClientSettings, name: string): Promise<Wallet> {
-  const { credentialId, publicKey } = await createPasskey(settings, name);
-  return passkeyWallet(settings, credentialId, publicKey);
-}
-
-async function passkeyWallet(
-  settings: ClientSettings,
-  credentialId: string,
-  publicKey: Hex,
-): Promise<Wallet> {
-  const initialOwners = [passkeyOwner(walletContracts.webAuthnVerifier, publicKey)];
-  return {
-    credentialId,
-    publicKey,
-    initialOwners,
-    address: await accountOf(settings, initialOwners),
-  };
-}
-
-/**
- * Asks for any GatoPago passkey and finds its account. WebAuthn does not return the public key on
- * sign-in, so it is recovered from the signature (two candidates) and matched against the owners
- * of a GatoPago member's account.
- */
-export async function findWallet(settings: ClientSettings): Promise<Wallet> {
-  const assertion = await WebAuthnP256.sign({
-    challenge: bytesToHex(random(32)),
-    rpId: settings.passkeyRpId,
-  });
-  const wallet = await assertedWallet(settings, assertion);
-  if (!wallet) throw new ApiError(404, 'ACCOUNT_NOT_FOUND');
-  return wallet;
-}
-
-/** The account a passkey assertion belongs to, as one of its passkey owners, or null. */
-const assertedWallet = (settings: ClientSettings, assertion: PasskeyAssertion) =>
-  passkeyAccount(assertion, {
-    accountOf: (owners) => accountOf(settings, owners),
-    approvals: (address) => approvals(settings, address),
-  });
-
-/** The account a Mera key owns: the same address on any device that has the passkey. */
-async function meraWallet(
-  settings: ClientSettings,
-  credentialId: string,
-  owner: Address,
-): Promise<Wallet> {
-  const initialOwners = [keyOwner(owner)];
-  return {
-    credentialId,
-    publicKey: '0x',
-    meraOwner: owner,
-    initialOwners,
-    address: await accountOf(settings, initialOwners),
-  };
-}
+const unavailable = (error: unknown) =>
+  isPrfUnavailable(error) ? new ApiError(400, 'PASSKEY_WITHOUT_PRF') : error;
 
 /** A passkey created for sign-up whose ceremony did not finish: a retry reuses it. */
-let unfinished: { id: string; publicKey: Hex } | null = null;
+let unfinished: string | null = null;
 
 /**
- * Creates the passkey of a new account and the wallet that owns it. With Mera on and PRF
- * available, the key Mera derives owns the account (no prompts while its session lasts);
- * otherwise the passkey itself does: the same passkey, so a device without PRF never leaves an
- * extra one behind. A cancelled prompt creates nothing.
+ * Creates the first passkey of a new account and the wallet its Mera key owns (the account's only
+ * initial owner). A device or password manager without PRF cannot create one: `PASSKEY_WITHOUT_PRF`,
+ * never another kind of account. A cancelled prompt creates nothing.
  */
 export async function newAccountWallet(settings: ClientSettings, name: string): Promise<Wallet> {
-  if (!settings.mera) return newWallet(settings, name);
   const [{ createPasskeyWithPrfOutput, getPasskeyPrfOutput }, { openMeraSession }] =
     await Promise.all([import('@category-labs/mera'), import('./mera')]);
   const { client, seen } = capturingWebAuthnClient();
@@ -116,59 +38,110 @@ export async function newAccountWallet(settings: ClientSettings, name: string): 
     const created = unfinished
       ? await getPasskeyPrfOutput({
           rpId: rp.id,
-          credential: { credentialId: unfinished.id },
+          credential: { credentialId: unfinished },
           webAuthnClient: client,
+          timeout: PASSKEY_PROMPT_MS,
         })
       : await createPasskeyWithPrfOutput({
           rp,
           user: { name, displayName: name },
           webAuthnClient: client,
+          timeout: PASSKEY_PROMPT_MS,
         });
     unfinished = null;
-    const { address } = await openMeraSession(settings, created.credentialId, created.prfOutput);
-    return meraWallet(settings, created.credentialId, address);
+    const { address: owner } = await openMeraSession(
+      settings,
+      created.credentialId,
+      created.prfOutput,
+    );
+    const initialOwners = [keyOwner(owner)];
+    return {
+      credentialId: created.credentialId,
+      owner,
+      initialOwners,
+      address: await accountOf(settings, initialOwners),
+    };
   } catch (error) {
-    const passkey = unfinished ?? seen.created;
-    if (!passkey) throw error;
-    if (!isPrfUnavailable(error)) {
-      unfinished = passkey;
-      throw error;
-    }
-    unfinished = null;
-    return passkeyWallet(settings, passkey.id, passkey.publicKey);
+    // Created, but its PRF prompt was cancelled: the next attempt asks that passkey again.
+    unfinished = isPrfUnavailable(error) ? null : (seen.created?.id ?? unfinished);
+    throw unavailable(error);
   }
 }
 
 /**
- * Finds the account of whichever passkey the person picks, with one prompt: with Mera on, the
- * same assertion derives Mera's key (when the device returns PRF) and carries the signature the
- * passkey's own key is recovered from, so either kind of account is found. An account is never
- * computed from the other kind's key: with no PRF, a Mera account is reported, not replaced.
+ * Asks for any GatoPago passkey and finds the account its Mera key owns, with one prompt
+ * (`findAccount`).
  */
 export async function findAnyWallet(settings: ClientSettings): Promise<Wallet> {
-  if (!settings.mera) return findWallet(settings);
   const [{ getPasskeyPrfOutput }, { endMeraSession, openMeraSession }] = await Promise.all([
     import('@category-labs/mera'),
     import('./mera'),
   ]);
   const { client, seen } = capturingWebAuthnClient();
-  let mera: Wallet | null = null;
-  try {
-    const { credentialId, prfOutput } = await getPasskeyPrfOutput({
-      rpId: settings.passkeyRpId,
-      webAuthnClient: client,
-    });
-    const { address } = await openMeraSession(settings, credentialId, prfOutput);
-    mera = await meraWallet(settings, credentialId, address);
-    if (await approvals(settings, mera.address)) return mera;
+  const { credentialId, prfOutput } = await getPasskeyPrfOutput({
+    rpId: settings.passkeyRpId,
+    webAuthnClient: client,
+    timeout: PASSKEY_PROMPT_MS,
+  }).catch((error: unknown) => {
+    throw unavailable(error);
+  });
+  const { address: owner } = await openMeraSession(settings, credentialId, prfOutput);
+  const found = await findAccount(publicClient(settings, settings.homeNetwork), {
+    contracts: walletContracts,
+    assertion: seen.asserted!,
+    owner,
+    lookup: {
+      accountOf: (owners) => accountOf(settings, owners),
+      approvals: (address) => approvals(settings, address),
+    },
+  });
+  if (!found) {
     endMeraSession();
-  } catch (error) {
-    if (!seen.asserted || !isPrfUnavailable(error)) throw error;
+    throw new ApiError(404, 'ACCOUNT_NOT_FOUND');
   }
-  const wallet = await assertedWallet(settings, seen.asserted!);
-  if (wallet) return wallet;
-  throw new ApiError(404, mera ? 'ACCOUNT_NOT_FOUND' : 'PASSKEY_WITHOUT_PRF');
+  return { credentialId, owner, address: found.address, initialOwners: found.initialOwners };
 }
+
+/**
+ * A new backup passkey for `account`: its user handle is the account's address, so any device
+ * finds the account through it, and its Mera key (`owner`) becomes an owner once approved. `run`
+ * runs with its keys while they are in memory (to approve its Stellar key), then they are wiped.
+ * `attachment` asks for a physical security key.
+ */
+export async function newBackupKey<T>(
+  settings: ClientSettings,
+  account: Address,
+  run: (keys: MeraKeys) => Promise<T>,
+  attachment?: AuthenticatorAttachment,
+): Promise<{ owner: Address; result: T }> {
+  const [{ createPasskeyWithPrfOutput }, { withMeraKeys }] = await Promise.all([
+    import('@category-labs/mera'),
+    import('./mera'),
+  ]);
+  const { client } = capturingWebAuthnClient({ userHandle: hexToBytes(account), attachment });
+  const created = await createPasskeyWithPrfOutput({
+    rp: { id: settings.passkeyRpId, name: 'GatoPago' },
+    user: { name: 'GatoPago backup', displayName: 'GatoPago backup' },
+    webAuthnClient: client,
+    timeout: PASSKEY_PROMPT_MS,
+  }).catch((error: unknown) => {
+    throw unavailable(error);
+  });
+  let owner: Address | null = null;
+  const result = await withMeraKeys(settings, created.prfOutput, async (keys) => {
+    owner = keys.account.address;
+    return run(keys);
+  });
+  return { owner: owner!, result };
+}
+
+/** The call that makes `owner` (a Mera key) an owner of the account. */
+export const addOwnerCall = (owner: Address): Hex =>
+  encodeFunctionData({
+    abi: gatopagoAccountAbi,
+    functionName: 'addOwners',
+    args: [[keyOwner(owner)]],
+  });
 
 async function accountOf(settings: ClientSettings, owners: readonly Hex[]): Promise<Address> {
   return publicClient(settings, settings.homeNetwork).readContract({

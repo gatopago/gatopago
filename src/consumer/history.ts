@@ -6,7 +6,7 @@ import { isReloadBlocked } from '../pwa/reload-guard';
 import { localizedPath } from './routes';
 
 /** How the current screen was reached: it sets the direction of its entrance. */
-export type Direction = 'forward' | 'back' | 'tab' | 'none';
+type Direction = 'forward' | 'back' | 'tab' | 'none';
 
 /** The screens visited in this tab, as far as the app saw them: back only goes where it came from. */
 const visited: string[] = [];
@@ -15,7 +15,14 @@ let next: Direction | null = null;
 const listeners = new Set<() => void>();
 
 const tabs = new Set(['/app', '/move', '/earn', '/statement']);
-export const isTab = (screen: string) => tabs.has(screen);
+/**
+ * A tab is told by its path: its filters (`/statement?type=sent`) keep it a tab. Only a subflow
+ * inside one (`/move?flow=receive`) is a screen of its own, without the tab bar.
+ */
+const isTab = (screen: string) => {
+  const [path, query = ''] = screen.split('?');
+  return tabs.has(path) && !new URLSearchParams(query).has('flow');
+};
 
 /** A screen is its path and its query (`/move?flow=receive`), whatever the language. */
 function useScreen() {

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { formatUnits, parseUnits } from 'viem';
 import type { ClientSettings } from '../lib/settings';
+import { copyText } from '../lib/useCopy';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { MeliSprite } from '../marketing/MeliSprite';
 import { networkName, USDC_DECIMALS } from '../wallet/account';
@@ -45,6 +46,8 @@ export function ChargeScreen({
   const [notice, setNotice] = useState('');
   const [link, setLink] = useState<Link | null>(null);
   const [charges, setCharges] = useState<Intent[] | null>(null);
+  // The list could not be read: never shown as "no links", and the last one read stays.
+  const [listFailed, setListFailed] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [paid, setPaid] = useState<Intent | null>(null);
   const card = useRef<HTMLElement>(null);
@@ -56,20 +59,28 @@ export function ChargeScreen({
     if (link) return;
     const controller = new AbortController();
     listCharges(settings, session, controller.signal)
-      .then(setCharges)
+      .then((list) => {
+        setCharges(list);
+        setListFailed(false);
+      })
       .catch(() => {
-        if (!controller.signal.aborted) setCharges([]);
+        if (!controller.signal.aborted) setListFailed(true);
       });
     return () => controller.abort();
   }, [settings, session, link, revision]);
 
-  const value = /^(\d+\.?\d{0,6}|\.\d{1,6})$/.test(amount) ? parseUnits(amount, USDC_DECIMALS) : 0n;
-  const open = value === 0n;
+  // Empty or zero asks the payer for the amount, on purpose; more than USDC's 6 decimals is a
+  // mistake to fix, never an open link.
+  const tooPrecise = /\.\d{7,}$/.test(amount);
+  const value =
+    !tooPrecise && /^(\d+\.?\d*|\.\d+)$/.test(amount) ? parseUnits(amount, USDC_DECIMALS) : 0n;
+  const open = value === 0n && !tooPrecise;
   const shareText = (url: string) =>
     en ? `Pay me with GatoPago: ${url}` : `Págame con GatoPago: ${url}`;
 
   function create() {
     setError('');
+    if (tooPrecise) return;
     if (open) {
       if (!profile?.username) return;
       setLink({ url: `${settings.webOrigin}/@${profile.username}`, amount: null, description });
@@ -196,7 +207,7 @@ export function ChargeScreen({
                   url: link.url,
                 });
                 if (result !== 'unsupported') return;
-                await navigator.clipboard.writeText(link.url);
+                await copyText(link.url);
                 setNotice(en ? 'Link copied' : 'Link copiado');
               })
             }
@@ -224,9 +235,10 @@ export function ChargeScreen({
               type="button"
               className="btn btn-ghost flex-1"
               onClick={() =>
-                void navigator.clipboard
-                  .writeText(link.url)
-                  .then(() => setNotice(en ? 'Link copied' : 'Link copiado'))
+                void copyText(link.url).then(
+                  () => setNotice(en ? 'Link copied' : 'Link copiado'),
+                  () => setNotice(en ? 'Could not copy' : 'No se pudo copiar'),
+                )
               }
             >
               {en ? 'Copy link' : 'Copiar link'}
@@ -296,6 +308,11 @@ export function ChargeScreen({
           {error}
         </p>
       ) : null}
+      {tooPrecise ? (
+        <p role="alert" className="mb-4 text-center text-[13px] text-danger">
+          {en ? 'USDC takes up to 6 decimals.' : 'USDC admite hasta 6 decimales.'}
+        </p>
+      ) : null}
       {open && profile && !profile.username ? (
         <p className="mb-4 text-center text-[12px] text-text-muted">
           {en
@@ -309,7 +326,7 @@ export function ChargeScreen({
       <div className="pt-5">
         <button
           type="button"
-          disabled={busy || (open && !profile?.username)}
+          disabled={busy || tooPrecise || (open && !profile?.username)}
           className="btn btn-primary btn-block"
           onClick={create}
         >
@@ -317,17 +334,44 @@ export function ChargeScreen({
             ? en
               ? 'Creating…'
               : 'Creando…'
-            : en
-              ? 'Create payment link'
-              : 'Crear link de cobro'}
+            : open
+              ? en
+                ? 'Create link without an amount'
+                : 'Crear link sin monto'
+              : en
+                ? 'Create payment link'
+                : 'Crear link de cobro'}
         </button>
       </div>
 
-      {charges === null || charges.length > 0 ? (
+      {charges === null || charges.length > 0 || listFailed ? (
         <div className="mt-9">
           <SectionLabel>{en ? 'Your payment links' : 'Tus links de cobro'}</SectionLabel>
+          {listFailed ? (
+            <p role="alert" className="mb-3 text-[13px] leading-relaxed text-pending">
+              {charges
+                ? en
+                  ? 'We could not update your links; these may be out of date. '
+                  : 'No pudimos actualizar tus links; estos pueden no estar al día. '
+                : en
+                  ? 'We could not load your links. '
+                  : 'No pudimos cargar tus links. '}
+              <button
+                type="button"
+                onClick={() => {
+                  setListFailed(false);
+                  setRevision((current) => current + 1);
+                }}
+                className="-my-3 inline-block py-3 font-semibold text-cat-700 underline underline-offset-2"
+              >
+                {en ? 'Try again' : 'Reintentar'}
+              </button>
+            </p>
+          ) : null}
           {charges === null ? (
-            <RowSkeletonList count={3} />
+            listFailed ? null : (
+              <RowSkeletonList count={3} />
+            )
           ) : (
             <div className="meli-paper-card meli-paper-card--strong divide-y divide-border overflow-hidden">
               {visible.map((intent) => {
@@ -419,7 +463,9 @@ export function ChargeScreen({
               )}
               className="btn-text mt-2 w-full text-[#fff8f0]"
             >
-              {en ? 'Split this payment with my team' : 'Repartir este cobro con mi equipo'}
+              {en
+                ? 'Split this payment among several people'
+                : 'Repartir este cobro entre varias personas'}
             </NavigationLink>
           }
         />

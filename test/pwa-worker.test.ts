@@ -67,6 +67,7 @@ function worker() {
   const claim = vi.fn();
   const windowMessages: unknown[] = [];
   const showNotification = vi.fn(async () => undefined);
+  const navigateWindow = vi.fn(async () => undefined);
   runInNewContext(source, {
     self: {
       location: { origin },
@@ -75,7 +76,14 @@ function worker() {
       skipWaiting,
       clients: {
         claim,
-        matchAll: async () => [{ postMessage: (message: unknown) => windowMessages.push(message) }],
+        matchAll: async () => [
+          {
+            postMessage: (message: unknown) => windowMessages.push(message),
+            focus: async () => undefined,
+            navigate: navigateWindow,
+          },
+        ],
+        openWindow: async () => undefined,
       },
       registration: { showNotification },
     },
@@ -117,6 +125,7 @@ function worker() {
     claim,
     windowMessages,
     showNotification,
+    navigateWindow,
   };
 }
 
@@ -359,6 +368,20 @@ describe('PWA public metadata', () => {
       data: { link: '/statement' },
     });
     expect(sw.windowMessages).toEqual([{ type: 'GATOPAGO_MOVEMENT' }]);
+  });
+
+  it('asks an open app to go where a notification points, never forcing it there', async () => {
+    const sw = worker();
+    const pending: Promise<unknown>[] = [];
+    sw.handlers.get('notificationclick')?.({
+      notification: { close: () => {}, data: { link: '/statement?type=received' } },
+      waitUntil: (task: Promise<unknown>) => pending.push(task),
+    });
+    await Promise.all(pending);
+    expect(sw.windowMessages).toEqual([
+      { type: 'GATOPAGO_OPEN', link: '/statement?type=received' },
+    ]);
+    expect(sw.navigateWindow).not.toHaveBeenCalled();
   });
 
   it('uses the new /app identity and reviewed face-only Meli PNGs', () => {

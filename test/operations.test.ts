@@ -167,3 +167,19 @@ describe('an operation whose result is unknown', () => {
     expect(pending()).toBe(null);
   });
 });
+
+describe('an operation in flight', () => {
+  it('holds reloads and navigation until its result is known, whatever it is', async () => {
+    const { send } = await import('../src/wallet/operations');
+    const { isReloadBlocked } = await import('../src/pwa/reload-guard');
+    let blocked = false;
+    fake.request.mockImplementation(async () => {
+      blocked = isReloadBlocked();
+      return '0x';
+    });
+    fake.wait.mockResolvedValue({ success: false });
+    await expect(send(settings, session, network, calls)).rejects.toThrow('OPERATION_REVERTED');
+    expect(blocked).toBe(true);
+    expect(isReloadBlocked()).toBe(false);
+  });
+});

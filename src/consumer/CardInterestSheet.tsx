@@ -133,7 +133,6 @@ export function CardInterestSheet({
 
   return (
     <Sheet titleId="card-interest-title" onClose={onClose} busy={saving}>
-      <div className="sheet-handle mb-4" aria-hidden="true" />
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <p className="meli-kicker mb-2">GatoPago Card</p>

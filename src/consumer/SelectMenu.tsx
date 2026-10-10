@@ -1,20 +1,17 @@
 'use client';
 
 import { useId, useState, type InputHTMLAttributes } from 'react';
+import { amountInput } from '../lib/amount';
+import { ChevronDownIcon } from './Icons';
 import { Sheet } from './Sheet';
+import { NetworkIcon } from './TokenIcon';
 
-const tones = {
-  brand: 'bg-cat-500/14 text-cat-300',
-  growth: 'bg-growth/14 text-growth',
-  info: 'bg-info/14 text-info',
-  pending: 'bg-pending/14 text-pending',
-} as const;
-
-export interface SelectMenuOption {
+interface SelectMenuOption {
   value: string;
   label: string;
   description?: string;
-  tone?: keyof typeof tones;
+  /** A network option shows its logo. */
+  network?: string;
 }
 
 /** V2's selector: a trigger that opens a sheet of options (networks, assets). */
@@ -55,21 +52,18 @@ export function SelectMenu({
         aria-expanded={open}
         aria-label={`${label}: ${selected?.label ?? ''}`}
         onClick={() => setOpen(true)}
-        className="select-menu-trigger interactive-surface flex h-12 w-full items-center justify-between gap-3 border border-border bg-surface px-4 text-left disabled:opacity-45"
+        className="select-menu-trigger interactive-surface flex h-12 w-full items-center justify-between gap-2 border border-border bg-surface px-3.5 text-left disabled:opacity-45"
       >
-        <span className="flex min-w-0 items-center gap-2.5">
-          {selected?.tone ? (
-            <span aria-hidden="true" className={`h-2.5 w-2.5 shrink-0 ${tones[selected.tone]}`} />
-          ) : null}
+        <span className="flex min-w-0 items-center gap-2">
+          {selected?.network ? <NetworkIcon id={selected.network} size={22} /> : null}
           <span className={`truncate ${selected ? 'text-text' : 'text-text-faint'}`}>
             {selected?.label ?? placeholder ?? label}
           </span>
         </span>
-        <Chevron />
+        <ChevronDownIcon className="shrink-0 text-text-faint" />
       </button>
       {open ? (
         <Sheet titleId={titleId} onClose={() => setOpen(false)} variant="selector">
-          <div className="sheet-handle mb-3" aria-hidden="true" />
           <div className="mb-3 flex items-center justify-between gap-3 px-1">
             <h2 id={titleId} className="font-display text-[20px]">
               {label}
@@ -98,9 +92,7 @@ export function SelectMenu({
                   }}
                   className={`select-menu-option flex min-h-14 w-full items-center gap-3 border px-4 py-3 text-left ${isSelected ? 'border-text bg-cat-500/15 shadow-[3px_3px_0_var(--color-cat-700)]' : 'border-border bg-surface'}`}
                 >
-                  {option.tone ? (
-                    <span aria-hidden="true" className={`h-9 w-9 shrink-0 ${tones[option.tone]}`} />
-                  ) : null}
+                  {option.network ? <NetworkIcon id={option.network} size={32} /> : null}
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14px] text-text">{option.label}</span>
                     {option.description ? (
@@ -121,8 +113,8 @@ export function SelectMenu({
 }
 
 /**
- * Amount entry for every mobile keyboard: a decimal keypad that may only offer a comma, so commas
- * become dots and only digits and one separator remain.
+ * Amount entry for every mobile keyboard: a decimal keypad that may only offer a comma. What it
+ * keeps is decided by `amountInput`: a typed or pasted amount is kept as meant, or refused.
  */
 export function AmountInput({
   value,
@@ -140,32 +132,13 @@ export function AmountInput({
       autoComplete="off"
       value={value}
       onChange={(event) => {
-        const normalized = event.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-        const dot = normalized.indexOf('.');
-        onChange(
-          dot === -1
-            ? normalized
-            : normalized.slice(0, dot + 1) + normalized.slice(dot + 1).replace(/\./g, ''),
-        );
+        // What would mean another number is refused: the field keeps the previous value.
+        const next = amountInput(event.target.value);
+        if (next !== null) onChange(next);
       }}
     />
   );
 }
-
-const Chevron = () => (
-  <svg
-    aria-hidden="true"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    className="shrink-0 text-text-faint"
-  >
-    <path d="m6 9 6 6 6-6" />
-  </svg>
-);
 
 const Check = () => (
   <svg

@@ -25,13 +25,10 @@
   textarea {
     font: inherit;
   }
-  :focus {
-    outline: none;
-  }
-  /* The keyboard always shows where it is; a tap or a click does not. */
+  /* No focus outline anywhere, by design decision (Daniel, 08-10). */
+  :focus,
   :focus-visible {
-    outline: 3px solid var(--color-cat-500);
-    outline-offset: 3px;
+    outline: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {

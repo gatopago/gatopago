@@ -30,6 +30,13 @@ vi.mock('../src/wallet/account', () => ({
   }),
 }));
 vi.mock('../src/wallet/push', () => ({ onMovement: () => () => {} }));
+const stellar = vi.hoisted(() => ({ account: new Promise<never>(() => {}) }));
+vi.mock('../src/wallet/stellar', () => ({
+  knownStellarAccount: () => null,
+  stellarAccount: () => stellar.account,
+  stellarBalance: async () => 0n,
+  stellarXlmBalance: async () => 0n,
+}));
 
 const networks = ['eip155:421614', 'eip155:43113'];
 const settings: ClientSettings = {
@@ -40,7 +47,6 @@ const settings: ClientSettings = {
   homeNetwork: networks[0],
   rpcUrls: {},
   turnstileSiteKey: '1x00000000000000000000AA',
-  mera: false,
   meraSessionMinutes: 15,
   passkeyRpId: 'localhost',
   stellar: null,
@@ -53,7 +59,7 @@ const session: Session = {
   wallet: {
     address: '0x1111111111111111111111111111111111111111',
     credentialId: 'test-passkey',
-    publicKey: `0x${'11'.repeat(64)}`,
+    owner: '0x3333333333333333333333333333333333333333',
     initialOwners: [],
   },
 };
@@ -202,6 +208,18 @@ describe('shared balance reads', () => {
     expect(totalUsdc(balances.get().usdc, networks)).toBe(12n);
     useBalances(settings, session);
     expect(balances.multicall).toHaveBeenCalledTimes(2);
+  });
+
+  it('reads every network at once while Wallet Core has not answered the Stellar account', async () => {
+    balances.multicall.mockImplementation(() => values(5n));
+    const { useBalances, totalUsdc } = await import('../src/wallet/balances');
+    const withStellar = { ...settings, stellar: { network: 'stellar:testnet', rpcUrl: '' } };
+    const read = useBalances(withStellar as ClientSettings, session);
+    await vi.waitFor(() => expect(balances.get().refreshing).toBe(false));
+    expect(balances.multicall).toHaveBeenCalledTimes(2);
+    expect(totalUsdc(balances.get().usdc, networks)).toBe(10n);
+    // Stellar is still unknown: not a zero.
+    expect(read.stellarUsdc).toBeUndefined();
   });
 
   it('never reports a failed network as a zero balance or a complete total', async () => {

@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import type { ClientSettings } from '../lib/settings';
 import { disablePush, enablePush, pushEnabled, pushSupported } from '../wallet/push';
 import { signOut, type Session } from '../wallet/session';
-import { NavigationLink as Link } from './NavigationLink';
+import { LanguageLink } from '../lib/LanguageLink';
 import { BackHeader } from './Primitives';
 import { SettingsSection } from './SettingsSection';
 import { BellIcon } from './Icons';
@@ -39,6 +40,7 @@ export function AccountSettings({
   english: boolean;
 }) {
   const router = useRouter();
+  const t = useTranslations('Settings');
   const suffix = en ? '?lang=en' : '';
   const [pushAvailable, setPushAvailable] = useState(false);
   const [pushOn, setPushOn] = useState(() => typeof window !== 'undefined' && pushEnabled());
@@ -49,14 +51,10 @@ export function AccountSettings({
   }, [settings]);
   return (
     <>
-      <BackHeader title={en ? 'Settings' : 'Ajustes'} english={en} />
+      <BackHeader title={t('title')} english={en} />
       <div>
         {pushOn ? (
-          <SettingsSection
-            title={en ? 'Notifications' : 'Notificaciones'}
-            tone="growth"
-            icon={<BellIcon />}
-          >
+          <SettingsSection title={t('notifications')} tone="growth" icon={<BellIcon />}>
             <div className="flex items-center gap-2.5 p-5">
               <svg
                 aria-hidden="true"
@@ -72,28 +70,18 @@ export function AccountSettings({
               >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
-              <p className="text-[14px] text-text-muted">
-                {en ? 'Payment notifications on' : 'Avisos de pagos activados'}
-              </p>
+              <p className="text-[14px] text-text-muted">{t('notificationsOn')}</p>
             </div>
           </SettingsSection>
         ) : pushAvailable ? (
-          <SettingsSection
-            title={en ? 'Notifications' : 'Notificaciones'}
-            tone="info"
-            icon={<BellIcon />}
-          >
+          <SettingsSection title={t('notifications')} tone="info" icon={<BellIcon />}>
             <div className="p-5">
               <p className="mb-3 text-[13px] leading-relaxed text-text-muted">
-                {en
-                  ? 'We let you know right away when you receive a payment or a deposit.'
-                  : 'Te avisamos al instante cuando recibas un pago o un depósito.'}
+                {t('notificationsHelp')}
               </p>
               {pushFailed ? (
                 <p role="alert" className="mb-3 text-[12px] leading-relaxed text-pending">
-                  {en
-                    ? "Notifications were not turned on. Check your browser's notification permission."
-                    : 'No se activaron los avisos. Revisa el permiso de notificaciones de tu navegador.'}
+                  {t('notificationsFailed')}
                 </p>
               ) : null}
               <button
@@ -112,21 +100,16 @@ export function AccountSettings({
                     .finally(() => setPushBusy(false));
                 }}
               >
-                {pushBusy
-                  ? en
-                    ? 'Turning on…'
-                    : 'Activando…'
-                  : en
-                    ? 'Turn on payment notifications'
-                    : 'Activar avisos de pagos'}
+                {pushBusy ? t('turningOn') : t('turnOn')}
               </button>
             </div>
           </SettingsSection>
         ) : null}
-        <SettingsSection title={en ? 'Language' : 'Idioma'} tone="neutral" icon={<GlobeIcon />}>
+        <SettingsSection title={t('language')} tone="neutral" icon={<GlobeIcon />}>
           <div className="p-5">
-            <nav className="seg-track seg-track-block" aria-label={en ? 'Language' : 'Idioma'}>
-              <Link
+            <nav className="seg-track seg-track-block" aria-label={t('language')}>
+              <LanguageLink
+                language="es"
                 href="/settings"
                 replace
                 aria-current={!en ? 'page' : undefined}
@@ -134,8 +117,9 @@ export function AccountSettings({
                 className="seg-item"
               >
                 Español
-              </Link>
-              <Link
+              </LanguageLink>
+              <LanguageLink
+                language="en"
                 href="/settings?lang=en"
                 replace
                 aria-current={en ? 'page' : undefined}
@@ -143,7 +127,7 @@ export function AccountSettings({
                 className="seg-item"
               >
                 English
-              </Link>
+              </LanguageLink>
             </nav>
           </div>
         </SettingsSection>
@@ -151,13 +135,13 @@ export function AccountSettings({
           type="button"
           className="btn btn-ghost btn-block text-danger"
           onClick={() => {
-            void disablePush(settings, session).finally(() => {
-              signOut();
-              router.replace(`/login${suffix}`);
-            });
+            // Signed out here at once; this device stops getting notifications in the background.
+            void disablePush(settings, session);
+            signOut();
+            router.replace(`/login${suffix}`);
           }}
         >
-          {en ? 'Sign out' : 'Cerrar sesión'}
+          {t('signOut')}
         </button>
       </div>
     </>

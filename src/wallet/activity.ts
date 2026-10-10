@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Address } from 'viem';
 import type { ReceiptData } from '../consumer/PaymentSheets';
 import type { ClientSettings } from '../lib/settings';
@@ -77,6 +77,9 @@ export function useActivity(settings: ClientSettings, session: Session, en: bool
   const [error, setError] = useState('');
   // A movement notification reads the first page again.
   const [revision, setRevision] = useState(0);
+  // Which reading of the list a "load more" continues: a page from before a fresh first page
+  // belongs to another snapshot (its cursor would skip or repeat movements), so it is dropped.
+  const snapshot = useRef(0);
   useEffect(
     () =>
       onMovement(() => {
@@ -101,8 +104,10 @@ export function useActivity(settings: ClientSettings, session: Session, en: bool
     firstPage(settings.apiOrigin, session.token)
       .then(({ activity, next_cursor }) => {
         if (!active) return;
+        snapshot.current++;
         setMovements(activity);
         setCursor(next_cursor);
+        setLoadingMore(false);
         setError('');
       })
       .catch((failure: unknown) => {
@@ -116,14 +121,23 @@ export function useActivity(settings: ClientSettings, session: Session, en: bool
 
   function loadMore() {
     if (!cursor || loadingMore) return;
+    const reading = snapshot.current;
     setLoadingMore(true);
     page(cursor)
       .then(({ activity, next_cursor }) => {
-        setMovements((current) => [...(current ?? []), ...activity]);
+        if (reading !== snapshot.current) return;
+        setMovements((current) => {
+          const known = new Set((current ?? []).map(({ id }) => id));
+          return [...(current ?? []), ...activity.filter(({ id }) => !known.has(id))];
+        });
         setCursor(next_cursor);
       })
-      .catch((failure: unknown) => setError(failureMessage(failure, en)))
-      .finally(() => setLoadingMore(false));
+      .catch((failure: unknown) => {
+        if (reading === snapshot.current) setError(failureMessage(failure, en));
+      })
+      .finally(() => {
+        if (reading === snapshot.current) setLoadingMore(false);
+      });
   }
 
   return { movements, hasMore: cursor !== null, loadingMore, loadMore, error };

@@ -17,7 +17,6 @@ export function AccountDetailsSheet({
 }) {
   return (
     <Sheet titleId="account-details-title" onClose={onClose}>
-      <div className="sheet-handle mb-5" aria-hidden="true" />
       <h2 id="account-details-title" className="meli-kicker mb-3">
         {en ? 'Your account' : 'Tu cuenta'}
       </h2>
@@ -27,7 +26,7 @@ export function AccountDetailsSheet({
         <NavigationLink
           href={localizedPath('/receive', en)}
           onClick={onClose}
-          className="font-semibold text-cat-700 underline underline-offset-2"
+          className="-my-3 inline-block py-3 font-semibold text-cat-700 underline underline-offset-2"
         >
           {en ? 'Receive' : 'Recibir'}
         </NavigationLink>

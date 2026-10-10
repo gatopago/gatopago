@@ -4,6 +4,7 @@ import { CatGlyph } from './CatGlyph';
 import { MeliSprite } from './MeliSprite';
 import { LandingInteractions } from './LandingInteractions';
 import { localizedPath } from '../consumer/routes';
+import { LanguageLink } from '../lib/LanguageLink';
 import { settings } from '../lib/settings';
 
 export function Landing({ lang }: { lang: 'es' | 'en' }) {
@@ -59,15 +60,15 @@ const intent = await response.json();`;
             </div>
 
             <div className="meli-nav__actions">
-              <Link
+              <LanguageLink
                 className="meli-locale"
                 href={localeHref}
-                hrefLang={isSpanish ? 'en' : 'es'}
+                language={isSpanish ? 'en' : 'es'}
                 aria-label={t.nav.language}
                 data-locale-link
               >
                 {localeLabel}
-              </Link>
+              </LanguageLink>
               <Link
                 className="meli-button meli-button--brand meli-nav__cta"
                 href={appHref}
@@ -822,9 +823,9 @@ const intent = await response.json();`;
             <div>
               <strong>{t.footer.company}</strong>
               <a href="#faq">{isSpanish ? 'Preguntas frecuentes' : 'FAQ'}</a>
-              <Link href={localeHref} hrefLang={isSpanish ? 'en' : 'es'} data-locale-link>
+              <LanguageLink href={localeHref} language={isSpanish ? 'en' : 'es'} data-locale-link>
                 {localeLabel}
-              </Link>
+              </LanguageLink>
             </div>
             <div>
               <strong>{t.footer.legal}</strong>

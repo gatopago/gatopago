@@ -1,6 +1,13 @@
 const addressPattern = /^0x[a-fA-F0-9]{40}$/;
-export type QrDestination =
-  { kind: 'address'; address: string; chain: string | null } | { kind: 'link'; path: string };
+/**
+ * A Stellar account (G…) or smart account (C…), as Receive shows it. Its checksum is verified
+ * where it is used: Send checks the address before preparing anything.
+ */
+const stellarPattern = /^[GC][A-Z2-7]{55}$/;
+type QrDestination =
+  | { kind: 'address'; address: string; chain: string | null }
+  | { kind: 'stellar'; address: string }
+  | { kind: 'link'; path: string };
 
 export function parseConsumerQr(raw: string, origin: string): QrDestination | null {
   const text = raw.trim();
@@ -12,6 +19,7 @@ export function parseConsumerQr(raw: string, origin: string): QrDestination | nu
   )
     return null;
   if (addressPattern.test(text)) return { kind: 'address', address: text, chain: null };
+  if (stellarPattern.test(text)) return { kind: 'stellar', address: text };
   const caip = /^eip155:([1-9][0-9]*):(0x[a-fA-F0-9]{40})$/.exec(text);
   if (caip && Number.isSafeInteger(Number(caip[1])))
     return { kind: 'address', address: caip[2], chain: caip[1] };
@@ -42,6 +50,8 @@ export function parseConsumerQr(raw: string, origin: string): QrDestination | nu
 }
 
 export function qrReviewPath(destination: QrDestination): string {
+  if (destination.kind === 'stellar')
+    return `/send?${new URLSearchParams({ recipient: destination.address, network: 'stellar' })}`;
   if (destination.kind === 'link')
     return destination.path.startsWith('/pay/') || destination.path.startsWith('/approve?')
       ? destination.path
@@ -58,7 +68,11 @@ export function reviewedRecipient(
   if (!params) return '';
   const address = params.get('recipient'),
     chain = params.get('chain');
-  if (!address || !addressPattern.test(address)) return '';
+  if (!address) return '';
+  // A scanned Stellar address opens Send on Stellar, and only there.
+  if (networkId.startsWith('stellar:'))
+    return params.get('network') === 'stellar' && stellarPattern.test(address) ? address : '';
+  if (!addressPattern.test(address)) return '';
   if (chain && `eip155:${chain}` !== networkId) return '';
   return address;
 }

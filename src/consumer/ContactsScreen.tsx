@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { ClientSettings } from '../lib/settings';
+import { copyText } from '../lib/useCopy';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { api } from '../wallet/api';
 import { failureMessage } from '../wallet/messages';
@@ -28,6 +29,9 @@ export function ContactsScreen({
   english: boolean;
 }) {
   const [contacts, setContacts] = useState<Contact[] | null>(null);
+  // The list could not be read: shown as such (with a retry), never as "no contacts yet".
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reload, setReload] = useState(0);
   const [invites, setInvites] = useState<{ invited: number; code: string | null } | null>(null);
   const [username, setUsername] = useState('');
   const [adding, setAdding] = useState(false);
@@ -42,15 +46,18 @@ export function ContactsScreen({
     const get = <T,>(path: string) =>
       api<T>(settings.apiOrigin, path, { token: session.token, signal });
     get<{ contacts: Contact[] }>('contacts')
-      .then(({ contacts }) => setContacts(contacts))
+      .then(({ contacts }) => {
+        setContacts(contacts);
+        setLoadFailed(false);
+      })
       .catch(() => {
-        if (!signal.aborted) setContacts([]);
+        if (!signal.aborted) setLoadFailed(true);
       });
     get<{ invited: number; code: string | null }>('invites')
       .then(setInvites)
       .catch(() => undefined);
     return () => controller.abort();
-  }, [settings, session]);
+  }, [settings, session, reload]);
 
   function add() {
     if (!username) return;
@@ -72,10 +79,15 @@ export function ContactsScreen({
   // Optimistic removal with rollback: the list never claims what the server does not have.
   function remove(contact: Contact) {
     setRemoving(null);
-    const previous = contacts;
+    const place = (contacts ?? []).indexOf(contact);
     setContacts((current) => (current ?? []).filter((item) => item !== contact));
     request(`contacts/${contact.username}`, { method: 'DELETE' }).catch(() => {
-      setContacts(previous);
+      // Only this contact comes back, where it was: other changes made meanwhile stay.
+      setContacts((current) => {
+        const list = current ?? [];
+        if (list.some((item) => item.username === contact.username)) return list;
+        return [...list.slice(0, place), contact, ...list.slice(place)];
+      });
       setNotice({
         error: true,
         text: en ? "Couldn't remove the contact" : 'No se pudo eliminar el contacto',
@@ -98,7 +110,7 @@ export function ContactsScreen({
       await navigator.share({ title: 'GatoPago', text, url }).catch(() => undefined);
       return;
     }
-    await navigator.clipboard.writeText(url);
+    await copyText(url);
     setNotice({ error: false, text: en ? 'Invite link copied' : 'Link de invitación copiado' });
   }
 
@@ -143,11 +155,10 @@ export function ContactsScreen({
           <button
             type="button"
             onClick={() =>
-              void navigator.clipboard
-                .writeText(invites.code!)
-                .then(() =>
-                  setNotice({ error: false, text: en ? 'Code copied' : 'Código copiado' }),
-                )
+              void copyText(invites.code!).then(
+                () => setNotice({ error: false, text: en ? 'Code copied' : 'Código copiado' }),
+                () => setNotice({ error: true, text: en ? 'Could not copy' : 'No se pudo copiar' }),
+              )
             }
             className="relative z-1 mt-3.5 flex items-center gap-2.5 border border-border bg-surface-2 px-3.5 py-2"
           >
@@ -199,9 +210,10 @@ export function ContactsScreen({
             className="min-w-0 flex-1 bg-transparent text-[14px] text-text placeholder:text-text-faint"
           />
         </div>
+        {/* Adding waits for the list: a list read before it would hide the new contact. */}
         <button
           type="submit"
-          disabled={adding || !username}
+          disabled={adding || !username || (contacts === null && !loadFailed)}
           className="btn btn-primary btn-sm h-12 shrink-0"
         >
           {adding ? '…' : en ? 'Add' : 'Agregar'}
@@ -217,8 +229,31 @@ export function ContactsScreen({
         </p>
       ) : null}
 
+      {loadFailed ? (
+        <p role="alert" className="mb-4 text-[13px] leading-relaxed text-pending">
+          {contacts
+            ? en
+              ? 'We could not update your contacts; this list may be out of date. '
+              : 'No pudimos actualizar tus contactos; esta lista puede no estar al día. '
+            : en
+              ? 'We could not load your contacts. '
+              : 'No pudimos cargar tus contactos. '}
+          <button
+            type="button"
+            onClick={() => {
+              setLoadFailed(false);
+              setReload((current) => current + 1);
+            }}
+            className="-my-3 inline-block py-3 font-semibold text-cat-700 underline underline-offset-2"
+          >
+            {en ? 'Try again' : 'Reintentar'}
+          </button>
+        </p>
+      ) : null}
       {contacts === null ? (
-        <RowSkeletonList count={5} />
+        loadFailed ? null : (
+          <RowSkeletonList count={5} />
+        )
       ) : contacts.length === 0 ? (
         <div className="flex flex-col items-center px-6 py-12 text-center">
           <CatGlyph className="mb-4 w-10 opacity-40" decorative />

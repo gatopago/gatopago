@@ -4,19 +4,18 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { useAction } from '../wallet/useAction';
 import type { ClientSettings } from '../lib/settings';
 import { api } from '../wallet/api';
-import { findAnyWallet, newAccountWallet } from '../wallet/passkey';
-import { forgetWallet, knownWallet, type Wallet } from '../wallet/session';
-import { signIn } from '../wallet/signIn';
+import { failureMessage } from '../wallet/messages';
+import { newAccountWallet } from '../wallet/passkey';
+import type { Wallet } from '../wallet/session';
+import { enter as enterWithPasskey, signIn } from '../wallet/signIn';
 import { Turnstile, type TurnstileHandle } from './Turnstile';
 import { PixelRail } from '../consumer/PixelRail';
 import { StageOverlay } from '../consumer/StageOverlay';
 import { MeliSprite } from '../marketing/MeliSprite';
 
 /**
- * Sign-in and sign-up with a passkey: one button for each, whatever key owns the account. With
- * `settings.mera`, a new account is owned by the key Mera derives from its passkey when the device
- * supports PRF (one prompt to sign in anywhere); otherwise by the passkey itself (one prompt on a
- * device that used it before, two elsewhere: find the account, then sign in).
+ * Sign-in and sign-up with a passkey: one button for each. The account is owned by the key Mera
+ * derives from the passkey (it needs PRF), so signing in anywhere is one prompt.
  */
 export function PasskeyAccess({
   settings,
@@ -38,9 +37,19 @@ export function PasskeyAccess({
   );
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
-  const [known, setKnown] = useState(() => (typeof window === 'undefined' ? null : knownWallet()));
   /** A passkey created for sign-up, kept so that retrying does not create another one. */
   const [created, setCreated] = useState<Wallet | null>(null);
+  /**
+   * An account Wallet Core does not know (its records were lost or reset) signs in with its usual
+   * passkey and is registered again: the screen asks for the human check (and the invitation
+   * while sign-up needs one), then sign-in finishes without another prompt.
+   */
+  const [reactivating, setReactivating] = useState<{
+    invite: boolean;
+    resolve: (answer: { turnstile: string; invite?: string }) => void;
+    reject: (reason: Error) => void;
+  } | null>(null);
+  const [checking, setChecking] = useState(false);
   const { busy, error, setError, run: perform } = useAction(en);
   /**
    * Whether Wallet Core asks new accounts for an invitation now (`INVITE_ONLY`): `null` until it
@@ -64,14 +73,38 @@ export function PasskeyAccess({
   const verification = useRef<TurnstileHandle>(null);
   // Mera loads after the page shows, so the passkey prompt opens right on the tap.
   useEffect(() => {
-    if (settings.mera) void import('../wallet/mera');
-  }, [settings.mera]);
+    void import('../wallet/mera');
+  }, []);
 
-  function enter(wallet: Wallet | null) {
+  /** The phone lists its passkeys: whichever account is chosen signs in. */
+  function enter() {
     perform(async () => {
-      await signIn(settings, wallet ?? (await findAnyWallet(settings)));
+      await enterWithPasskey(
+        settings,
+        (needs) => new Promise((resolve, reject) => setReactivating({ ...needs, resolve, reject })),
+      );
       onSignedIn('/app');
     });
+  }
+
+  function reactivate(event: FormEvent) {
+    event.preventDefault();
+    const checker = verification.current;
+    if (!reactivating || !checker) return;
+    setChecking(true);
+    checker
+      .token(AbortSignal.timeout(60_000))
+      .then((turnstile) => {
+        reactivating.resolve({ turnstile, invite: invite.trim() || undefined });
+        setReactivating(null);
+      })
+      .catch(() => setError(failureMessage(new Error('TURNSTILE_FAILED'), en)))
+      .finally(() => setChecking(false));
+  }
+
+  function stopReactivating() {
+    reactivating?.reject(new Error('CANCELLED'));
+    setReactivating(null);
   }
 
   function register(event: FormEvent) {
@@ -107,7 +140,7 @@ export function PasskeyAccess({
     >
       <StageOverlay
         label={
-          busy
+          busy && !reactivating
             ? registering
               ? en
                 ? 'Creating your account. Confirm on your device when asked.'
@@ -124,30 +157,53 @@ export function PasskeyAccess({
           {error}
         </p>
       ) : null}
-      {!registering ? (
+      {reactivating ? (
+        <form onSubmit={reactivate} className="flex flex-col items-center gap-4 text-center">
+          <p className="max-w-[300px] text-[15px] leading-relaxed">
+            {failureMessage(new Error('TURNSTILE_REQUIRED'), en)}
+          </p>
+          {reactivating.invite ? (
+            <label className="block w-full max-w-[320px] text-left text-[12px] text-text-muted">
+              <span className="mb-2 block">{en ? 'Invitation code' : 'Código de invitación'}</span>
+              <input
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                required
+                value={invite}
+                disabled={checking}
+                onChange={(event) => setInvite(event.target.value)}
+                className="meli-field h-12 text-center text-[14px]"
+              />
+            </label>
+          ) : null}
+          <Turnstile ref={verification} siteKey={settings.turnstileSiteKey} english={en} />
+          <button
+            className="auth-primary btn btn-primary btn-block"
+            disabled={checking}
+            type="submit"
+          >
+            {checking ? (en ? 'Checking…' : 'Verificando…') : en ? 'Continue' : 'Continuar'}
+          </button>
+          <button
+            type="button"
+            className="btn-text min-h-11 text-[13px]"
+            disabled={checking}
+            onClick={stopReactivating}
+          >
+            {en ? 'Cancel' : 'Cancelar'}
+          </button>
+        </form>
+      ) : !registering ? (
         <>
           <button
             type="button"
             className="auth-primary btn btn-primary btn-block"
             disabled={busy}
-            onClick={() => enter(known)}
+            onClick={enter}
           >
             {busy ? (en ? 'Signing in…' : 'Entrando…') : en ? 'Sign in' : 'Iniciar sesión'}
           </button>
-          {known ? (
-            <button
-              type="button"
-              className="auth-secondary btn btn-ghost btn-block"
-              disabled={busy}
-              onClick={() => {
-                forgetWallet();
-                setKnown(null);
-                enter(null);
-              }}
-            >
-              {en ? 'Use another account' : 'Entrar con otra cuenta'}
-            </button>
-          ) : null}
           <button
             type="button"
             className="auth-secondary btn btn-ghost btn-block"
@@ -199,13 +255,9 @@ export function PasskeyAccess({
               {en ? 'Your money is always yours' : 'Tu dinero siempre es tuyo'}
             </Reassurance>
             <Reassurance>
-              {settings.mera
-                ? en
-                  ? `One touch when you open the app, then pay without confirming each time for ${settings.meraSessionMinutes} minutes`
-                  : `Un toque al abrir la app y pagas sin confirmar cada vez durante ${settings.meraSessionMinutes} minutos`
-                : en
-                  ? 'You confirm every payment with your fingerprint'
-                  : 'Confirmas cada pago con tu huella'}
+              {en
+                ? `One touch when you open the app, and for ${settings.meraSessionMinutes} minutes you pay without confirming each time`
+                : `Un toque al abrir la app y, durante ${settings.meraSessionMinutes} minutos, pagas sin confirmar cada vez`}
             </Reassurance>
             <Reassurance>
               {en

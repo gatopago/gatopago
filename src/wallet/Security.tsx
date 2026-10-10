@@ -3,14 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAction } from './useAction';
 import { encodeFunctionData, type Hex } from 'viem';
-import { walletContracts } from '@gatopago/shared/networks';
-import {
-  gatopagoAccountAbi,
-  keyOwner,
-  ownersAfter,
-  passkeyOwner,
-  signApproval,
-} from '@gatopago/shared/wallet';
+import { gatopagoAccountAbi, keyOwner, ownersAfter, signApproval } from '@gatopago/shared/wallet';
 import { NavigationLink } from '../consumer/NavigationLink';
 import { BackHeader } from '../consumer/Primitives';
 import { localizedPath } from '../consumer/routes';
@@ -19,20 +12,13 @@ import { ScreenLoading } from '../consumer/Skeleton';
 import { StageOverlay } from '../consumer/StageOverlay';
 import type { ClientSettings } from '../lib/settings';
 import { gatopagoAccount, networkName, publicClient } from './account';
-import { applyApprovals, appliedApprovals } from './operations';
-import { api, type Approvals } from './api';
+import { applyApprovals } from './operations';
+import { api } from './api';
+import { readKeys, type KeysState } from './keys';
 import { failureMessage } from './messages';
-import { createPasskey } from './passkey';
-import type { Session } from './session';
-import { stellarSignerChanges, syncStellarSigners } from './stellar';
-
-type State = {
-  owners: Hex[];
-  total: number;
-  applied: Record<string, number | null>;
-  /** Signer changes pending on Stellar (`stellarSignerChanges`), `null` when it is off. */
-  stellar: number | 'unused' | null;
-};
+import { addOwnerCall, newBackupKey } from './passkey';
+import { saveSession, type Session } from './session';
+import { approveStellarKey, registerStellarKey, syncStellarSigners } from './stellar';
 
 /**
  * `/settings/security`, as V2's security center: the passkeys that own the account. Adding or
@@ -49,12 +35,8 @@ export function Security({
   english: boolean;
 }) {
   const { wallet } = session;
-  const current = (
-    wallet.meraOwner
-      ? keyOwner(wallet.meraOwner)
-      : passkeyOwner(walletContracts.webAuthnVerifier, wallet.publicKey)
-  ).toLowerCase();
-  const [state, setState] = useState<State | null>(null);
+  const current = keyOwner(wallet.owner).toLowerCase();
+  const [state, setState] = useState<KeysState | null>(null);
   const { busy, error, setError, run } = useAction(en);
   const [dialog, setDialog] = useState<{ remove: Hex } | null>(null);
 
@@ -90,49 +72,78 @@ export function Security({
   async function approve(call: Hex, everywhere: boolean) {
     const account = await gatopagoAccount(settings, wallet, settings.homeNetwork);
     const signature = await signApproval(account, BigInt(state!.total), call);
-    await api(settings.apiOrigin, `approvals/${wallet.address}`, {
-      token: session.token,
-      body: { call, signature, initial_owners: wallet.initialOwners },
-    });
+    const { session: renewed } = await api<{ session?: { token: string; expires_at: number } }>(
+      settings.apiOrigin,
+      `approvals/${wallet.address}`,
+      { token: session.token, body: { call, signature, initial_owners: wallet.initialOwners } },
+    );
+    // Removing a key ends every earlier session (one may be that key's): this device goes on with
+    // the new one. Without one, it removed its own key and its session ended with it.
+    const active = renewed
+      ? { ...session, token: renewed.token, expiresAt: renewed.expires_at }
+      : session;
+    if (renewed) saveSession(active);
     // Each network on its own: one that fails does not stop the others, and it applies the change
     // before its next operation anyway.
     const pending: string[] = [];
     for (const id of settings.networks)
-      if (
-        everywhere ||
-        id === settings.homeNetwork ||
-        (await publicClient(settings, id).getCode({ address: wallet.address }))
-      )
-        await applyApprovals(settings, session, id).catch(() => pending.push(id));
+      await (async () => {
+        if (
+          everywhere ||
+          id === settings.homeNetwork ||
+          (await publicClient(settings, id).getCode({ address: wallet.address }))
+        )
+          await applyApprovals(settings, active, id);
+      })().catch(() => pending.push(id));
     // A removed key must not keep signing on Stellar either; added ones are synced from the list.
     if (everywhere)
-      await syncStellarSigners(settings, session, ownersAfter(state!.owners, [call])).catch(() =>
+      await syncStellarSigners(settings, active, ownersAfter(state!.owners, [call])).catch(() =>
         pending.push('stellar'),
       );
     if (pending.length) throw new Error('APPROVAL_PENDING');
   }
 
+  /**
+   * Adds a backup key: a new passkey whose Mera key becomes an owner (its user handle names this
+   * account, so any device finds it). Its Stellar key is approved by its own EVM key while the new
+   * passkey's keys are in memory, registered once the approval made that key an owner, and signed
+   * in on Stellar by this device.
+   */
   const addKey = (attachment?: AuthenticatorAttachment) =>
     perform(async () => {
-      const backup = await createPasskey(settings, 'GatoPago backup', wallet.address, attachment);
-      await approve(
-        encodeFunctionData({
-          abi: gatopagoAccountAbi,
-          functionName: 'addOwners',
-          args: [[passkeyOwner(walletContracts.webAuthnVerifier, backup.publicKey)]],
-        }),
-        false,
+      const backup = await newBackupKey(
+        settings,
+        wallet.address,
+        (keys) => approveStellarKey(settings, wallet.address, keys),
+        attachment,
       );
+      const call = addOwnerCall(backup.owner);
+      // Still pending on some networks: the key is approved, and it completes there later.
+      const pending = await approve(call, false).then(
+        () => false,
+        (failure: unknown) => {
+          if (failure instanceof Error && failure.message === 'APPROVAL_PENDING') return true;
+          throw failure;
+        },
+      );
+      if (backup.result) {
+        await registerStellarKey(settings, session, backup.result);
+        await syncStellarSigners(settings, session, ownersAfter(state!.owners, [call])).catch(
+          () => undefined,
+        );
+      }
+      if (pending) throw new Error('APPROVAL_PENDING');
     });
 
   const keyCount = state?.owners.length ?? 0;
   const backedUp = keyCount > 1;
   const removing = dialog && typeof dialog === 'object' ? dialog.remove : null;
-  // Where a key change is still to be applied: networks behind the latest approval, and Stellar.
+  // Where a key change is still to be applied: networks behind the latest approval, or that could
+  // not be asked, and Stellar.
   const behind = state
     ? settings.networks.filter((id) => {
         const applied = state.applied[id];
-        return applied !== null && applied < state.total;
+        return applied === 'unread' || (applied !== null && applied < state.total);
       })
     : [];
   const stellarBehind =
@@ -151,7 +162,7 @@ export function Security({
         spinner={false}
       />
       {!state && !error ? (
-        <ScreenLoading kind="form" english={en} />
+        <ScreenLoading kind="settings" english={en} bar={false} />
       ) : (
         <div>
           {error ? (
@@ -238,18 +249,20 @@ export function Security({
                       key={owner}
                       className="flex min-h-14 items-center justify-between gap-3 px-4 py-2"
                     >
-                      <p className="min-w-0 truncate text-[14px]">
-                        {mine
-                          ? en
-                            ? 'This device'
-                            : 'Este dispositivo'
-                          : en
-                            ? `Key ${index + 1}`
-                            : `Llave ${index + 1}`}
-                        <span className="ml-2 font-mono text-[11px] text-text-faint">
-                          …{owner.slice(-8)}
-                        </span>
-                      </p>
+                      <div className="min-w-0">
+                        <p className="truncate text-[14px]">
+                          {mine
+                            ? en
+                              ? 'This device'
+                              : 'Este dispositivo'
+                            : en
+                              ? `Key ${index + 1}`
+                              : `Llave ${index + 1}`}
+                          <span className="ml-2 font-mono text-[11px] text-text-faint">
+                            …{owner.slice(-8)}
+                          </span>
+                        </p>
+                      </div>
                       {mine ? (
                         <span className="shrink-0 text-[12px] text-text-faint">
                           {en ? 'in use' : 'en uso'}
@@ -275,6 +288,7 @@ export function Security({
                     <BehindRow
                       key={id}
                       network={networkName(id)}
+                      unread={state.applied[id] === 'unread'}
                       english={en}
                       busy={busy}
                       onApply={() => perform(() => applyApprovals(settings, session, id))}
@@ -315,7 +329,6 @@ export function Security({
 
       {removing ? (
         <Sheet titleId="remove-key-title" onClose={() => setDialog(null)} busy={busy}>
-          <div className="sheet-handle mb-5" aria-hidden="true" />
           <h2 id="remove-key-title" className="font-display text-[22px]">
             {en ? 'Remove this key' : 'Quitar esta llave'}
           </h2>
@@ -376,11 +389,14 @@ export function Security({
 /** A network where the latest key change is still to be applied, with the way to apply it. */
 function BehindRow({
   network,
+  unread = false,
   english: en,
   busy,
   onApply,
 }: {
   network: string;
+  /** The network could not be asked: the change may be applied there or not. */
+  unread?: boolean;
   english: boolean;
   busy: boolean;
   onApply: () => void;
@@ -388,7 +404,13 @@ function BehindRow({
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-3">
       <p className="text-[13px] text-pending">
-        {en ? `Still to apply on ${network}` : `Falta aplicar en ${network}`}
+        {unread
+          ? en
+            ? `Could not check ${network}`
+            : `No pudimos revisar ${network}`
+          : en
+            ? `Still to apply on ${network}`
+            : `Falta aplicar en ${network}`}
       </p>
       <button
         type="button"
@@ -400,23 +422,4 @@ function BehindRow({
       </button>
     </div>
   );
-}
-
-async function readKeys(settings: ClientSettings, session: Session): Promise<State> {
-  const { wallet } = session;
-  const { approvals } = await api<Approvals>(settings.apiOrigin, `approvals/${wallet.address}`);
-  const applied = await Promise.all(
-    settings.networks.map((id) => appliedApprovals(settings, wallet.address, id)),
-  );
-  const owners = ownersAfter(
-    wallet.initialOwners,
-    approvals.map((approval) => approval.call),
-  );
-  return {
-    owners,
-    total: approvals.length,
-    applied: Object.fromEntries(settings.networks.map((id, i) => [id, applied[i]])),
-    // Stellar out of reach does not hide the keys.
-    stellar: await stellarSignerChanges(settings, session, owners).catch(() => null),
-  };
 }

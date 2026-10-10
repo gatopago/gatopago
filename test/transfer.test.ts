@@ -47,6 +47,12 @@ describe('one balance across networks', () => {
     ).rejects.toThrow('BALANCE_ON_OTHER_NETWORK');
   });
 
+  it('does not suggest gathering what all networks together do not cover', async () => {
+    await expect(
+      planTransfer({ [arbitrum]: 1n, [fuji]: 2n }, arbitrum, recipient, 5n, false),
+    ).rejects.toThrow('INSUFFICIENT_FUNDS');
+  });
+
   it('reports insufficient funds when no single network covers the amount and fee', async () => {
     await expect(
       planTransfer({ [arbitrum]: 1n, [fuji]: 2n }, arbitrum, recipient, 3n, true),

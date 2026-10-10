@@ -48,35 +48,28 @@ export default function ScanScreen({
     stream.current?.getTracks().forEach((track) => track.stop());
     stream.current = null;
   }, []);
-  useEffect(() => {
-    const hide = () => {
-      if (document.hidden) {
-        stop();
-        setCamera(false);
-        setBusy(false);
-      }
-    };
-    document.addEventListener('visibilitychange', hide);
-    return () => {
-      stop();
-      document.removeEventListener('visibilitychange', hide);
-    };
-  }, [stop]);
+  useEffect(() => stop, [stop]);
   const parse = useCallback(
     (raw: string) => {
-      const parsed = parseConsumerQr(raw, window.location.origin);
+      const found = parseConsumerQr(raw, window.location.origin);
+      // A Stellar address only where GatoPago has Stellar on.
+      const parsed = found?.kind === 'stellar' && !settings.stellar ? null : found;
       setError(
         parsed
           ? ''
-          : en
-            ? 'This QR has no address or GatoPago link we can use.'
-            : 'Este QR no tiene una dirección ni un link de GatoPago que podamos usar.',
+          : found
+            ? en
+              ? 'This QR is a Stellar address, and Stellar is not available here yet.'
+              : 'Este QR es una dirección de Stellar, y Stellar todavía no está disponible aquí.'
+            : en
+              ? 'This QR has no address or GatoPago link we can use.'
+              : 'Este QR no tiene una dirección ni un link de GatoPago que podamos usar.',
       );
       if (parsed?.kind === 'address') setScanned(parsed);
       else if (parsed) router.push(localizedPath(qrReviewPath(parsed), en));
       return !!parsed;
     },
-    [en, router],
+    [en, router, settings.stellar],
   );
   /** Reads a QR from an image, or from the centered square the preview shows (`square`). */
   const decode = useCallback(
@@ -197,8 +190,22 @@ export default function ScanScreen({
     const frame = requestAnimationFrame(() => {
       void start();
     });
+    // Leaving the app frees the camera (the system ends it anyway); coming back opens it again.
+    const visibility = () => {
+      if (document.hidden) {
+        stop();
+        setCamera(false);
+        setBusy(false);
+      } else {
+        setBusy(true);
+        setError('');
+        void start();
+      }
+    };
+    document.addEventListener('visibilitychange', visibility);
     return () => {
       cancelAnimationFrame(frame);
+      document.removeEventListener('visibilitychange', visibility);
       stop();
     };
   }, [start, stop, scanning]);
@@ -466,7 +473,7 @@ function Review({
         options={settings.networks.map((id) => ({
           value: id,
           label: networkName(id),
-          tone: 'info' as const,
+          network: id,
         }))}
         onChange={setNetworkId}
         english={en}

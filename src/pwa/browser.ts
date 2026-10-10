@@ -1,4 +1,4 @@
-import { isReloadBlocked } from './reload-guard';
+import { isReloadBlocked, subscribeReloadGuard } from './reload-guard';
 
 type InstallPrompt = Event & {
   prompt: () => Promise<void>;
@@ -96,6 +96,31 @@ export function startPwa(canonicalOrigin: string, release: boolean): void {
       navigator.serviceWorker.addEventListener('controllerchange', observe);
     })
     .catch(() => update({ workerError: true }));
+}
+
+/**
+ * Opens in this window the paths the service worker asks for (a tapped notification): through the
+ * app's own navigation, and only once no operation awaits its result (`reload-guard`).
+ */
+export function onOpenRequest(open: (path: string) => void) {
+  if (!('serviceWorker' in navigator)) return () => {};
+  let stopWaiting = () => {};
+  const handle = (event: MessageEvent) => {
+    const link: unknown = event.data?.type === 'GATOPAGO_OPEN' ? event.data.link : null;
+    if (typeof link !== 'string' || !link.startsWith('/') || link.startsWith('//')) return;
+    stopWaiting();
+    if (!isReloadBlocked()) return open(link);
+    stopWaiting = subscribeReloadGuard(() => {
+      if (isReloadBlocked()) return;
+      stopWaiting();
+      open(link);
+    });
+  };
+  navigator.serviceWorker.addEventListener('message', handle);
+  return () => {
+    stopWaiting();
+    navigator.serviceWorker.removeEventListener('message', handle);
+  };
 }
 
 export async function requestInstall(): Promise<

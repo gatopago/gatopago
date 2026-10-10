@@ -1,10 +1,11 @@
 'use client';
 
 import { useId, useRef, useState } from 'react';
+import { ChevronDownIcon } from './Icons';
 import { Sheet } from './Sheet';
 import { TokenIcon } from './TokenIcon';
 
-export interface TokenOption {
+interface TokenOption {
   value: string;
   symbol: string;
   label: string;
@@ -45,21 +46,10 @@ export function TokenSelect({
       >
         <TokenIcon symbol={selected.symbol} />
         <span className="min-w-0 truncate">{selected.symbol}</span>
-        <svg
-          aria-hidden="true"
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+        <ChevronDownIcon size={14} />
       </button>
       {open ? (
         <Sheet titleId={titleId} onClose={() => setOpen(false)} variant="selector">
-          <div className="sheet-handle mb-3" aria-hidden="true" />
           <div className="mb-3 flex items-center justify-between gap-3 px-1">
             <h2 id={titleId} className="font-display text-[20px]">
               {en ? 'Choose currency' : 'Elige una moneda'}

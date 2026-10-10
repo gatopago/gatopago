@@ -68,7 +68,16 @@ export function AccountShell({
 
   return (
     <AccountContext value={{ settings, session }}>
-      <ProfileProvider settings={settings} session={session} english={en}>
+      {/*
+       * Keyed by account: when another tab signs in with another account, nothing prepared for
+       * the previous one (a review, a receipt, its profile) survives into the new one.
+       */}
+      <ProfileProvider
+        key={session.wallet.address.toLowerCase()}
+        settings={settings}
+        session={session}
+        english={en}
+      >
         <ConsumerFrame
           english={en}
           navigation

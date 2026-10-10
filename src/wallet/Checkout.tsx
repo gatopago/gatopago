@@ -22,6 +22,7 @@ import { ScreenLoading } from '../consumer/Skeleton';
 import { StageOverlay } from '../consumer/StageOverlay';
 import { TxResult } from '../consumer/TxResult';
 import type { ClientSettings } from '../lib/settings';
+import { useCopy } from '../lib/useCopy';
 import { networkName, shortAddress, USDC_DECIMALS } from './account';
 import {
   payWithAccount,
@@ -85,7 +86,7 @@ export function Checkout({
             {error}
           </p>
         ) : !intent ? (
-          <ScreenLoading kind="detail" english={en} />
+          <ScreenLoading kind="detail" english={en} bar={false} />
         ) : (
           <Request
             intent={intent}
@@ -319,7 +320,7 @@ function Pay({
 
 /** For a wallet app with its own browser: the link to open there. */
 function CopyCheckoutLink({ english: en }: { english: boolean }) {
-  const [copied, setCopied] = useState(false);
+  const { copy, label } = useCopy(en);
   return (
     <>
       <p className="mb-3 text-center text-[13px] text-text-muted">
@@ -327,17 +328,8 @@ function CopyCheckoutLink({ english: en }: { english: boolean }) {
           ? 'Paying from another wallet? Open this link in its browser (MetaMask, Coinbase Wallet…).'
           : '¿Pagas desde otra wallet? Abre este link en su navegador (MetaMask, Coinbase Wallet…).'}
       </p>
-      <button
-        type="button"
-        className="btn btn-ghost btn-block"
-        onClick={() =>
-          void navigator.clipboard?.writeText(location.href).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          })
-        }
-      >
-        {copied ? (en ? 'Link copied ✓' : 'Link copiado ✓') : en ? 'Copy link' : 'Copiar link'}
+      <button type="button" className="btn btn-ghost btn-block" onClick={() => copy(location.href)}>
+        {label(en ? 'Copy link' : 'Copiar link')}
       </button>
     </>
   );
@@ -455,7 +447,6 @@ function AccountPay({
             ]}
           />
           <SigningDetails
-            settings={settings}
             wallet={session.wallet}
             networkId={plan.network}
             calls={paymentCalls(walletNetwork(plan.network), plan.payment, plan.signature)}
@@ -482,8 +473,8 @@ function WalletPay({
   onPaid: (intent: Intent) => void;
 }) {
   const [network, setNetwork] = useState(settings.homeNetwork);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  // One wallet prompt at a time: a double tap must not ask the wallet twice.
+  const { busy, error, run } = useAction(en);
   if (!hasWallet)
     return (
       <div className="mt-6">
@@ -501,7 +492,7 @@ function WalletPay({
           options={settings.networks.map((id) => ({
             value: id,
             label: networkName(id),
-            tone: 'info' as const,
+            network: id,
           }))}
           onChange={setNetwork}
           english={en}
@@ -538,14 +529,9 @@ function WalletPay({
           type="button"
           disabled={busy}
           className="btn btn-money btn-block"
-          onClick={() => {
-            setBusy(true);
-            setError('');
-            payWithBrowserWallet(settings, intent, network)
-              .then(onPaid)
-              .catch((failure: unknown) => setError(failureMessage(failure, en)))
-              .finally(() => setBusy(false));
-          }}
+          onClick={() =>
+            void run(async () => onPaid(await payWithBrowserWallet(settings, intent, network)))
+          }
         >
           {en ? 'Connect wallet and pay' : 'Conectar wallet y pagar'}
         </button>

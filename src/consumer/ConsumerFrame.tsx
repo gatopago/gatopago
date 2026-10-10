@@ -8,6 +8,7 @@ import Screen from './Screen';
 import { PrimaryNav } from './PrimaryNav';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { PwaControls } from '../pwa/PwaControls';
+import { ChevronDownIcon } from './Icons';
 import { MenuSheet } from './MenuSheet';
 import dynamic from 'next/dynamic';
 import { walletNetwork } from '@gatopago/shared/networks';
@@ -102,17 +103,7 @@ function Frame({
                 aria-expanded={detailsOpen}
               >
                 {identity}
-                <svg
-                  aria-hidden="true"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
+                <ChevronDownIcon size={14} />
               </button>
             ) : (
               <span className="meli-identity">{identity}</span>

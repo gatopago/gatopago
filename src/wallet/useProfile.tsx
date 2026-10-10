@@ -18,13 +18,17 @@ import type { Session } from './session';
 interface ProfileState {
   profile: Profile | null;
   setProfile: (profile: Profile) => void;
+  /** Why the last read failed; cleared by the next profile that arrives. */
   error: string;
+  /** Reads the profile again, after a failure. */
+  retry: () => void;
 }
 
 const ProfileContext = createContext<ProfileState>({
   profile: null,
   setProfile: () => undefined,
   error: '',
+  retry: () => undefined,
 });
 
 const PROFILE_KEY = 'gatopago:profile';
@@ -58,8 +62,14 @@ export function ProfileProvider({
     rememberedProfile(session.wallet.address),
   );
   const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => {
+    setError('');
+    setAttempt((current) => current + 1);
+  }, []);
   const setProfile = useCallback((value: Profile) => {
     setStoredProfile(value);
+    setError('');
     try {
       localStorage.setItem(PROFILE_KEY, JSON.stringify(value));
     } catch {
@@ -74,12 +84,15 @@ export function ProfileProvider({
         if (!controller.signal.aborted) setError(failureMessage(failure, en));
       });
     return () => controller.abort();
-  }, [settings.apiOrigin, session.token, en, setProfile]);
+  }, [settings.apiOrigin, session.token, en, setProfile, attempt]);
   // FCM rotates tokens: a device with notifications on confirms its token on every visit.
   useEffect(() => {
     void renewPush(settings, session, en).catch(() => undefined);
   }, [settings, session, en]);
-  const value = useMemo(() => ({ profile, setProfile, error }), [profile, setProfile, error]);
+  const value = useMemo(
+    () => ({ profile, setProfile, error, retry }),
+    [profile, setProfile, error, retry],
+  );
   return <ProfileContext value={value}>{children}</ProfileContext>;
 }
 

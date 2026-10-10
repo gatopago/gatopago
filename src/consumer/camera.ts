@@ -60,7 +60,10 @@ export async function openScanCamera(): Promise<MediaStream> {
     }
   }
   // With the permission already given, names are readable before opening anything.
-  const known = mainBackCamera(await navigator.mediaDevices.enumerateDevices());
+  // Listing cameras is best effort: when it fails, the browser's choice is used, and a camera
+  // already open is returned, never left running.
+  const devices = () => navigator.mediaDevices.enumerateDevices().catch(() => []);
+  const known = mainBackCamera(await devices());
   if (known) {
     try {
       const stream = await open({ deviceId: { exact: known.deviceId } });
@@ -71,7 +74,7 @@ export async function openScanCamera(): Promise<MediaStream> {
     }
   }
   const stream = await open({ facingMode: { ideal: 'environment' } });
-  const main = mainBackCamera(await navigator.mediaDevices.enumerateDevices());
+  const main = mainBackCamera(await devices());
   const current = stream.getVideoTracks()[0]?.getSettings().deviceId;
   if (!main || main.deviceId === current) {
     if (main) remember(main.deviceId);

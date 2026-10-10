@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { LanguageLink } from '../lib/LanguageLink';
 import { privacy, terms } from './legal-copy';
 
 const privacyEmail = 'privacy@gatopago.com';
@@ -29,13 +30,13 @@ export function LegalDocument({ kind, lang }: { kind: 'terms' | 'privacy'; lang:
         <Link href={en ? '/en' : '/'} className="font-display text-xl font-bold">
           GatoPago
         </Link>
-        <Link
+        <LanguageLink
           href={en ? `/${kind}` : `/en/${kind}`}
-          hrefLang={en ? 'es' : 'en'}
+          language={en ? 'es' : 'en'}
           className="border-2 border-text p-3 font-mono text-sm"
         >
           {en ? 'ES' : 'EN'}
-        </Link>
+        </LanguageLink>
       </header>
       <main id="main-content" className="mx-auto max-w-3xl px-6 pb-16 leading-relaxed">
         <aside className="mb-8 border-l-4 border-info bg-info/10 p-4 text-sm" role="note">

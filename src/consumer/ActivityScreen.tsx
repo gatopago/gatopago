@@ -1,8 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { formatUnits } from 'viem';
 import type { ClientSettings } from '../lib/settings';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { MeliSprite } from '../marketing/MeliSprite';
@@ -13,6 +12,7 @@ import {
   presentMovement,
   useActivity,
 } from '../wallet/activity';
+import { formatAmount } from '../wallet/balances';
 import type { Session } from '../wallet/session';
 import { balanceHidden, Receipt } from './PaymentSheets';
 import { SelectMenu } from './SelectMenu';
@@ -46,13 +46,7 @@ function ActivityRow({
   const earn = movement.kind === 'earn';
   const swap = movement.kind === 'swap';
   const { title, detail } = presentMovement(movement, en);
-  const amount = Number(formatUnits(BigInt(movement.amount), decimalsOf(movement))).toLocaleString(
-    en ? 'en' : 'es',
-    {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 6,
-    },
-  );
+  const amount = formatAmount(BigInt(movement.amount), decimalsOf(movement), en, 2);
   const date = movementDate(movement.timestamp, en);
   return (
     <button
@@ -88,8 +82,10 @@ function ActivityRow({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] leading-snug">{title}</span>
-        <span className="block truncate text-[12px] leading-snug text-text-muted">
-          {detail} · {date}
+        {/* The description gives way first: the date always shows. */}
+        <span className="flex min-w-0 text-[12px] leading-snug text-text-muted">
+          <span className="truncate">{detail}</span>
+          <span className="shrink-0 whitespace-pre"> · {date}</span>
         </span>
       </span>
       <span
@@ -233,6 +229,23 @@ export function ActivityScreen({
   const router = useRouter();
   const pathname = usePathname();
   const { movements, hasMore, loadingMore, loadMore, error } = useActivity(settings, session, en);
+  // Older movements load on their own as the end of the list comes near; the button stays for
+  // the keyboard and where the browser cannot tell. Watched again after each page, so a short
+  // list keeps filling while its end is still on screen.
+  const end = useRef<HTMLButtonElement>(null);
+  const more = useEffectEvent(loadMore);
+  useEffect(() => {
+    const button = end.current;
+    if (!button || loadingMore || typeof IntersectionObserver === 'undefined') return;
+    const watcher = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) more();
+      },
+      { rootMargin: '0px 0px 400px 0px' },
+    );
+    watcher.observe(button);
+    return () => watcher.disconnect();
+  }, [hasMore, loadingMore, movements?.length]);
   const [open, setOpen] = useState<Movement | null>(null);
   const [hidden] = useState(balanceHidden);
 
@@ -385,6 +398,7 @@ export function ActivityScreen({
       )}
       {hasMore ? (
         <button
+          ref={end}
           type="button"
           disabled={loadingMore}
           onClick={loadMore}

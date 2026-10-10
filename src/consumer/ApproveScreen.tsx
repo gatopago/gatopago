@@ -10,6 +10,7 @@ import { gatopagoAccount } from '../wallet/account';
 import { api, ApiError } from '../wallet/api';
 import { failureMessage } from '../wallet/messages';
 import type { Session } from '../wallet/session';
+import { useAction } from '../wallet/useAction';
 import { NavigationLink } from './NavigationLink';
 import { BackHeader, MoneyPanel, NoticeCard, TransactionActions } from './Primitives';
 import { localizedPath } from './routes';
@@ -48,18 +49,29 @@ const expired = (failure: unknown) =>
 
 /**
  * `/approve?request=…`, opened from the QR of GatoPago Business (business.gatopago.com): shows which
- * computer asks to sign in and approves it with the passkey.
+ * computer asks to sign in and approves it with the passkey. Keyed by request: another QR starts
+ * from nothing, so what is shown (device, place, approved) is always the request being signed.
  */
-export function ApproveScreen({
-  settings,
-  session,
-  english: en,
-}: {
+export function ApproveScreen(props: {
   settings: ClientSettings;
   session: Session;
   english: boolean;
 }) {
   const request = businessRequest(useSearchParams().get('request'));
+  return <ApproveRequest key={request ?? ''} request={request} {...props} />;
+}
+
+function ApproveRequest({
+  request,
+  settings,
+  session,
+  english: en,
+}: {
+  request: string | null;
+  settings: ClientSettings;
+  session: Session;
+  english: boolean;
+}) {
   const [login, setLogin] = useState<{
     device: string;
     place: string | null;
@@ -68,8 +80,8 @@ export function ApproveScreen({
   const [state, setState] = useState<'reading' | 'ready' | 'approved' | 'expired'>(
     request ? 'reading' : 'expired',
   );
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  // One approval at a time: a double tap must not open two passkey prompts.
+  const { busy, error, setError, run } = useAction(en);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
   useEffect(() => {
@@ -90,7 +102,7 @@ export function ApproveScreen({
         else setError(failureMessage(failure, en));
       });
     return () => controller.abort();
-  }, [request, settings, session, en]);
+  }, [request, settings, session, en, setError]);
 
   useEffect(() => {
     const clock = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
@@ -101,30 +113,28 @@ export function ApproveScreen({
   const shownState = state === 'ready' && left <= 0 ? 'expired' : state;
   const title = en ? 'Sign in to Business' : 'Entrar a Negocios';
 
-  async function approve() {
+  function approve() {
     if (!request) return;
-    setBusy(true);
-    setError('');
-    try {
-      const account = await gatopagoAccount(settings, session.wallet, settings.homeNetwork);
-      const message = approvalMessage({
-        webOrigin: settings.webOrigin,
-        address: account.address,
-        chainId: walletNetwork(settings.homeNetwork).chain.id,
-        request,
-      });
-      const signature = await account.signMessage({ message });
-      await api(settings.apiOrigin, `business-approvals/${request}`, {
-        token: session.token,
-        body: { message, signature },
-      });
-      setState('approved');
-    } catch (failure) {
-      if (expired(failure)) setState('expired');
-      else setError(failureMessage(failure, en));
-    } finally {
-      setBusy(false);
-    }
+    void run(async () => {
+      try {
+        const account = await gatopagoAccount(settings, session.wallet, settings.homeNetwork);
+        const message = approvalMessage({
+          webOrigin: settings.webOrigin,
+          address: account.address,
+          chainId: walletNetwork(settings.homeNetwork).chain.id,
+          request,
+        });
+        const signature = await account.signMessage({ message });
+        await api(settings.apiOrigin, `business-approvals/${request}`, {
+          token: session.token,
+          body: { message, signature, initial_owners: session.wallet.initialOwners },
+        });
+        setState('approved');
+      } catch (failure) {
+        if (!expired(failure)) throw failure;
+        setState('expired');
+      }
+    });
   }
 
   const home = (

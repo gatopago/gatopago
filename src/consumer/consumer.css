@@ -67,12 +67,19 @@
   gap: 20px;
   padding: 28px;
 }
+/* Drawn by Sheet; its space follows each variant's padding. */
 .consumer-ui .sheet-handle {
   width: 56px;
   height: 8px;
-  margin-inline: auto;
+  margin: 0 auto 20px;
   background: var(--color-cat-500);
   box-shadow: 14px 0 0 var(--color-cat-700);
+}
+.consumer-ui .meli-menu-sheet[data-variant='menu'] .sheet-handle {
+  margin: 4px auto 12px;
+}
+.consumer-ui .meli-menu-sheet[data-variant='selector'] .sheet-handle {
+  margin-bottom: 12px;
 }
 .consumer-ui .meli-menu-row {
   display: grid;
@@ -280,8 +287,8 @@
   margin: calc(-1 * (env(safe-area-inset-top) + var(--frame-top))) calc(-1 * var(--frame-x)) 20px;
   padding: calc(env(safe-area-inset-top) + 8px) var(--frame-x) 8px;
   border-bottom: 1px solid var(--color-border);
-  background: rgb(255 248 240 / 0.94);
-  backdrop-filter: blur(12px);
+  /* Solid: the screen scrolls under it without blurring through. */
+  background: var(--color-canvas);
 }
 .consumer-ui .back-header__button {
   display: grid;
@@ -300,9 +307,6 @@
 .consumer-ui .back-header__button:active {
   transform: translateX(-3px);
   background: var(--color-cat-50);
-}
-.consumer-ui .back-header__button:focus-visible {
-  border-color: var(--color-text);
 }
 @media (hover: hover) and (pointer: fine) {
   .consumer-ui .back-header__button:hover {
@@ -325,10 +329,23 @@
   }
 }
 
+/*
+ * What sits under the phone's status bar: always the plain page color. iOS blurs whatever is
+ * there, so nothing colored or scrolling may show through it.
+ */
+.consumer-ui .status-bar-veil {
+  position: fixed;
+  z-index: 25;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top);
+  background: var(--color-canvas);
+  pointer-events: none;
+}
+
 .consumer-ui .app-frame::after {
   position: absolute;
   z-index: 0;
-  top: 0;
+  top: env(safe-area-inset-top);
   right: 20px;
   width: 44px;
   height: 6px;
@@ -341,6 +358,10 @@
 .consumer-ui .app-frame > * {
   position: relative;
   z-index: 1;
+}
+/* Above the screen's content: the install notice opens from it and must not slide under. */
+.consumer-ui .app-frame > .meli-app-header {
+  z-index: 2;
 }
 .consumer-ui .auth-content:not(.auth-content--login) {
   display: flex;
@@ -1026,7 +1047,6 @@
   font-variation-settings: var(--recursive-mono);
   font-variant-numeric: tabular-nums slashed-zero;
 }
-.consumer-ui .pixel-art,
 .consumer-ui .meli-sprite {
   image-rendering: pixelated;
   image-rendering: crisp-edges;

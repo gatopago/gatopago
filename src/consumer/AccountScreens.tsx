@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { ChevronDownIcon } from './Icons';
 import { BackHeader, Panel } from './Primitives';
 import { NavigationLink } from './NavigationLink';
 import { localizedPath } from './routes';
@@ -70,7 +71,7 @@ export function RecoveryScreen({ english: en }: { english: boolean }) {
               : 'Sin otra llave, el acceso no se puede recuperar: nadie, ni siquiera GatoPago, puede restablecerlo. Por eso importa tener una llave de respaldo: '}
             <NavigationLink
               href={localizedPath('/settings/security', en)}
-              className="font-semibold text-cat-700 underline underline-offset-2"
+              className="-my-3 inline-block py-3 font-semibold text-cat-700 underline underline-offset-2"
             >
               {en ? 'add one in Security' : 'agrégala en Seguridad'}
             </NavigationLink>
@@ -109,20 +110,7 @@ function Faq({ question, children }: { question: string; children: ReactNode }) 
     <details className="group px-0.5">
       <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-2.5 text-[14px] text-text">
         {question}
-        <svg
-          aria-hidden="true"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="shrink-0 text-text-faint transition-transform group-open:rotate-180"
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+        <ChevronDownIcon className="shrink-0 text-text-faint transition-transform group-open:rotate-180" />
       </summary>
       <div className="flex flex-col gap-2 pb-2.5 text-[13px] leading-relaxed text-text-muted">
         {children}

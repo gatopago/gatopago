@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { crosschainFee } from '@gatopago/shared/crosschain';
 import type { ClientSettings } from '../lib/settings';
 import { cctpNetwork, networkName } from '../wallet/account';
@@ -8,6 +8,7 @@ import { formatBalance, useBalances } from '../wallet/balances';
 import type { Session } from '../wallet/session';
 import { NavigationLink } from './NavigationLink';
 import { localizedPath } from './routes';
+import { NetworkIcon } from './TokenIcon';
 
 /**
  * USDC lives on the home network: what arrived on another one (or on Stellar) is said here, with
@@ -36,73 +37,99 @@ export function ElsewhereNote({
       return id !== home && typeof amount === 'bigint' && amount > 0n;
     })
     .sort(([, a], [, b]) => (b > a ? 1 : -1));
-  // What crossing each one costs; `null` when Circle could not say (the move screen checks again).
-  const [fees, setFees] = useState<Record<string, bigint | null>>({});
-  const key = elsewhere.map(([id, amount]) => `${id}:${amount}`).join(',');
-  useEffect(() => {
-    if (!key) return;
-    const controller = new AbortController();
-    for (const pair of key.split(',')) {
-      const [id, amount] = [
-        pair.slice(0, pair.lastIndexOf(':')),
-        pair.slice(pair.lastIndexOf(':') + 1),
-      ];
-      crosschainFee(cctpNetwork(id), cctpNetwork(home), BigInt(amount), controller.signal)
-        .then((fee) => setFees((current) => ({ ...current, [id]: fee })))
-        .catch(() => {
-          if (!controller.signal.aborted) setFees((current) => ({ ...current, [id]: null }));
-        });
-    }
-    return () => controller.abort();
-  }, [key, home]);
-
   if (!elsewhere.length) return null;
-  // Worth bringing: it covers its crossing. A fee Circle did not report does not hide the link.
-  const bringable = ([id, amount]: readonly [string, bigint]) =>
-    id in fees && (fees[id] === null || amount > fees[id]!);
-  const bring = (id: string, label: string) => (
-    <NavigationLink
-      key={id}
-      href={localizedPath(`/crosschain?from=${encodeURIComponent(id)}`, en)}
-      className="font-semibold text-cat-700 underline underline-offset-2"
-    >
-      {label}
-    </NavigationLink>
-  );
 
   if (elsewhere.length === 1) {
-    const [only] = elsewhere;
+    const [[id, amount]] = elsewhere;
     return (
       <p className={`text-[12px] leading-relaxed text-text-muted ${className}`}>
         {en
-          ? `You also have ${formatBalance(only[1], en)} USDC on ${networkName(only[0])}.`
-          : `Tienes además ${formatBalance(only[1], en)} USDC en ${networkName(only[0])}.`}
-        {bringable(only) ? <> {bring(only[0], en ? 'Bring it' : 'Traerlos')}</> : null}
+          ? `You also have ${formatBalance(amount, en)} USDC on ${networkName(id)}.`
+          : `Tienes además ${formatBalance(amount, en)} USDC en ${networkName(id)}.`}{' '}
+        {/* Inline, but with a finger-sized target: the padding grows the tap area, not the line. */}
+        <BringLink
+          from={id}
+          home={home}
+          amount={amount}
+          english={en}
+          className="-my-3 inline-block py-3"
+        >
+          {en ? 'Bring it' : 'Traerlos'}
+        </BringLink>
       </p>
     );
   }
-  // Several networks: each says how much and brings only its own.
+  // Several networks: one row each, with how much and a link that brings only its own.
   const total = elsewhere.reduce((sum, [, amount]) => sum + amount, 0n);
   return (
-    <p className={`text-[12px] leading-relaxed text-text-muted ${className}`}>
-      {en
-        ? `You also have ${formatBalance(total, en)} USDC on other networks: `
-        : `Tienes además ${formatBalance(total, en)} USDC en otras redes: `}
-      {elsewhere.map((entry, index) => (
-        <span key={entry[0]}>
-          {index ? ' · ' : null}
-          {bringable(entry)
-            ? bring(
-                entry[0],
-                en
-                  ? `bring ${formatBalance(entry[1], en)} from ${networkName(entry[0])}`
-                  : `traer ${formatBalance(entry[1], en)} de ${networkName(entry[0])}`,
-              )
-            : en
-              ? `${formatBalance(entry[1], en)} on ${networkName(entry[0])}`
-              : `${formatBalance(entry[1], en)} en ${networkName(entry[0])}`}
-        </span>
-      ))}
-    </p>
+    <div className={`text-[12px] leading-relaxed text-text-muted ${className}`}>
+      <p>
+        {en
+          ? `You also have ${formatBalance(total, en)} USDC on other networks:`
+          : `Tienes además ${formatBalance(total, en)} USDC en otras redes:`}
+      </p>
+      <ul>
+        {elsewhere.map(([id, amount]) => (
+          <li key={id} className="flex min-h-11 items-center justify-between gap-3">
+            <span className="flex min-w-0 items-center gap-2">
+              <NetworkIcon id={id} size={18} />
+              <span className="truncate">
+                {formatBalance(amount, en)} {en ? 'on' : 'en'} {networkName(id)}
+              </span>
+            </span>
+            <BringLink
+              from={id}
+              home={home}
+              amount={amount}
+              english={en}
+              className="flex min-h-11 shrink-0 items-center px-1"
+            >
+              {en ? 'Bring' : 'Traer'}
+            </BringLink>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * The link to bring one network's USDC home, gone once Circle's fee turns out larger than the
+ * amount. Shown before the fee arrives, so the common case never changes.
+ */
+function BringLink({
+  from,
+  home,
+  amount,
+  english: en,
+  className,
+  children,
+}: {
+  from: string;
+  home: string;
+  amount: bigint;
+  english: boolean;
+  className: string;
+  children: ReactNode;
+}) {
+  // `null` when Circle could not say: that does not hide the link (the move screen checks again).
+  const [fee, setFee] = useState<bigint | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    crosschainFee(cctpNetwork(from), cctpNetwork(home), amount, controller.signal)
+      .then(setFee)
+      .catch(() => {
+        if (!controller.signal.aborted) setFee(null);
+      });
+    return () => controller.abort();
+  }, [from, home, amount]);
+  if (fee !== null && amount <= fee) return null;
+  return (
+    <NavigationLink
+      href={localizedPath(`/crosschain?from=${encodeURIComponent(from)}`, en)}
+      className={`font-semibold text-cat-700 underline underline-offset-2 ${className}`}
+    >
+      {children}
+    </NavigationLink>
   );
 }

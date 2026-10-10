@@ -6,6 +6,7 @@ import postcss, { type AnyNode } from 'postcss';
 import tailwind from '@tailwindcss/postcss';
 import { describe, expect, it, vi } from 'vitest';
 import { AccountSettings } from '../src/consumer/AccountSettings';
+import { withTexts } from './translations';
 import { PrimaryNav } from '../src/consumer/PrimaryNav';
 import { MoveMenu } from '../src/consumer/MoveMenu';
 
@@ -41,34 +42,36 @@ describe('Consumer presentation migration', () => {
   it('retains deterministic Next settings destinations in both languages', () => {
     for (const english of [false, true]) {
       const html = renderToStaticMarkup(
-        createElement(AccountSettings, {
-          english,
-          settings: {
-            webOrigin: 'https://gatopago.com',
-            apiOrigin: 'https://api.gatopago.com',
-            businessOrigin: 'https://business.gatopago.com',
-            networks: ['eip155:421614'],
-            homeNetwork: 'eip155:421614',
-            rpcUrls: {},
-            turnstileSiteKey: '1x00000000000000000000AA',
-            mera: false,
-            meraSessionMinutes: 15,
-            passkeyRpId: 'localhost',
-            stellar: null,
-            push: null,
-          },
-          session: {
-            token: 'session',
-            expiresAt: 4102444800,
-            userId: 'usr_test',
-            wallet: {
-              credentialId: 'credential',
-              publicKey: `0x${'11'.repeat(64)}`,
-              address: '0x75464f762bc50d0A0B127ab5a085504BF102Bb88',
-              initialOwners: [],
+        withTexts(
+          createElement(AccountSettings, {
+            english,
+            settings: {
+              webOrigin: 'https://gatopago.com',
+              apiOrigin: 'https://api.gatopago.com',
+              businessOrigin: 'https://business.gatopago.com',
+              networks: ['eip155:421614'],
+              homeNetwork: 'eip155:421614',
+              rpcUrls: {},
+              turnstileSiteKey: '1x00000000000000000000AA',
+              meraSessionMinutes: 15,
+              passkeyRpId: 'localhost',
+              stellar: null,
+              push: null,
             },
-          },
-        }),
+            session: {
+              token: 'session',
+              expiresAt: 4102444800,
+              userId: 'usr_test',
+              wallet: {
+                credentialId: 'credential',
+                owner: '0x3333333333333333333333333333333333333333',
+                address: '0x75464f762bc50d0A0B127ab5a085504BF102Bb88',
+                initialOwners: [],
+              },
+            },
+          }),
+          english,
+        ),
       );
       expect(html).toContain(english ? 'aria-label="Back"' : 'aria-label="Volver"');
       // Security lives in the menu only, not repeated in Settings.

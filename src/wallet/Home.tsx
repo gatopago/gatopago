@@ -3,7 +3,6 @@
 import { walletAssets } from '@gatopago/shared/assets';
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { formatUnits } from 'viem';
 import { walletNetwork } from '@gatopago/shared/networks';
 import { EyeIcon, RefreshIcon, RequestIcon, ScanIcon, SendIcon, SwapIcon } from '../consumer/Icons';
 import { RecentActivity } from '../consumer/ActivityScreen';
@@ -16,7 +15,7 @@ import { NavigationLink } from '../consumer/NavigationLink';
 import { localizedPath } from '../consumer/routes';
 import type { ClientSettings } from '../lib/settings';
 import { networkName } from './account';
-import { formatBalance, useBalances } from './balances';
+import { formatBalance, formatHolding, useBalances } from './balances';
 import type { Session } from './session';
 
 const CardInterestSheet = dynamic(() =>
@@ -66,9 +65,7 @@ export function Home({
     if (typeof value !== 'bigint') return '—';
     return item.symbol === 'USDC'
       ? formatBalance(value, en)
-      : Number(formatUnits(value, item.decimals)).toLocaleString(en ? 'en' : 'es', {
-          maximumFractionDigits: 6,
-        });
+      : formatHolding(value, item.decimals, en);
   };
   // USDC first, then the coins the account holds, then the empty ones, quieter.
   const tokens = coins
@@ -133,9 +130,7 @@ export function Home({
               '••••'
             ) : shownBalance != null ? (
               native ? (
-                Number(formatUnits(shownBalance, asset.decimals)).toLocaleString(en ? 'en' : 'es', {
-                  maximumFractionDigits: 6,
-                })
+                formatHolding(shownBalance, asset.decimals, en)
               ) : (
                 <>
                   <span className="mr-1 text-[0.5em]">$</span>

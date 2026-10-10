@@ -177,9 +177,11 @@ self.addEventListener('push', (event) => {
       self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
         for (const window of windows) window.postMessage({ type: 'GATOPAGO_MOVEMENT' });
       }),
+      // One notification per movement: the same one sent again replaces it instead of adding one.
       self.registration.showNotification(data.title || 'GatoPago', {
         body: data.body || '',
         icon: '/apple-touch-icon.png',
+        ...(data.tag ? { tag: data.tag } : {}),
         data: { link: data.link || '/app' },
       }),
     ]),
@@ -198,9 +200,11 @@ self.addEventListener('notificationclick', (event) => {
   }
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (windows) => {
+      // An open app goes there itself: through its own navigation, and not while an operation
+      // awaits its result. Otherwise the link opens a new window.
       for (const window of windows) {
         if ('focus' in window) {
-          await window.navigate(link);
+          window.postMessage({ type: 'GATOPAGO_OPEN', link });
           return window.focus();
         }
       }

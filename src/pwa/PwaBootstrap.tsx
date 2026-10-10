@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
-import { startPwa } from './browser';
+import { useRouter } from 'next/navigation';
+import { onOpenRequest, startPwa } from './browser';
 
 export function PwaBootstrap({
   canonicalOrigin,
@@ -10,8 +11,10 @@ export function PwaBootstrap({
   canonicalOrigin: string;
   release: boolean;
 }) {
+  const router = useRouter();
   useEffect(() => {
     startPwa(canonicalOrigin, release);
   }, [canonicalOrigin, release]);
+  useEffect(() => onOpenRequest((path) => router.push(path)), [router]);
   return null;
 }

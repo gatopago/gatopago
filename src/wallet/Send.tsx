@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useAction } from './useAction';
 import { useSearchParams } from 'next/navigation';
-import { formatUnits, isAddress, isAddressEqual, parseUnits, type Address, type Hex } from 'viem';
+import { isAddress, isAddressEqual, parseUnits, type Address, type Hex } from 'viem';
 import { BackHeader, MoneyPanel, TransactionActions } from '../consumer/Primitives';
 import { AmountInput, SelectMenu } from '../consumer/SelectMenu';
 import { RecipientShortcuts } from '../consumer/RecipientShortcuts';
@@ -12,9 +12,10 @@ import type { ClientSettings } from '../lib/settings';
 import { networkName, publicClient, USDC_DECIMALS } from './account';
 import { send } from './operations';
 import { api, type Recipient } from './api';
-import { formatBalance, formatUsdc, useBalances } from './balances';
+import { formatAmount, formatBalance, formatHolding, formatUsdc, useBalances } from './balances';
 import { ElsewhereNote } from '../consumer/ElsewhereNote';
 import { checkStellarRecipient, planStellarSend, sendOnStellar, stellarArrived } from './stellar';
+import { forgetCrossing, rememberCrossing } from './crossings';
 import { reviewedRecipient } from '../consumer/qr';
 import {
   ConfirmDestination,
@@ -100,9 +101,16 @@ export function Send({
       : [];
   const [receiveAs, setReceiveAs] = useState('');
   const settleInto = settleOptions.find((token) => token.symbol === receiveAs);
-  const requestedNetwork = params.get('chain') ? `eip155:${params.get('chain')}` : null;
+  // A scanned address may ask for its network: an EVM chain, or Stellar for a G…/C… address.
+  const requestedNetwork =
+    params.get('network') === 'stellar'
+      ? (settings.stellar?.network ?? null)
+      : params.get('chain')
+        ? `eip155:${params.get('chain')}`
+        : null;
   const initialNetwork =
-    requestedNetwork && settings.networks.includes(requestedNetwork)
+    requestedNetwork &&
+    (settings.networks.includes(requestedNetwork) || requestedNetwork === settings.stellar?.network)
       ? requestedNetwork
       : settings.homeNetwork;
   const scanned = reviewedRecipient(params, initialNetwork);
@@ -118,12 +126,9 @@ export function Send({
       ? stellarUsdc
       : balances[networkId];
   const decimals = chosen?.decimals ?? USDC_DECIMALS;
-  const amountText = (value: bigint, places: number) =>
-    places === USDC_DECIMALS
-      ? formatBalance(value, en)
-      : Number(formatUnits(value, places)).toLocaleString(en ? 'en' : 'es', {
-          maximumFractionDigits: 6,
-        });
+  // A balance is shown cut (it never shows more than there is); what is sent, exactly.
+  const balanceText = (value: bigint, places: number) =>
+    chosen ? formatHolding(value, places, en) : formatBalance(value, en);
   const [amount, setAmount] = useState('');
   const [review, setReview] = useState<Review | null>(null);
   const [sent, setSent] = useState<{ hash: string; review: Review } | null>(null);
@@ -247,8 +252,15 @@ export function Send({
       if (!current.stellar) hash = await send(settings, session, current.from, callsFor(current));
       else if (current.calls) {
         hash = await send(settings, session, current.from, current.calls);
-        // Wallet Core delivers burns toward Stellar; the timeline reports it again if this is lost.
+        // Wallet Core delivers burns toward Stellar; the timeline reports it again if this is lost,
+        // and Between networks follows it after a reload.
         void stellarArrived(settings, session, current.from, hash).catch(() => undefined);
+        rememberCrossing(session.wallet.address, {
+          from: current.from,
+          to: current.to,
+          amount: current.amount.toString(),
+          hash,
+        });
       } else
         hash = await sendOnStellar(
           settings,
@@ -277,7 +289,13 @@ export function Send({
     <>
       <BackHeader title={en ? 'Send money' : 'Enviar dinero'} english={en} to="/move" />
       <StageOverlay
-        label={busy && !review ? (en ? 'Preparing your transfer…' : 'Preparando tu envío…') : null}
+        label={
+          busy && !review && !sent
+            ? en
+              ? 'Preparing your transfer…'
+              : 'Preparando tu envío…'
+            : null
+        }
       />
       {error && !review ? (
         <p className="auth-error" role="alert">
@@ -303,6 +321,7 @@ export function Send({
                 to={sent.review.to}
                 hash={sent.hash}
                 english={en}
+                onDelivered={() => forgetCrossing(session.wallet.address, sent.hash)}
                 delivery={
                   sent.review.stellar
                     ? () => stellarArrived(settings, session, sent.review.from, sent.hash)
@@ -403,7 +422,7 @@ export function Send({
             ) : null}
             <p className="mt-2 text-[12px] text-text-faint">
               {en ? 'Available' : 'Disponible'}:{' '}
-              {typeof total === 'bigint' ? amountText(total, decimals) : '—'} {symbol}
+              {typeof total === 'bigint' ? balanceText(total, decimals) : '—'} {symbol}
             </p>
             {chosen ? null : (
               <ElsewhereNote
@@ -509,7 +528,7 @@ export function Send({
                 options={[...settings.networks, ...(stellarId ? [stellarId] : [])].map((id) => ({
                   value: id,
                   label: networkName(id),
-                  tone: 'info' as const,
+                  network: id,
                 }))}
                 onChange={setNetworkId}
                 english={en}
@@ -549,7 +568,7 @@ export function Send({
           amountLabel={en ? 'You will send' : 'Vas a enviar'}
           amount={
             review.coin
-              ? amountText(review.amount, review.coin.decimals)
+              ? formatAmount(review.amount, review.coin.decimals, en, 2)
               : formatUsdc(review.amount, en)
           }
           unit={review.coin?.symbol ?? 'USDC'}
@@ -581,7 +600,7 @@ export function Send({
                 ? ([
                     [
                       en ? 'They receive' : 'Recibe',
-                      `${Number(formatUnits(review.settle.quote, review.settle.decimals)).toLocaleString(en ? 'en' : 'es', { maximumFractionDigits: 6 })} ${review.settle.symbol}`,
+                      `${formatAmount(review.settle.quote, review.settle.decimals, en)} ${review.settle.symbol}`,
                     ],
                     [
                       en ? 'Price' : 'Precio',
@@ -605,7 +624,6 @@ export function Send({
           />
           {review.stellar && !review.calls ? null : (
             <SigningDetails
-              settings={settings}
               wallet={session.wallet}
               networkId={review.from}
               calls={callsFor(review)}

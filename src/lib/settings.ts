@@ -16,11 +16,6 @@ export interface ClientSettings {
    */
   readonly rpcUrls: Readonly<Record<string, string>>;
   readonly turnstileSiteKey: string;
-  /**
-   * Offers Mera accounts (`GATOPAGO_MERA=on`): a key derived from the passkey owns the account and
-   * signs without prompts during a short session.
-   */
-  readonly mera: boolean;
   /** Minutes a Mera signing session lasts without use (`GATOPAGO_MERA_SESSION_MINUTES`, 15). */
   readonly meraSessionMinutes: number;
   /**
@@ -135,7 +130,6 @@ export const settings = {
   homeNetwork,
   rpcUrls,
   turnstileSiteKey: required('GATOPAGO_TURNSTILE_SITE_KEY'),
-  mera: process.env.GATOPAGO_MERA?.trim() === 'on',
   meraSessionMinutes: minutes('GATOPAGO_MERA_SESSION_MINUTES', 15),
   passkeyRpId: passkeyRpId(webOrigin),
   stellar: stellar(),
@@ -150,7 +144,6 @@ export const clientSettings: ClientSettings = {
   homeNetwork: settings.homeNetwork,
   rpcUrls: settings.rpcUrls,
   turnstileSiteKey: settings.turnstileSiteKey,
-  mera: settings.mera,
   meraSessionMinutes: settings.meraSessionMinutes,
   passkeyRpId: settings.passkeyRpId,
   stellar: settings.stellar,

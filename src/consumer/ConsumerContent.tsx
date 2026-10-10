@@ -10,6 +10,7 @@ import { ScreenLoading } from './Skeleton';
 
 const FormLoading = () => <ScreenLoading kind="form" />;
 const DetailLoading = () => <ScreenLoading kind="detail" />;
+const SettingsLoading = () => <ScreenLoading kind="settings" />;
 
 // AccountShell's Suspense keeps the existing loading screen and its language.
 const Home = lazy(() => import('../wallet/Home').then((m) => ({ default: m.Home })));
@@ -21,10 +22,10 @@ const Receive = dynamic(() => import('../wallet/Receive').then((m) => m.Receive)
   loading: DetailLoading,
 });
 const Profile = dynamic(() => import('../wallet/Profile').then((m) => m.ProfileScreen), {
-  loading: FormLoading,
+  loading: SettingsLoading,
 });
 const Security = dynamic(() => import('../wallet/Security').then((m) => m.Security), {
-  loading: FormLoading,
+  loading: SettingsLoading,
 });
 const Recovery = dynamic(() => import('./AccountScreens').then((m) => m.RecoveryScreen), {
   loading: DetailLoading,

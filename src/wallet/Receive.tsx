@@ -33,20 +33,26 @@ export function Receive({
   const [symbol, setSymbol] = useState('USDC');
   const [usdcNetwork, setUsdcNetwork] = useState(settings.homeNetwork);
   const [requested, setRequested] = useState<'busy' | 'done' | string | null>(null);
-  // Stellar receives USDC at the account's own Stellar address, from Wallet Core.
-  const [stellar, setStellar] = useState<string | null>(null);
+  // Stellar receives at the account's own Stellar address, from Wallet Core: `undefined` while
+  // asking, `null` when Stellar is off. A failed request says so and can be retried; it never
+  // stays "preparing" nor removes Stellar from the choices.
+  const [stellar, setStellar] = useState<string | null>();
+  const [stellarFailed, setStellarFailed] = useState(false);
+  const [stellarTry, setStellarTry] = useState(0);
   useEffect(() => {
     let active = true;
     stellarAccount(settings, session)
       .then((account) => {
         if (active) setStellar(account?.account ?? null);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (active) setStellarFailed(true);
+      });
     return () => {
       active = false;
     };
-  }, [settings, session]);
-  const stellarId = stellar ? settings.stellar!.network : null;
+  }, [settings, session, stellarTry]);
+  const stellarId = settings.stellar && stellar !== null ? settings.stellar.network : null;
   // XLM, when Stellar is on, lives only there: it is received at the Stellar account, like USDC on
   // Stellar.
   const coins = walletAssets(settings.networks, settings.stellar?.network);
@@ -81,7 +87,8 @@ export function Receive({
           ? 'Choose the coin, then share your address with the wallet or exchange that sends it.'
           : 'Elige la moneda y comparte tu dirección con la wallet o el exchange que te la envía.'}
       </p>
-      <div className="mb-5 flex items-center gap-2">
+      {/* The network gets its own row when the coin beside it would cut its name. */}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
         <TokenSelect
           value={coin.symbol}
           label={en ? 'Currency' : 'Moneda'}
@@ -110,14 +117,14 @@ export function Receive({
                     ? 'Recommended: your main network'
                     : 'Recomendada: tu red principal'
                   : undefined,
-              tone: 'info' as const,
+              network: id,
             }))}
             onChange={(id) => {
               setUsdcNetwork(id);
               setRequested(null);
             }}
             english={en}
-            className="min-w-0 flex-1"
+            className="min-w-[220px] flex-1"
           />
         ) : (
           <p className="min-w-0 flex-1 truncate px-1 text-[14px] text-text-muted">
@@ -127,9 +134,27 @@ export function Receive({
       </div>
       <MoneyPanel className="mb-4">
         {onStellar && !stellar ? (
-          <p className="py-8 text-center text-[13px] text-text-muted">
-            {en ? 'Preparing your Stellar address…' : 'Preparando tu dirección de Stellar…'}
-          </p>
+          stellarFailed ? (
+            <p role="alert" className="py-8 text-center text-[13px] leading-relaxed text-pending">
+              {en
+                ? 'We could not get your Stellar address. '
+                : 'No pudimos obtener tu dirección de Stellar. '}
+              <button
+                type="button"
+                onClick={() => {
+                  setStellarFailed(false);
+                  setStellarTry((current) => current + 1);
+                }}
+                className="-my-3 inline-block py-3 font-semibold text-cat-700 underline underline-offset-2"
+              >
+                {en ? 'Try again' : 'Reintentar'}
+              </button>
+            </p>
+          ) : (
+            <p className="py-8 text-center text-[13px] text-text-muted">
+              {en ? 'Preparing your Stellar address…' : 'Preparando tu dirección de Stellar…'}
+            </p>
+          )
         ) : (
           <AddressQRCard
             address={onStellar ? stellar! : session.wallet.address}

@@ -71,10 +71,39 @@ async function authorize(settings: ClientSettings, id: string, payer: Address, n
   } satisfies Plan;
 }
 
-const confirm = (settings: ClientSettings, id: string, network: string, hash: Hex) =>
-  api<Intent>(settings.apiOrigin, `/checkout/v1/${id}/confirm`, {
+/**
+ * A payment of an intent sent from this browser, kept until Flow registers it: a retry registers
+ * that same transaction instead of paying again.
+ */
+const sentKey = (id: string) => `gatopago.checkout.sent.${id}`;
+
+function sentPayment(id: string): { network: string; hash: Hex } | null {
+  try {
+    return JSON.parse(localStorage.getItem(sentKey(id)) ?? 'null');
+  } catch {
+    return null;
+  }
+}
+
+/** Tells Flow about the transaction that paid `id` (`PAYMENT_NOT_REGISTERED` until it answers). */
+async function confirm(settings: ClientSettings, id: string, network: string, hash: Hex) {
+  try {
+    localStorage.setItem(sentKey(id), JSON.stringify({ network, hash }));
+  } catch {
+    // Without storage a retry pays again, and the router refuses a second payment of the intent.
+  }
+  const intent = await api<Intent>(settings.apiOrigin, `/checkout/v1/${id}/confirm`, {
     body: { network, transaction_hash: hash },
+  }).catch((error: unknown) => {
+    throw new Error('PAYMENT_NOT_REGISTERED', { cause: error });
   });
+  try {
+    localStorage.removeItem(sentKey(id));
+  } catch {
+    // Nothing stored.
+  }
+  return intent;
+}
 
 /**
  * How the GatoPago account pays `intent`: from the home network when it holds the total, otherwise
@@ -108,6 +137,8 @@ export async function payWithAccount(
   intent: Intent,
   plan: Plan,
 ) {
+  const sent = sentPayment(intent.id);
+  if (sent) return confirm(settings, intent.id, sent.network, sent.hash);
   const calls = paymentCalls(walletNetwork(plan.network), plan.payment, plan.signature);
   // Signing loads on paying: the checkout page opens without it.
   const { send } = await import('./operations');
@@ -132,6 +163,8 @@ export async function payWithBrowserWallet(
   intent: Intent,
   network: string,
 ) {
+  const sent = sentPayment(intent.id);
+  if (sent) return confirm(settings, intent.id, sent.network, sent.hash);
   const provider = (window as { ethereum?: EIP1193Provider }).ethereum;
   if (!provider) throw new Error('NO_BROWSER_WALLET');
   const { chain, usdc } = walletNetwork(network);
@@ -219,7 +252,7 @@ export const listCharges = (settings: ClientSettings, session: Session, signal?:
   );
 
 /** A request to GatoPago Flow's merchant API (`/v1/...`) with the member's session. */
-export const flowApi = <T>(
+const flowApi = <T>(
   settings: ClientSettings,
   session: Session,
   path: string,

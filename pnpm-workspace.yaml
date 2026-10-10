@@ -1,4 +1,15 @@
 allowBuilds:
+  '@parcel/watcher': false
+  '@swc/core': false
   '@firebase/util': false
   esbuild: false
   protobufjs: false
+
+# Vetted: @grpc/grpc-js comes with Firestore inside the `firebase` package; the web imports only
+# firebase/app and firebase/messaging, and both advisories concern a gRPC server.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-m9gg-hp2v-232j
+    - GHSA-f596-whhp-79r4
+
+minimumReleaseAge: 10080

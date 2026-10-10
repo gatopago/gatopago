@@ -28,7 +28,24 @@ export function RowSkeletonList({ count = 4 }: { count?: number }) {
   );
 }
 
-export function DetailPageSkeleton() {
+/** Security and Profile: a status card, then a list of items. */
+function SettingsPageSkeleton() {
+  return (
+    <div className="flex flex-1 flex-col" aria-hidden="true">
+      <div className="meli-paper-card meli-paper-card--strong mb-6 p-5">
+        <Skeleton className="mb-3 h-6 w-48 max-w-[80%]" />
+        <Skeleton className="h-3 w-56 max-w-[90%]" />
+        <Skeleton className="mt-5 h-12 w-full" />
+      </div>
+      <Skeleton className="mb-3 h-3 w-24" />
+      <div className="meli-paper-card">
+        <RowSkeletonList count={2} />
+      </div>
+    </div>
+  );
+}
+
+function DetailPageSkeleton() {
   return (
     <div className="flex flex-1 flex-col" aria-hidden="true">
       <div className="meli-paper-card meli-paper-card--strong relative mb-5 overflow-hidden p-5">
@@ -58,7 +75,7 @@ export function DetailPageSkeleton() {
   );
 }
 
-export function FormPageSkeleton() {
+function FormPageSkeleton() {
   return (
     <div className="flex flex-1 flex-col" aria-hidden="true">
       <Skeleton className="mb-4 h-3 w-24" />
@@ -85,13 +102,17 @@ export function FormPageSkeleton() {
   );
 }
 
-/** A screen while it loads; outside the main tabs, with the top bar it is about to have. */
+/**
+ * A screen while it loads, shaped like the screen it stands for. Before the screen exists it
+ * draws the top bar too (outside the main tabs); a screen that already shows its own bar while
+ * its data loads passes `bar={false}`, so the bar is never drawn twice.
+ */
 export function ScreenLoading({
   kind = 'form',
   english: en = false,
   bar,
 }: {
-  kind?: 'form' | 'detail' | 'account';
+  kind?: 'form' | 'detail' | 'account' | 'settings';
   english?: boolean;
   bar?: boolean;
 }) {
@@ -122,6 +143,8 @@ export function ScreenLoading({
         </>
       ) : kind === 'detail' ? (
         <DetailPageSkeleton />
+      ) : kind === 'settings' ? (
+        <SettingsPageSkeleton />
       ) : (
         <FormPageSkeleton />
       )}

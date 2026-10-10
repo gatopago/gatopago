@@ -123,7 +123,7 @@ export function MoveMenu({ english: en }: { english: boolean }) {
           href="/team"
           english={en}
           tone="brand"
-          title={en ? 'Pay my team' : 'Pagar a mi equipo'}
+          title={en ? 'Group payment' : 'Pago en grupo'}
           description={
             en
               ? 'Several people at once, from your balance or your savings'

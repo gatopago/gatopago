@@ -15,19 +15,13 @@ import {
   splitCalls,
   type Payout,
 } from '@gatopago/shared/rules';
+import { amountInput } from '../lib/amount';
 import type { ClientSettings } from '../lib/settings';
 import { networkName, shortAddress, USDC_DECIMALS } from '../wallet/account';
 import { api, type Recipient } from '../wallet/api';
 import { formatBalance, formatUsdc, useBalances } from '../wallet/balances';
 import { send } from '../wallet/operations';
-import { failureMessage } from '../wallet/messages';
-import {
-  openVault,
-  readVaultRecord,
-  vaultState,
-  writeVaultRecord,
-  type VaultState,
-} from '../wallet/vault';
+import { deleteGroup, listGroups, saveGroup, type Group } from '../wallet/groups';
 import { ElsewhereNote } from './ElsewhereNote';
 import { RecipientShortcuts } from './RecipientShortcuts';
 import { TokenSelect } from './TokenSelect';
@@ -91,7 +85,7 @@ const members = (list: unknown): Member[] | null =>
       }))
     : null;
 
-/** The team paid last from this device, until it is saved in the vault (then only there). */
+/** The group paid last from this device, to start from it next time. */
 function rememberedTeam(account: Address): Member[] {
   try {
     const team = members(JSON.parse(localStorage.getItem(teamKey(account)) ?? 'null'));
@@ -110,17 +104,8 @@ function rememberTeam(account: Address, team: Member[]) {
   }
 }
 
-/** Once the team lives in the vault, nothing about it stays on this device's disk. */
-function forgetTeam(account: Address) {
-  try {
-    localStorage.removeItem(teamKey(account));
-  } catch {
-    // Nothing to forget.
-  }
-}
-
 /**
- * `/team`, "Pay my team": several people paid in one operation and one signature, either fixed
+ * `/team`, "Group payment": several people paid in one operation and one signature, either fixed
  * amounts (from the available balance or straight from savings in Aave) or shares of an amount
  * that arrived, with a part saved (`/team?split=<amount>` opens it on a paid charge). Every
  * payment goes through or none does.
@@ -156,53 +141,54 @@ export function TeamScreen({
   const [review, setReview] = useState<Review | null>(null);
   const [receipt, setReceipt] = useState<(ReceiptData & { review: Review }) | null>(null);
   const { busy, error, run: perform } = useAction(en);
-  // The team saved in the vault, readable with the passkey on any device. `null` while asking;
-  // `off` when Wallet Core cannot say (then the team stays on this device, as before).
-  const [vault, setVault] = useState<VaultState | 'off' | null>(null);
-  const [vaultBusy, setVaultBusy] = useState(false);
-  const [vaultNote, setVaultNote] = useState('');
+  // "My groups": named groups kept by Wallet Core, on any device the member signs in.
+  const [groups, setGroups] = useState<Group[]>([]);
+  const groupAction = useAction(en);
+  /** The group loaded in the form, if any. */
+  const [group, setGroup] = useState<string | null>(null);
+  /** The name being typed to save the form as a group; `null` while not saving. */
+  const [naming, setNaming] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [savedAs, setSavedAs] = useState('');
   useEffect(() => {
     let active = true;
-    vaultState(settings, session)
-      .then(async (state) => {
-        if (!active) return;
-        setVault(state);
-        // Already open in this session: the saved team comes in without asking for anything.
-        if (state === 'open') {
-          const team = members(await readVaultRecord(settings, session, 'team'));
-          if (active && team) setTeam(team);
-          forgetTeam(account);
-        }
+    listGroups(settings, session)
+      .then((list) => {
+        if (active) setGroups(list);
       })
-      .catch(() => {
-        if (active) setVault('off');
-      });
+      .catch(() => undefined);
     return () => {
       active = false;
     };
-  }, [settings, session, account]);
-
-  /** Opens the vault (one prompt; the first time it creates it), then brings or saves the team. */
-  function withVault(then: () => Promise<void>) {
-    setVaultBusy(true);
-    setVaultNote('');
-    openVault(settings, session)
-      .then(async () => {
-        setVault('open');
-        await then();
-        forgetTeam(account);
-      })
-      .catch((failure: unknown) => setVaultNote(failureMessage(failure, en)))
-      .finally(() => setVaultBusy(false));
-  }
-  const bringTeam = () =>
-    withVault(async () => {
-      const team = members(await readVaultRecord(settings, session, 'team'));
-      if (team) setTeam(team);
-    });
+  }, [settings, session]);
   const named = team.filter(({ who }) => who.trim());
-  const saveTeam = () =>
-    withVault(() => writeVaultRecord(settings, session, 'team', plainTeam(named)));
+
+  function pickGroup(chosen: Group) {
+    const list = members(chosen.members);
+    if (list) setTeam(list);
+    setGroup(chosen.name);
+    setDeleting(false);
+    setSavedAs('');
+  }
+  /** Saves the form as a group: one with the same name is replaced, the others stay. */
+  function keepGroup() {
+    const name = (naming ?? '').trim();
+    if (!name) return;
+    groupAction.run(async () => {
+      setGroups(await saveGroup(settings, session, { name, members: plainTeam(named) }));
+      setGroup(name);
+      setNaming(null);
+      setSavedAs(name);
+    });
+  }
+  function forgetGroup(name: string) {
+    groupAction.run(async () => {
+      setGroups(await deleteGroup(settings, session, name));
+      setGroup(null);
+      setDeleting(false);
+    });
+  }
+  const saving = en ? 'Saving…' : 'Guardando…';
 
   const network = walletNetwork(networkId);
   // Savings (Aave) hold USDC only.
@@ -296,10 +282,7 @@ export function TeamScreen({
         if (next.total === 0n) throw new Error('INVALID_AMOUNT');
       }
       if ((funds ?? 0n) < next.total) throw new Error('INSUFFICIENT_FUNDS');
-      // Where the team lives: in the vault when it is open, on this device while there is none.
-      if (vault === 'open')
-        void writeVaultRecord(settings, session, 'team', plainTeam(filled)).catch(() => undefined);
-      else if (vault !== 'locked' && vault !== 'elsewhere') rememberTeam(account, filled);
+      rememberTeam(account, filled);
       setReview(next);
     });
   }
@@ -352,7 +335,7 @@ export function TeamScreen({
       : []),
   ];
 
-  const title = en ? 'Pay my team' : 'Pagar a mi equipo';
+  const title = en ? 'Group payment' : 'Pago en grupo';
   if (receipt)
     return (
       <>
@@ -363,7 +346,7 @@ export function TeamScreen({
             {en ? 'Go to home' : 'Ir al inicio'}
           </NavigationLink>
           <button type="button" className="btn-text mt-1 w-full" onClick={() => setReceipt(null)}>
-            {en ? 'Pay the team again' : 'Pagar al equipo otra vez'}
+            {en ? 'Pay this group again' : 'Pagar a este grupo otra vez'}
           </button>
         </ReceiptScreen>
       </>
@@ -373,7 +356,13 @@ export function TeamScreen({
     <>
       <BackHeader title={title} english={en} to="/move" />
       <StageOverlay
-        label={busy && !review ? (en ? 'Preparing the payments…' : 'Preparando los pagos…') : null}
+        label={
+          busy && !review && !receipt
+            ? en
+              ? 'Preparing the payments…'
+              : 'Preparando los pagos…'
+            : null
+        }
       />
       <p className="mb-4 text-[14px] leading-relaxed text-text-muted">
         {en
@@ -418,7 +407,10 @@ export function TeamScreen({
               placeholder="0"
               value={splitting}
               disabled={busy}
-              onChange={(event) => setSplitting(event.target.value.replace(/[^\d.,]/g, ''))}
+              onChange={(event) => {
+                const next = amountInput(event.target.value);
+                if (next !== null) setSplitting(next);
+              }}
               className="meli-field tabular h-12 text-[15px] placeholder:text-text-faint"
             />
             <p className="mt-2 text-[12px] leading-relaxed text-text-muted">
@@ -435,34 +427,69 @@ export function TeamScreen({
               ? 'Their GatoPago @username or a 0x address.'
               : 'Su @usuario de GatoPago o una dirección 0x.'}
           </p>
-          {vault === 'locked' ? (
-            <div className="mb-3 flex items-center justify-between gap-3 border border-border bg-surface px-3 py-2">
-              <p className="min-w-0 text-[13px]">
-                {en ? 'You have a saved team.' : 'Tienes un equipo guardado.'}
+          {groups.length > 0 ? (
+            <div className="mb-3">
+              <p className="mb-1.5 text-[12px] text-text-muted">
+                {en ? 'My groups' : 'Mis grupos'}
               </p>
-              <button
-                type="button"
-                disabled={vaultBusy || busy}
-                onClick={bringTeam}
-                className="min-h-11 shrink-0 px-1 text-[13px] font-semibold text-cat-700 underline underline-offset-2 disabled:opacity-50"
-              >
-                {vaultBusy
-                  ? en
-                    ? 'Confirm on your device…'
-                    : 'Confirma en tu dispositivo…'
-                  : en
-                    ? 'Bring my team'
-                    : 'Traer mi equipo'}
-              </button>
+              <div className="flex flex-wrap gap-2">
+                {groups.map((item) => (
+                  <button
+                    key={item.name}
+                    type="button"
+                    disabled={busy || groupAction.busy}
+                    aria-pressed={item.name === group}
+                    onClick={() => pickGroup(item)}
+                    className={`min-h-11 max-w-full overflow-hidden text-ellipsis whitespace-nowrap border px-3 text-[13px] ${item.name === group ? 'border-text bg-cat-500/15 font-semibold' : 'border-border bg-surface'}`}
+                  >
+                    {item.name}{' '}
+                    <span className="font-normal text-text-faint">· {item.members.length}</span>
+                  </button>
+                ))}
+              </div>
+              {group && groups.some((item) => item.name === group) ? (
+                deleting ? (
+                  <p className="mt-1 text-[12px]">
+                    {en ? `Delete “${group}”?` : `¿Borrar «${group}»?`}{' '}
+                    <button
+                      type="button"
+                      disabled={groupAction.busy}
+                      onClick={() => forgetGroup(group)}
+                      className="min-h-11 px-1 font-semibold text-danger underline underline-offset-2"
+                    >
+                      {groupAction.busy
+                        ? en
+                          ? 'Deleting…'
+                          : 'Borrando…'
+                        : en
+                          ? 'Yes, delete'
+                          : 'Sí, borrar'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={groupAction.busy}
+                      onClick={() => setDeleting(false)}
+                      className="min-h-11 px-1 text-text-muted underline underline-offset-2"
+                    >
+                      {en ? 'Keep it' : 'No, dejarlo'}
+                    </button>
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={busy || groupAction.busy}
+                    onClick={() => setDeleting(true)}
+                    className="mt-1 min-h-11 text-[12px] text-text-muted underline underline-offset-2"
+                  >
+                    {en ? `Delete “${group}”` : `Borrar «${group}»`}
+                  </button>
+                )
+              ) : null}
             </div>
-          ) : vault === 'elsewhere' ? (
-            <p className="mb-3 text-[12px] leading-relaxed text-text-muted">
-              {failureMessage(new Error('VAULT_ELSEWHERE'), en)}
-            </p>
           ) : null}
-          {vaultNote ? (
+          {groupAction.error ? (
             <p role="alert" className="mb-3 text-[12px] leading-relaxed text-pending">
-              {vaultNote}
+              {groupAction.error}
             </p>
           ) : null}
           <RecipientShortcuts
@@ -528,14 +555,11 @@ export function TeamScreen({
                     inputMode="decimal"
                     value={mode === 'shares' ? member.share : member.amount}
                     disabled={busy}
-                    onChange={(event) =>
-                      update(member.id, {
-                        [mode === 'shares' ? 'share' : 'amount']: event.target.value.replace(
-                          /[^\d.,]/g,
-                          '',
-                        ),
-                      })
-                    }
+                    onChange={(event) => {
+                      const next = amountInput(event.target.value);
+                      if (next !== null)
+                        update(member.id, { [mode === 'shares' ? 'share' : 'amount']: next });
+                    }}
                     className={`meli-field tabular h-12 w-full text-right text-[14px] placeholder:text-text-faint ${mode === 'shares' ? '!pr-7' : ''}`}
                   />
                   {mode === 'shares' ? (
@@ -581,24 +605,60 @@ export function TeamScreen({
               {en ? '+ Add a person' : '+ Agregar persona'}
             </button>
           ) : null}
-          {vault === 'new' && named.length > 0 ? (
-            <button
-              type="button"
-              disabled={vaultBusy || busy}
-              onClick={saveTeam}
-              className="mt-1 block min-h-11 text-left text-[13px] font-semibold text-cat-700 underline underline-offset-2 disabled:opacity-50"
-            >
-              {vaultBusy
-                ? en
-                  ? 'Confirm on your device…'
-                  : 'Confirma en tu dispositivo…'
-                : en
-                  ? 'Save this team on all my devices'
-                  : 'Guardar este equipo en todos mis dispositivos'}
-            </button>
-          ) : vault === 'open' ? (
-            <p className="mt-2 text-[12px] text-growth">
-              ✓ {en ? 'Saved on all your devices' : 'Guardado en todos tus dispositivos'}
+          {named.length > 0 ? (
+            naming === null ? (
+              <button
+                type="button"
+                disabled={groupAction.busy || busy}
+                onClick={() => {
+                  setNaming(group ?? '');
+                  setSavedAs('');
+                }}
+                className="mt-1 block min-h-11 text-left text-[13px] font-semibold text-cat-700 underline underline-offset-2 disabled:opacity-50"
+              >
+                {group
+                  ? en
+                    ? `Save changes to “${group}”`
+                    : `Guardar cambios en «${group}»`
+                  : en
+                    ? 'Save group'
+                    : 'Guardar grupo'}
+              </button>
+            ) : (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <label htmlFor="group-name" className="basis-full text-[12px] text-text-muted">
+                  {en ? 'Group name' : 'Nombre del grupo'}
+                </label>
+                <input
+                  id="group-name"
+                  value={naming}
+                  maxLength={40}
+                  placeholder={en ? 'E.g. Suppliers' : 'Ej.: Proveedores'}
+                  onChange={(event) => setNaming(event.target.value)}
+                  className="meli-field h-11 basis-full text-[14px] placeholder:text-text-faint"
+                />
+                <button
+                  type="button"
+                  disabled={groupAction.busy || busy || !naming.trim()}
+                  onClick={keepGroup}
+                  className="btn btn-primary btn-sm h-11 shrink-0"
+                >
+                  {groupAction.busy ? saving : en ? 'Save' : 'Guardar'}
+                </button>
+                <button
+                  type="button"
+                  disabled={groupAction.busy}
+                  onClick={() => setNaming(null)}
+                  className="btn-text min-h-11 shrink-0 text-[13px]"
+                >
+                  {en ? 'Cancel' : 'Cancelar'}
+                </button>
+              </div>
+            )
+          ) : null}
+          {savedAs ? (
+            <p role="status" className="mt-2 text-[12px] text-growth">
+              ✓ {en ? `“${savedAs}” saved` : `«${savedAs}» guardado`}
             </p>
           ) : null}
           {mode === 'shares' && canSave ? (
@@ -613,7 +673,10 @@ export function TeamScreen({
                   inputMode="decimal"
                   value={saveShare}
                   disabled={busy}
-                  onChange={(event) => setSaveShare(event.target.value.replace(/[^\d.,]/g, ''))}
+                  onChange={(event) => {
+                    const next = amountInput(event.target.value);
+                    if (next !== null) setSaveShare(next);
+                  }}
                   className="meli-field tabular h-12 w-full !pr-7 text-right text-[14px] placeholder:text-text-faint"
                 />
                 <span
@@ -725,8 +788,8 @@ export function TeamScreen({
           busy={busy}
           busyLabel={
             en
-              ? 'Confirm on your device. Paying your team…'
-              : 'Confirma en tu dispositivo. Pagando a tu equipo…'
+              ? 'Confirm on your device. Paying the group…'
+              : 'Confirma en tu dispositivo. Pagando al grupo…'
           }
           error={error}
           onConfirm={() => confirm(review)}
@@ -750,7 +813,6 @@ export function TeamScreen({
             ]}
           />
           <SigningDetails
-            settings={settings}
             wallet={session.wallet}
             networkId={networkId}
             calls={callsFor(review)}

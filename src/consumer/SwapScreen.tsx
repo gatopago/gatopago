@@ -15,8 +15,8 @@ import { CatGlyph } from '../marketing/CatGlyph';
 import { walletAssets } from '@gatopago/shared/assets';
 import { explorerUrl, networkName, publicClient, USDC_DECIMALS } from '../wallet/account';
 import { send } from '../wallet/operations';
-import { useBalances } from '../wallet/balances';
-import { failureMessage } from '../wallet/messages';
+import { formatAmount, formatBalance, formatHolding, useBalances } from '../wallet/balances';
+import { useAction } from '../wallet/useAction';
 import type { Session } from '../wallet/session';
 import { ElsewhereNote } from './ElsewhereNote';
 import { ConfirmDetails, ConfirmSheet, SigningDetails } from './PaymentSheets';
@@ -46,12 +46,14 @@ export function SwapScreen({
   const [tokenIn, setTokenIn] = useState<SwapToken>('usdc');
   const [amount, setAmount] = useState('');
   const [quote, setQuote] = useState<SwapQuote | null>(null);
-  const [quoting, setQuoting] = useState(false);
-  const [quoteError, setQuoteError] = useState('');
+  // Which request is being quoted, and which one failed: both belong to the amount and coin they
+  // were asked for, so clearing or changing them never leaves an old spinner or error on screen.
+  const [quotingFor, setQuotingFor] = useState<string | null>(null);
+  const [failedFor, setFailedFor] = useState<string | null>(null);
   const [details, setDetails] = useState(false);
   const [reviewing, setReviewing] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  // One swap at a time: a second tap before the next render does not start another.
+  const { busy, error, setError, run } = useAction(en);
   const [done, setDone] = useState<{ quote: SwapQuote; hash: `0x${string}` } | null>(null);
 
   const tokenOut: SwapToken = tokenIn === 'usdc' ? 'native' : 'usdc';
@@ -69,32 +71,37 @@ export function SwapScreen({
       })()
     : 0n;
   const format = (value: bigint, token: SwapToken) =>
-    Number(formatUnits(value, decimals(token))).toLocaleString(en ? 'en' : 'es', {
-      maximumFractionDigits: token === 'usdc' ? 2 : 6,
-    });
+    token === 'usdc' ? formatBalance(value, en) : formatHolding(value, decimals(token), en);
 
+  const request = `${tokenIn}:${amountIn}`;
+  const quoting = amountIn > 0n && quotingFor === request;
+  const quoteError =
+    amountIn > 0n && failedFor === request
+      ? en
+        ? "We couldn't get a quote."
+        : 'No pudimos cotizar.'
+      : '';
   useEffect(() => {
     if (!network.uniswap || amountIn <= 0n) return;
+    const asked = `${tokenIn}:${amountIn}`;
     let active = true;
     const timer = setTimeout(() => {
-      setQuoting(true);
-      setQuoteError('');
+      setQuotingFor(asked);
+      setFailedFor(null);
       quoteSwap(publicClient(settings, networkId), network, { tokenIn, tokenOut, amountIn })
         .then((value) => {
           if (active) setQuote(value);
         })
         .catch(() => {
-          if (active) setQuoteError(en ? "We couldn't get a quote." : 'No pudimos cotizar.');
+          if (active) setFailedFor(asked);
         })
-        .finally(() => {
-          if (active) setQuoting(false);
-        });
+        .finally(() => setQuotingFor((current) => (current === asked ? null : current)));
     }, QUOTE_DELAY_MS);
     return () => {
       active = false;
       clearTimeout(timer);
     };
-  }, [settings, networkId, network, tokenIn, tokenOut, amountIn, en]);
+  }, [settings, networkId, network, tokenIn, tokenOut, amountIn]);
 
   const current = quote && quote.tokenIn === tokenIn && quote.amountIn === amountIn ? quote : null;
   const minimum = current ? minimumOut(current, SLIPPAGE_BPS) : 0n;
@@ -337,7 +344,7 @@ export function SwapScreen({
         <ConfirmSheet
           title={en ? 'Review swap' : 'Revisar cambio'}
           amountLabel={en ? 'You swap' : 'Cambias'}
-          amount={format(current.amountIn, tokenIn)}
+          amount={formatAmount(current.amountIn, decimals(tokenIn), en, tokenIn === 'usdc' ? 2 : 0)}
           unit={symbol(tokenIn)}
           warning={
             en
@@ -350,19 +357,15 @@ export function SwapScreen({
           busyLabel={en ? 'Confirm on your device…' : 'Confirma en tu dispositivo…'}
           error={error}
           onCancel={() => setReviewing(false)}
-          onConfirm={() => {
-            setBusy(true);
-            setError('');
-            send(settings, session, networkId, calls)
-              .then((hash) => {
-                setDone({ quote: current, hash });
-                setReviewing(false);
-                setAmount('');
-                refresh();
-              })
-              .catch((failure: unknown) => setError(failureMessage(failure, en)))
-              .finally(() => setBusy(false));
-          }}
+          onConfirm={() =>
+            void run(async () => {
+              const hash = await send(settings, session, networkId, calls);
+              setDone({ quote: current, hash });
+              setReviewing(false);
+              setAmount('');
+              refresh();
+            })
+          }
         >
           <ConfirmDetails
             rows={[
@@ -377,7 +380,6 @@ export function SwapScreen({
             ]}
           />
           <SigningDetails
-            settings={settings}
             wallet={session.wallet}
             networkId={networkId}
             calls={calls}

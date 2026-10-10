@@ -4,16 +4,34 @@ import type { ClientSettings } from '../lib/settings';
 import { api } from './api';
 import type { Session } from './session';
 
-/** The FCM token this device registered, kept to unregister it on sign-out. */
-const TOKEN_KEY = 'gatopago:push-token';
+/**
+ * Notifications are a setting of this device: once turned on, whoever signs in here gets theirs.
+ * Kept: the FCM token, the account it is registered for (`null` while signed out, which
+ * unregisters it) and the language, to register again when any of them changes.
+ */
+const REGISTRATION_KEY = 'gatopago:push-registration';
+interface Registration {
+  token: string;
+  account: string | null;
+  language: 'en' | 'es';
+}
 
-const stored = () => {
+function keep(registration: Registration) {
   try {
-    return localStorage.getItem(TOKEN_KEY);
+    localStorage.setItem(REGISTRATION_KEY, JSON.stringify(registration));
+  } catch {
+    // Without storage the token is registered again next time; the server keeps one row.
+  }
+}
+
+function stored(): Registration | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(REGISTRATION_KEY) ?? 'null') as Registration;
+    return typeof value?.token === 'string' ? value : null;
   } catch {
     return null;
   }
-};
+}
 
 /** Whether this browser can receive payment notifications (iOS: only the installed app). */
 export async function pushSupported(settings: ClientSettings) {
@@ -42,16 +60,24 @@ async function register(settings: ClientSettings, session: Session, en: boolean)
     serviceWorkerRegistration: registration,
   });
   if (!token) return false;
-  if (token !== stored()) {
+  // Another account signed in on this device (or the language changed): the token moves to it, so
+  // the earlier account's payments stop showing here.
+  const current: Registration = {
+    token,
+    account: session.wallet.address.toLowerCase(),
+    language: en ? 'en' : 'es',
+  };
+  const last = stored();
+  if (
+    last?.token !== current.token ||
+    last.account !== current.account ||
+    last.language !== current.language
+  ) {
     await api(settings.apiOrigin, 'push-tokens', {
       token: session.token,
-      body: { token, language: en ? 'en' : 'es' },
+      body: { token, language: current.language },
     });
-    try {
-      localStorage.setItem(TOKEN_KEY, token);
-    } catch {
-      // Without storage the token is registered again next time; the server keeps one row.
-    }
+    keep(current);
   }
   return true;
 }
@@ -63,21 +89,24 @@ export async function enablePush(settings: ClientSettings, session: Session, en:
   return register(settings, session, en);
 }
 
-/** FCM rotates tokens: an enabled device confirms its token when the app starts. */
+/**
+ * On every visit of a device with notifications on: FCM rotates tokens, and after signing in again
+ * (or as another account) the device registers for the account in use, without asking.
+ */
 export async function renewPush(settings: ClientSettings, session: Session, en: boolean) {
   if (pushEnabled() && (await pushSupported(settings))) await register(settings, session, en);
 }
 
-/** Stops notifications to this device: on sign-out, before the session is forgotten. */
+/**
+ * Stops this account's notifications here on sign-out, with the session being left (still valid on
+ * the server): the sign-out itself does not wait for it. The device keeps them on for the next
+ * sign-in.
+ */
 export async function disablePush(settings: ClientSettings, session: Session) {
-  const token = stored();
-  if (!token) return;
-  try {
-    localStorage.removeItem(TOKEN_KEY);
-  } catch {
-    // Nothing stored to remove.
-  }
-  await api(settings.apiOrigin, `push-tokens/${encodeURIComponent(token)}`, {
+  const registration = stored();
+  if (!registration?.account) return;
+  keep({ ...registration, account: null });
+  await api(settings.apiOrigin, `push-tokens/${encodeURIComponent(registration.token)}`, {
     method: 'DELETE',
     token: session.token,
   }).catch(() => undefined);

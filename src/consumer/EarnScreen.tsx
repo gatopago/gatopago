@@ -9,7 +9,7 @@ import { MeliSprite } from '../marketing/MeliSprite';
 import { networkName, publicClient, USDC_DECIMALS } from '../wallet/account';
 import { send } from '../wallet/operations';
 import { formatBalance, formatUsdc, useBalances } from '../wallet/balances';
-import { failureMessage } from '../wallet/messages';
+import { useAction } from '../wallet/useAction';
 import type { Session } from '../wallet/session';
 import { ElsewhereNote } from './ElsewhereNote';
 import { ConfirmSheet, SigningDetails } from './PaymentSheets';
@@ -33,13 +33,14 @@ export function EarnScreen({
   const networkId = settings.homeNetwork;
   const network = walletNetwork(networkId);
   const { balances, saved, refresh } = useBalances(settings, session);
-  const [apy, setApy] = useState<number | null>(null);
+  // `undefined` while reading it, `null` when Aave could not say.
+  const [apy, setApy] = useState<number | null>();
   const [action, setAction] = useState<Action>('deposit');
   const [amount, setAmount] = useState('');
   const [all, setAll] = useState(false);
   const [review, setReview] = useState<Review | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  // One deposit or withdrawal at a time, even with a double tap.
+  const { busy, error, setError, run } = useAction(en);
   const [done, setDone] = useState<Review | null>(null);
 
   // The rate is read once per visit, from Aave's own reserve data.
@@ -56,7 +57,9 @@ export function EarnScreen({
       .then((reserve) => {
         if (active) setApy(supplyApy(reserve.currentLiquidityRate));
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (active) setApy(null);
+      });
     return () => {
       active = false;
     };
@@ -68,10 +71,22 @@ export function EarnScreen({
   const value = /^(\d+\.?\d{0,6}|\.\d{1,6})$/.test(amount) ? parseUnits(amount, USDC_DECIMALS) : 0n;
   const canContinue =
     typeof source === 'bigint' && source > 0n && (all || (value > 0n && value <= source));
+  // While loading, a placeholder of the same size: the numbers arrive without moving the text.
   const shown = (balance: bigint | null | undefined) =>
-    typeof balance === 'bigint' ? formatBalance(balance, en) : '—';
+    typeof balance === 'bigint' ? (
+      formatBalance(balance, en)
+    ) : balance === undefined ? (
+      <span
+        className="skeleton inline-block h-[0.8em] w-[4.5em] align-baseline"
+        aria-hidden="true"
+      />
+    ) : (
+      '—'
+    );
   const rate =
-    apy === null ? '—' : apy.toLocaleString(en ? 'en' : 'es', { maximumFractionDigits: 2 });
+    typeof apy === 'number'
+      ? apy.toLocaleString(en ? 'en' : 'es', { maximumFractionDigits: 2 })
+      : null;
 
   if (!network.aave)
     return (
@@ -145,10 +160,14 @@ export function EarnScreen({
           <p className="type-mono text-[clamp(30px,9vw,38px)] font-bold leading-none">
             {shown(savings)} <span className="text-[0.5em]">USDC</span>
           </p>
-          <p className="mt-3 inline-flex items-center gap-1.5 border border-growth bg-growth/10 px-2 py-1 text-[12px] font-semibold text-growth">
-            {rate}% {en ? 'a year' : 'anual'}
-            <span className="font-normal text-text-muted">· variable</span>
-          </p>
+          {rate ? (
+            <p className="mt-3 inline-flex items-center gap-1.5 border border-growth bg-growth/10 px-2 py-1 text-[12px] font-semibold text-growth">
+              {rate}% {en ? 'a year' : 'anual'}
+              <span className="font-normal text-text-muted">· variable</span>
+            </p>
+          ) : apy === undefined ? (
+            <span className="skeleton mt-3 block h-[26px] w-36" aria-hidden="true" />
+          ) : null}
         </div>
         <MeliSprite
           variant="body-sleeping"
@@ -179,8 +198,13 @@ export function EarnScreen({
         <div className="mb-3 flex items-center justify-between">
           <span className="text-[13px] text-text-muted">
             {action === 'deposit'
-              ? `${en ? 'Available' : 'Disponible'}: ${shown(available)} USDC`
-              : `${en ? 'In Grow' : 'En Crecer'}: ${shown(savings)} USDC`}
+              ? en
+                ? 'Available'
+                : 'Disponible'
+              : en
+                ? 'In Grow'
+                : 'En Crecer'}
+            : {shown(source)} USDC
           </span>
           <button
             type="button"
@@ -319,20 +343,16 @@ export function EarnScreen({
           busyLabel={en ? 'Confirm on your device…' : 'Confirma en tu dispositivo…'}
           error={error}
           onCancel={() => setReview(null)}
-          onConfirm={() => {
-            setBusy(true);
-            setError('');
-            send(settings, session, networkId, calls)
-              .then(() => {
-                setDone(review);
-                setReview(null);
-                setAmount('');
-                setAll(false);
-                refresh();
-              })
-              .catch((failure: unknown) => setError(failureMessage(failure, en)))
-              .finally(() => setBusy(false));
-          }}
+          onConfirm={() =>
+            void run(async () => {
+              await send(settings, session, networkId, calls);
+              setDone(review);
+              setReview(null);
+              setAmount('');
+              setAll(false);
+              refresh();
+            })
+          }
         >
           <p className="mb-3 text-center text-[13px] leading-relaxed text-text-muted">
             {review.action === 'deposit'
@@ -347,7 +367,7 @@ export function EarnScreen({
                   ? 'It moves from Grow back to your balance, ready to use.'
                   : 'Vuelve de Crecer a tu saldo, listo para usar.'}
           </p>
-          {review.action === 'deposit' ? (
+          {review.action === 'deposit' && rate ? (
             <p className="mb-5 text-center text-[12px] text-text-faint">
               {en
                 ? `Today’s rate: ${rate}% a year. It is variable and not guaranteed.`
@@ -355,7 +375,6 @@ export function EarnScreen({
             </p>
           ) : null}
           <SigningDetails
-            settings={settings}
             wallet={session.wallet}
             networkId={networkId}
             calls={calls}

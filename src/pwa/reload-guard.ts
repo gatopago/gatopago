@@ -10,7 +10,6 @@ export const isReloadBlocked = () => active > 0;
 export const serverReloadBlocked = () => false;
 
 export function holdPageReload(): () => void {
-  if (typeof window === 'undefined') throw new Error('Reload guard is browser-only');
   active += 1;
   for (const listener of listeners) listener();
   let released = false;

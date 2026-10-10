@@ -18,16 +18,26 @@ import type { ClientSettings } from '../lib/settings';
 import { cctpNetwork, networkName, USDC_DECIMALS } from './account';
 import { send } from './operations';
 import { formatBalance, formatUsdc, useBalances } from './balances';
+import { crossingsOf, forgetCrossing, rememberCrossing, type Crossing } from './crossings';
 import type { Session } from './session';
-import { crosschainFromStellar, crosschainToStellar, stellarArrived } from './stellar';
+import {
+  crosschainFromStellar,
+  crosschainToStellar,
+  stellarArrived,
+  stellarBurnsAllowed,
+} from './stellar';
 
-/** A crossing; `calls` burn on an EVM network, `null` when it leaves from Stellar. */
+/**
+ * A crossing; `calls` burn on an EVM network, `null` when it leaves from Stellar, where
+ * `allowance` says Circle's permission to move the USDC is signed first.
+ */
 type Move = {
   from: string;
   to: string;
   amount: bigint;
   fee: bigint;
   calls: readonly { to: Address; data: Hex }[] | null;
+  allowance: boolean;
 };
 
 /** Moves the user's own USDC between networks with Circle's CCTP, by default to the home network. */
@@ -56,8 +66,14 @@ export function Crosschain({
   const [to, setTo] = useState(settings.homeNetwork);
   const [amount, setAmount] = useState('');
   const [review, setReview] = useState<Move | null>(null);
-  const [moved, setMoved] = useState<{ hash: string; move: Move } | null>(null);
+  // `arrived` once the timeline sees the USDC on the destination: the result says so too.
+  const [moved, setMoved] = useState<(Crossing & { arrived?: boolean }) | null>(null);
+  // Crossings this device confirmed that are still on their way: a reload or leaving comes back.
+  const account = session.wallet.address;
+  const [onTheirWay, setOnTheirWay] = useState(() => crossingsOf(account));
   const { busy, error, run: perform } = useAction(en);
+  // From Stellar without Circle's permission: which of the two signatures is being asked.
+  const [step, setStep] = useState<'allowance' | 'move' | null>(null);
 
   const value = /^(\d+\.?\d{0,6}|\.\d{1,6})$/.test(amount) ? parseUnits(amount, USDC_DECIMALS) : 0n;
   const available = balanceOf(from);
@@ -74,6 +90,7 @@ export function Crosschain({
       const move = { from, to, amount: value, fee };
       setReview({
         ...move,
+        allowance: from === stellarId && !(await stellarBurnsAllowed(settings, session, value)),
         calls:
           from === stellarId
             ? null
@@ -93,14 +110,20 @@ export function Crosschain({
   function confirm(move: Move) {
     perform(async () => {
       let hash: string;
-      if (!move.calls) hash = await crosschainFromStellar(settings, session, move);
+      if (!move.calls)
+        hash = await crosschainFromStellar(settings, session, move, setStep).finally(() =>
+          setStep(null),
+        );
       else {
         hash = await send(settings, session, move.from, move.calls);
         // Wallet Core delivers burns toward Stellar; the timeline reports it again if this is lost.
         if (move.to === stellarId)
           void stellarArrived(settings, session, move.from, hash).catch(() => undefined);
       }
-      setMoved({ hash, move });
+      const crossing = { from: move.from, to: move.to, amount: move.amount.toString(), hash };
+      rememberCrossing(account, crossing);
+      setOnTheirWay(crossingsOf(account));
+      setMoved({ ...crossing, at: Date.now() });
       setReview(null);
       setAmount('');
       refresh();
@@ -113,7 +136,7 @@ export function Crosschain({
       value: id,
       label: networkName(id),
       description: typeof balance === 'bigint' ? `${formatBalance(balance, en)} USDC` : undefined,
-      tone: 'info' as const,
+      network: id,
     };
   });
   // Choosing the other side's network swaps them: origin and destination are never the same.
@@ -131,7 +154,13 @@ export function Crosschain({
     <>
       <BackHeader title={en ? 'Between networks' : 'Entre redes'} english={en} to="/move" />
       <StageOverlay
-        label={busy && !review ? (en ? 'Preparing the move…' : 'Preparando el movimiento…') : null}
+        label={
+          busy && !review && !moved
+            ? en
+              ? 'Preparing the move…'
+              : 'Preparando el movimiento…'
+            : null
+        }
       />
       {error && !review ? (
         <p className="auth-error" role="alert">
@@ -140,22 +169,27 @@ export function Crosschain({
       ) : null}
       {moved ? (
         <TxResult
-          state="pending"
-          lead={en ? 'On its way' : 'En camino'}
-          amount={formatUsdc(moved.move.amount, en)}
+          state={moved.arrived ? 'success' : 'pending'}
+          lead={moved.arrived ? (en ? 'It arrived' : 'Ya llegó') : en ? 'On its way' : 'En camino'}
+          amount={formatUsdc(BigInt(moved.amount), en)}
           unit="USDC"
-          body={`${networkName(moved.move.from)} → ${networkName(moved.move.to)}`}
+          body={`${networkName(moved.from)} → ${networkName(moved.to)}`}
         >
           <div className="mt-4 mb-6 w-full">
             <CrosschainTimeline
-              from={moved.move.from}
-              to={moved.move.to}
+              from={moved.from}
+              to={moved.to}
               hash={moved.hash}
               english={en}
-              onDelivered={refresh}
+              onDelivered={() => {
+                forgetCrossing(account, moved.hash);
+                setOnTheirWay(crossingsOf(account));
+                setMoved((current) => current && { ...current, arrived: true });
+                refresh();
+              }}
               delivery={
-                moved.move.to === stellarId
-                  ? () => stellarArrived(settings, session, moved.move.from, moved.hash)
+                moved.to === stellarId
+                  ? () => stellarArrived(settings, session, moved.from, moved.hash)
                   : undefined
               }
             />
@@ -169,6 +203,27 @@ export function Crosschain({
         </TxResult>
       ) : (
         <form onSubmit={prepare} aria-busy={busy} className="flex flex-1 flex-col">
+          {onTheirWay.length ? (
+            <div className="meli-paper-card mb-3 divide-y divide-border" aria-live="polite">
+              {onTheirWay.map((crossing) => (
+                <button
+                  key={crossing.hash}
+                  type="button"
+                  disabled={locked}
+                  onClick={() => setMoved(crossing)}
+                  className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-2 text-left text-[13px]"
+                >
+                  <span className="min-w-0 truncate">
+                    {formatUsdc(BigInt(crossing.amount), en)} USDC · {networkName(crossing.from)} →{' '}
+                    {networkName(crossing.to)}
+                  </span>
+                  <span className="shrink-0 text-pending">
+                    {en ? 'On its way · See' : 'En camino · Ver'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
           <MoneyPanel className="mb-2">
             <div className="mb-3 flex items-center justify-between gap-3">
               <span className="text-[13px] text-text-muted">{en ? 'From' : 'Desde'}</span>
@@ -267,7 +322,10 @@ export function Crosschain({
                 {en
                   ? `Your balance lives on ${networkName(settings.homeNetwork)}. To receive from another network, share `
                   : `Tu saldo vive en ${networkName(settings.homeNetwork)}. Para recibir desde otra red, comparte `}
-                <NavigationLink href={localizedPath('/receive', en)} className="underline">
+                <NavigationLink
+                  href={localizedPath('/receive', en)}
+                  className="-my-3 inline-block py-3 underline"
+                >
                   {en ? 'your address' : 'tu dirección'}
                 </NavigationLink>
                 {en ? ': it is the same on every network.' : ': es la misma en todas las redes.'}
@@ -300,19 +358,27 @@ export function Crosschain({
             (en
               ? 'Your USDC leaves this network and Circle delivers it to your same account on the destination. GatoPago covers gas.'
               : 'Tus USDC salen de esta red y Circle los entrega en tu misma cuenta en el destino. GatoPago cubre el gas.') +
-            (review.from === stellarId
+            (review.allowance
               ? en
-                ? ' The first time from Stellar you confirm twice: once to let Circle move your USDC.'
-                : ' La primera vez desde Stellar confirmas dos veces: una para que Circle pueda mover tus USDC.'
+                ? ' You will confirm twice: first a permission for Circle to move your USDC on Stellar (it lasts about six months), then the move.'
+                : ' Vas a confirmar dos veces: primero un permiso para que Circle mueva tus USDC en Stellar (dura unos seis meses), después el movimiento.'
               : '')
           }
           confirmLabel={en ? 'Confirm and move' : 'Confirmar y mover'}
           english={en}
           busy={busy}
           busyLabel={
-            en
-              ? 'Confirm on your device. Moving your money…'
-              : 'Confirma en tu dispositivo. Moviendo tu dinero…'
+            step === 'allowance'
+              ? en
+                ? 'Step 1 of 2: confirm the permission for Circle on your device…'
+                : 'Paso 1 de 2: confirma en tu dispositivo el permiso para Circle…'
+              : step === 'move' && review.allowance
+                ? en
+                  ? 'Step 2 of 2: confirm the move on your device…'
+                  : 'Paso 2 de 2: confirma el movimiento en tu dispositivo…'
+                : en
+                  ? 'Confirm on your device. Moving your money…'
+                  : 'Confirma en tu dispositivo. Moviendo tu dinero…'
           }
           error={error}
           onConfirm={() => confirm(review)}
@@ -330,7 +396,6 @@ export function Crosschain({
           />
           {review.calls ? (
             <SigningDetails
-              settings={settings}
               wallet={session.wallet}
               networkId={review.from}
               calls={review.calls}

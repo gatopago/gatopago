@@ -34,7 +34,7 @@ export function publicClient(settings: ClientSettings, networkId: string) {
 }
 
 /** Stellar ids (`stellar:…`) are not EVM wallet networks: no chain, contracts or bundler. */
-export const isStellar = (networkId: string) => networkId.startsWith('stellar:');
+const isStellar = (networkId: string) => networkId.startsWith('stellar:');
 
 /** Either side of a CCTP crossing: an EVM wallet network or Stellar. */
 export const cctpNetwork = (networkId: string): CctpNetwork =>
@@ -57,30 +57,20 @@ export function explorerUrl(networkId: string, hash: string): string | null {
 }
 
 /**
- * The account as viem sees it, signed by its passkey on the device or, for a Mera account, by the
- * open signing session (one passkey prompt when it has ended). The signing code loads only here:
- * screens that just read balances do not download it.
+ * The account as viem sees it, signed by the open Mera session of this device's passkey (one
+ * passkey prompt when it has ended). The signing code loads only here: screens that just read
+ * balances do not download it.
  */
 export async function gatopagoAccount(settings: ClientSettings, wallet: Wallet, networkId: string) {
-  const [{ toGatoPagoAccount }, owner] = await Promise.all([
+  const [{ toGatoPagoAccount }, { meraSigner }] = await Promise.all([
     import('@gatopago/shared/wallet'),
-    signer(settings, wallet),
+    import('./mera'),
   ]);
+  const owner = await meraSigner(settings, wallet.credentialId, wallet.owner);
   return toGatoPagoAccount({
     client: publicClient(settings, networkId),
     owner,
     contracts: walletContracts,
     initialOwners: wallet.initialOwners,
-  });
-}
-
-async function signer(settings: ClientSettings, wallet: Wallet) {
-  if (wallet.meraOwner) {
-    const { meraSigner } = await import('./mera');
-    return meraSigner(settings, wallet.credentialId, wallet.meraOwner);
-  }
-  const { toWebAuthnAccount } = await import('viem/account-abstraction');
-  return toWebAuthnAccount({
-    credential: { id: wallet.credentialId, publicKey: wallet.publicKey },
   });
 }

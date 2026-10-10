@@ -4,10 +4,11 @@ import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import { formatUnits, keccak256, type Address, type Hex } from 'viem';
 import { walletNetwork } from '@gatopago/shared/networks';
 import { CatGlyph } from '../marketing/CatGlyph';
-import { explorerUrl, gatopagoAccount, networkName, shortAddress } from '../wallet/account';
-import type { ClientSettings } from '../lib/settings';
+import { explorerUrl, networkName, shortAddress } from '../wallet/account';
+import { formatAmount } from '../wallet/balances';
 import type { Wallet } from '../wallet/session';
 import { downloadCard, shareCard } from './exportCard';
+import { ChevronDownIcon } from './Icons';
 import { Sheet } from './Sheet';
 import { StageOverlay } from './StageOverlay';
 
@@ -49,7 +50,6 @@ export function ConfirmSheet({
 }) {
   return (
     <Sheet titleId="confirm-sheet-title" onClose={onCancel} busy={busy}>
-      <div className="sheet-handle mb-5" aria-hidden="true" />
       <h2 id="confirm-sheet-title" className="meli-kicker mb-5">
         {title}
       </h2>
@@ -157,13 +157,11 @@ function SigningRow({
  * are only fixed when the operation is signed, so they are not shown here.
  */
 export function SigningDetails({
-  settings,
   wallet,
   networkId,
   calls,
   english: en,
 }: {
-  settings: ClientSettings;
   wallet: Wallet;
   networkId: string;
   calls: readonly { to: Address; data: Hex; value?: bigint }[];
@@ -171,22 +169,20 @@ export function SigningDetails({
 }) {
   const [open, setOpen] = useState(false);
   const [details, setDetails] = useState<{ entryPoint: Address; action: Hex } | null>(null);
+  // Read from the calls alone: showing them must not ask for the passkey (a Mera account would).
   useEffect(() => {
     if (!open || details) return;
     let active = true;
-    void gatopagoAccount(settings, wallet, networkId)
-      .then(async (account) => ({
-        entryPoint: account.entryPoint.address,
-        action: keccak256(await account.encodeCalls(calls)),
-      }))
-      .then((value) => {
-        if (active) setDetails(value);
-      })
-      .catch(() => undefined);
+    void Promise.all([import('@gatopago/shared/wallet'), import('viem/account-abstraction')]).then(
+      ([{ encodeCalls }, { entryPoint09Address }]) => {
+        if (active)
+          setDetails({ entryPoint: entryPoint09Address, action: keccak256(encodeCalls(calls)) });
+      },
+    );
     return () => {
       active = false;
     };
-  }, [open, details, settings, wallet, networkId, calls]);
+  }, [open, details, calls]);
   const { chain } = walletNetwork(networkId);
   return (
     <div className="mb-4">
@@ -224,20 +220,9 @@ export function SigningDetails({
                 : '¿Qué estoy firmando?'}
           </span>
         </span>
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+        <ChevronDownIcon
           className={`shrink-0 text-text-faint transition-transform ${open ? 'rotate-180' : ''}`}
-          aria-hidden="true"
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+        />
       </button>
       {open ? (
         <div className="animate-fade-in mt-2 border border-border bg-surface px-3.5">
@@ -309,10 +294,7 @@ export function rememberBalanceHidden(hidden: boolean) {
 const short = (value: string) => (value.startsWith('0x') ? shortAddress(value) : value);
 
 const receiptAmount = (receipt: ReceiptData, en: boolean) =>
-  Number(formatUnits(receipt.amount, receipt.decimals)).toLocaleString(en ? 'en' : 'es', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 6,
-  });
+  formatAmount(receipt.amount, receipt.decimals, en, 2);
 
 const receiptFile = (receipt: ReceiptData) =>
   `gatopago-${formatUnits(receipt.amount, receipt.decimals)}-${receipt.currency}.png`;

@@ -42,7 +42,6 @@ export function MenuSheet({
   ];
   return (
     <Sheet titleId="account-menu-title" onClose={onClose} variant="menu">
-      <div className="sheet-handle mt-1 mb-3" aria-hidden="true" />
       <header className="mb-3 flex items-center justify-between gap-4 px-2">
         <h2 id="account-menu-title" className="brand-lockup text-[18px]">
           <CatGlyph className="w-6" decorative /> GatoPago

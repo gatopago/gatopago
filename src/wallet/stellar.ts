@@ -1,10 +1,12 @@
-import type { Address, Hex } from 'viem';
+import { isAddressEqual, recoverMessageAddress, type Address, type Hex } from 'viem';
 import { crosschainFee } from '@gatopago/shared/crosschain';
 import { stellarNetwork, walletNetwork } from '@gatopago/shared/networks';
 import { keyOwner } from '@gatopago/shared/wallet';
 import type { ClientSettings } from '../lib/settings';
+import { holdPageReload } from '../pwa/reload-guard';
 import { invalidateActivity } from './activity';
 import { api, ApiError } from './api';
+import type { MeraKeys } from './mera';
 import type { Session } from './session';
 
 /**
@@ -15,24 +17,50 @@ import type { Session } from './session';
 const sdk = () => import('@gatopago/shared/stellar');
 type Sdk = Awaited<ReturnType<typeof sdk>>;
 type Operation = Parameters<Sdk['signedStellarCall']>[2]['operation'];
-type StellarKey = Parameters<Sdk['signedStellarCall']>[2]['owner'];
 
 /** The member's Stellar account, as Wallet Core derives it from the EVM address. */
-export interface StellarAccount {
+interface StellarAccount {
   readonly network: string;
   readonly account: string;
   readonly deployed: boolean;
   /** Simulates and pays its transactions. */
   readonly sponsor: string;
-  /** Ed25519 keys approved to sign too, each while its EVM `owner` key owns the account. */
-  readonly keys: readonly { public_key: Hex; owner: Address }[];
+  /**
+   * Ed25519 keys approved to sign, each while its EVM `owner` key owns the account, with the
+   * approval itself (`StellarKeyApproval`).
+   */
+  readonly keys: readonly (StellarKeyApproval & { owner: Address })[];
 }
 
-/** The approved Ed25519 keys whose approving key is among the account's `owners`. */
-const signingKeys = (stellar: StellarAccount, owners: readonly Hex[]) =>
-  stellar.keys
-    .filter(({ owner }) => owners.some((current) => current.toLowerCase() === keyOwner(owner)))
-    .map(({ public_key }) => public_key);
+/**
+ * The approved Ed25519 keys whose approving key is among the account's `owners` (verified by the
+ * caller), each approval checked here: a key Wallet Core listed on its own is never signed in.
+ */
+async function signingKeys(
+  settings: ClientSettings,
+  account: Address,
+  stellar: StellarAccount,
+  owners: readonly Hex[],
+) {
+  const { stellarKeyApproval } = await sdk();
+  const checked = await Promise.all(
+    stellar.keys.map(async (approved) => {
+      if (!owners.some((current) => current.toLowerCase() === keyOwner(approved.owner)))
+        return null;
+      const signer = await recoverMessageAddress({
+        message: stellarKeyApproval(
+          network(settings),
+          account,
+          approved.public_key,
+          approved.expires_at,
+        ),
+        signature: approved.signature,
+      }).catch(() => null);
+      return signer && isAddressEqual(signer, approved.owner) ? approved.public_key : null;
+    }),
+  );
+  return checked.filter((key) => key !== null);
+}
 
 const accounts = new Map<string, Promise<StellarAccount | null>>();
 const key = (address: Address) => address.toLowerCase();
@@ -57,6 +85,12 @@ export function stellarAccount(
   return account;
 }
 
+/** The member's Stellar account read again: its approved keys may have changed elsewhere. */
+function freshStellarAccount(settings: ClientSettings, session: Session) {
+  accounts.delete(key(session.wallet.address));
+  return stellarAccount(settings, session);
+}
+
 /** The Stellar account of `address` once a screen asked for it (`stellarAccount`). */
 export const knownStellarAccount = (address: Address) => accounts.get(key(address)) ?? null;
 
@@ -68,7 +102,7 @@ async function server(settings: ClientSettings) {
 }
 
 /** The coins the Stellar account holds and sends: USDC, and XLM, the network's own. */
-export type StellarCoin = 'USDC' | 'XLM';
+type StellarCoin = 'USDC' | 'XLM';
 
 /** USDC of a Stellar address in 6 decimals, like every network. */
 export async function stellarBalance(settings: ClientSettings, owner: string): Promise<bigint> {
@@ -123,7 +157,7 @@ export async function planStellarSend(
     return { from: settings.stellar!.network, fee: 0n, calls: null };
   const { crosschainToStellarCalls } = await sdk();
   const sources = Object.entries(balances)
-    .filter(([, balance]) => (balance ?? 0n) > amount)
+    .filter(([, balance]) => (balance ?? 0n) >= amount)
     .sort(([, a], [, b]) => ((b ?? 0n) > (a ?? 0n) ? 1 : -1));
   for (const [from, balance] of sources) {
     const fee = await crosschainFee(walletNetwork(from), network(settings), amount);
@@ -145,14 +179,20 @@ export async function planStellarSend(
 
 /**
  * Moves `amount` of the account's Stellar USDC to its own address on the EVM network `to`, which
- * receives it minus at most `fee`. The first time, Circle's allowance is one more signature.
+ * receives it minus at most `fee`. Without Circle's allowance for it (`stellarBurnsAllowed`), the
+ * allowance is one more signature first; `onStep` says which one is being asked.
  */
 export async function crosschainFromStellar(
   settings: ClientSettings,
   session: Session,
   move: { to: string; amount: bigint; fee: bigint },
+  onStep?: (step: 'allowance' | 'move') => void,
 ) {
-  await approveStellarBurns(settings, session, move.amount);
+  if (!(await stellarBurnsAllowed(settings, session, move.amount))) {
+    onStep?.('allowance');
+    await approveStellarBurns(settings, session);
+  }
+  onStep?.('move');
   return sendStellar(settings, session, (stellar, account) =>
     stellar.crosschainOperation(network(settings), {
       account,
@@ -219,7 +259,7 @@ export async function stellarSignerChanges(
   session: Session,
   owners: readonly Hex[],
 ): Promise<number | 'unused' | null> {
-  const stellar = await stellarAccount(settings, session);
+  const stellar = await freshStellarAccount(settings, session);
   if (!stellar) return null;
   const { signerChangeOperations, stellarAccountExists } = await sdk();
   const client = await server(settings);
@@ -230,7 +270,7 @@ export async function stellarSignerChanges(
       network(settings),
       stellar.account,
       owners,
-      signingKeys(stellar, owners),
+      await signingKeys(settings, session.wallet.address, stellar, owners),
     )
   ).length;
 }
@@ -241,7 +281,7 @@ export async function syncStellarSigners(
   session: Session,
   owners: readonly Hex[],
 ) {
-  const stellar = await stellarAccount(settings, session);
+  const stellar = await freshStellarAccount(settings, session);
   if (!stellar) return;
   const { signerChangeOperations, stellarAccountExists } = await sdk();
   const client = await server(settings);
@@ -251,7 +291,7 @@ export async function syncStellarSigners(
     network(settings),
     stellar.account,
     owners,
-    signingKeys(stellar, owners),
+    await signingKeys(settings, session.wallet.address, stellar, owners),
   ))
     await sendStellar(settings, session, () => change);
 }
@@ -265,11 +305,12 @@ interface Pending {
 
 const pendingKey = (account: string) => `gatopago.pending.stellar.${account}`;
 
+/** Without storage nothing is sent: a lost answer could not be told apart from a failure. */
 function remember(account: string, pending: Pending) {
   try {
     localStorage.setItem(pendingKey(account), JSON.stringify(pending));
-  } catch {
-    // Without storage the call is still awaited; only a reload loses track of it.
+  } catch (error) {
+    throw new Error('STORAGE_UNAVAILABLE', { cause: error });
   }
 }
 
@@ -317,52 +358,86 @@ async function settlePending(settings: ClientSettings, session: Session, account
   forget(account);
 }
 
+/** Device keys seen signing for an account (`account:key`), so a send checks the network once. */
+const signing = new Set<string>();
+
+/** An approval of an Ed25519 key, signed by an owner key of the EVM account (`stellarKeyApproval`). */
+interface StellarKeyApproval {
+  public_key: Hex;
+  signature: Hex;
+  expires_at: number;
+}
+
 /**
- * This device's Stellar key: its passkey, or for a Mera account the Stellar key Mera derives,
- * approved first by the account's Mera key (one signature in the open session, no prompt) so that
- * Wallet Core adds it as a signer.
+ * Approves the Stellar key of `keys` for `account`, signed by the EVM key of the same passkey: valid
+ * for Wallet Core while that key owns the account. Short-lived, so an old one cannot bring the key
+ * back later. Null when Stellar is off.
  */
-async function deviceKey(settings: ClientSettings, session: Session, stellar: StellarAccount) {
-  const { wallet, token } = session;
-  if (!wallet.meraOwner) {
-    const { toWebAuthnAccount } = await import('viem/account-abstraction');
-    return {
-      stellar,
-      owner: toWebAuthnAccount({
-        credential: { id: wallet.credentialId, publicKey: wallet.publicKey },
-      }) as StellarKey,
-    };
-  }
-  const { meraSigner, meraStellarKey } = await import('./mera');
-  const owner = await meraStellarKey(settings, wallet.credentialId, wallet.meraOwner);
-  if (stellar.keys.some(({ public_key }) => public_key === owner.publicKey.toLowerCase()))
-    return { stellar, owner };
+export async function approveStellarKey(
+  settings: ClientSettings,
+  account: Address,
+  keys: MeraKeys,
+): Promise<StellarKeyApproval | null> {
+  if (!settings.stellar || !keys.stellar) return null;
   const { stellarKeyApproval } = await sdk();
-  const evm = await meraSigner(settings, wallet.credentialId, wallet.meraOwner);
-  // A short-lived approval: an old one cannot bring the key back later.
+  const publicKey = keys.stellar.publicKey.toLowerCase() as Hex;
   const expiresAt = Math.floor(Date.now() / 1000) + 600;
-  await api(settings.apiOrigin, 'stellar/keys', {
-    token,
-    body: {
-      public_key: owner.publicKey,
-      signature: await evm.signMessage({
-        message: stellarKeyApproval(network(settings), wallet.address, owner.publicKey, expiresAt),
-      }),
-      expires_at: expiresAt,
-      initial_owners: wallet.initialOwners,
-    },
-  });
-  // An account created before the key was approved signs with it once synced from Security.
-  if (stellar.deployed) throw new Error('STELLAR_SIGNER_PENDING');
-  const updated = {
-    ...stellar,
-    keys: [
-      ...stellar.keys,
-      { public_key: owner.publicKey.toLowerCase() as Hex, owner: wallet.meraOwner },
-    ],
+  return {
+    public_key: publicKey,
+    signature: await keys.account.signMessage({
+      message: stellarKeyApproval(network(settings), account, publicKey, expiresAt),
+    }),
+    expires_at: expiresAt,
   };
-  accounts.set(key(wallet.address), Promise.resolve(updated));
-  return { stellar: updated, owner };
+}
+
+/** Hands `approval` to Wallet Core, which adds the key as a signer when it creates the account. */
+export async function registerStellarKey(
+  settings: ClientSettings,
+  session: Session,
+  approval: StellarKeyApproval,
+) {
+  await api(settings.apiOrigin, 'stellar/keys', {
+    token: session.token,
+    body: { ...approval, initial_owners: session.wallet.initialOwners },
+  });
+}
+
+/**
+ * This device's Stellar key: the one Mera derives from its passkey, approved once by its EVM key
+ * (one signature in the open session, no prompt) so that Wallet Core adds it as a signer. On an
+ * account created before that approval, the key signs only once a device that already signs there
+ * syncs it from Security.
+ */
+async function deviceKey(settings: ClientSettings, session: Session, found: StellarAccount) {
+  const { wallet } = session;
+  const { meraSigner, meraStellarKey } = await import('./mera');
+  const owner = await meraStellarKey(settings, wallet.credentialId, wallet.owner);
+  const publicKey = owner.publicKey.toLowerCase() as Hex;
+  let stellar = found;
+  const lib = await sdk();
+  if (!stellar.keys.some(({ public_key }) => public_key === publicKey)) {
+    const account = await meraSigner(settings, wallet.credentialId, wallet.owner);
+    const approval = (await approveStellarKey(settings, wallet.address, {
+      account,
+      stellar: owner,
+    }))!;
+    await registerStellarKey(settings, session, approval);
+    stellar = { ...stellar, keys: [...stellar.keys, { ...approval, owner: wallet.owner }] };
+    accounts.set(key(wallet.address), Promise.resolve(stellar));
+  }
+  const id = `${stellar.account}:${publicKey}`;
+  if (stellar.deployed && !signing.has(id)) {
+    const signs = await lib.isStellarKeySigner(
+      await server(settings),
+      network(settings),
+      stellar.account,
+      publicKey,
+    );
+    if (!signs) throw new Error('STELLAR_SIGNER_PENDING');
+    signing.add(id);
+  }
+  return { stellar, owner };
 }
 
 /**
@@ -370,7 +445,21 @@ async function deviceKey(settings: ClientSettings, session: Session, stellar: St
  * (`deviceKey`); Wallet Core pays its fee. The account is created first if needed. Returns the
  * Stellar transaction hash.
  */
-export async function sendStellar(
+async function sendStellar(
+  settings: ClientSettings,
+  session: Session,
+  operation: (stellar: Sdk, account: string) => Operation | Promise<Operation>,
+): Promise<string> {
+  // Nothing reloads the page or leaves the screen until the result is known (`reload-guard`).
+  const release = holdPageReload();
+  try {
+    return await signAndSubmit(settings, session, operation);
+  } finally {
+    release();
+  }
+}
+
+async function signAndSubmit(
   settings: ClientSettings,
   session: Session,
   operation: (stellar: Sdk, account: string) => Operation | Promise<Operation>,
@@ -418,52 +507,57 @@ export async function sendStellar(
   return hash;
 }
 
-/** Lets Circle burn the account's USDC when its allowance does not cover `amount` (6 decimals). */
-export async function approveStellarBurns(
+/** Whether Circle may already burn `amount` (6 decimals) of the account's Stellar USDC. */
+export async function stellarBurnsAllowed(
   settings: ClientSettings,
   session: Session,
   amount: bigint,
 ) {
   const stellar = await stellarAccount(settings, session);
   if (!stellar) throw new Error('STELLAR_NOT_ENABLED');
-  const { BURN_APPROVAL_LEDGERS, approveBurnsOperation, stellarBurnAllowance, toStellarUnits } =
-    await sdk();
-  const client = await server(settings);
-  if (
-    (await stellarBurnAllowance(client, network(settings), stellar.account)) >=
+  const { stellarBurnAllowance, toStellarUnits } = await sdk();
+  return (
+    (await stellarBurnAllowance(await server(settings), network(settings), stellar.account)) >=
     toStellarUnits(amount)
-  )
-    return;
+  );
+}
+
+/** Lets Circle burn the account's Stellar USDC for about six months (`BURN_APPROVAL_LEDGERS`). */
+async function approveStellarBurns(settings: ClientSettings, session: Session) {
+  const { BURN_APPROVAL_LEDGERS, approveBurnsOperation } = await sdk();
+  const client = await server(settings);
   const latest = (await client.getLatestLedger()).sequence;
   await sendStellar(settings, session, (_, account) =>
     approveBurnsOperation(network(settings), account, latest + BURN_APPROVAL_LEDGERS),
   );
 }
 
+/** Where a CCTP burn toward Stellar stands: Wallet Core mints it once Circle attests it. */
+export type StellarDelivery = 'pending' | 'delivered' | 'rejected';
+
 /**
- * Whether a CCTP burn toward Stellar (`hash` on `from`) arrived: Wallet Core mints it once Circle
- * attests it. A burn it does not know yet is reported to it.
+ * Whether a CCTP burn toward Stellar (`hash` on `from`) arrived, still waits, or was rejected for
+ * good (not a burn of this member toward Stellar). A burn Wallet Core does not know yet is reported.
  */
 export async function stellarArrived(
   settings: ClientSettings,
   session: Session,
   from: string,
   hash: string,
-): Promise<boolean> {
+): Promise<StellarDelivery> {
   try {
-    const { status } = await api<{ status: 'pending' | 'delivered' | 'rejected' }>(
+    const { status } = await api<{ status: StellarDelivery }>(
       settings.apiOrigin,
       `stellar/relays?transaction_hash=${hash}`,
       { token: session.token },
     );
-    if (status === 'rejected') throw new Error('STELLAR_RELAY_REJECTED');
-    return status === 'delivered';
+    return status;
   } catch (error) {
     if (!(error instanceof ApiError) || error.status !== 404) throw error;
     await api(settings.apiOrigin, 'stellar/relays', {
       token: session.token,
       body: { network: from, transaction_hash: hash },
     });
-    return false;
+    return 'pending';
   }
 }

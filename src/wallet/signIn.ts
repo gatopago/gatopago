@@ -2,8 +2,29 @@ import { walletNetwork } from '@gatopago/shared/networks';
 import { createSiweMessage } from 'viem/siwe';
 import type { ClientSettings } from '../lib/settings';
 import { gatopagoAccount } from './account';
-import { api } from './api';
+import { api, ApiError } from './api';
+import { findAnyWallet } from './passkey';
 import { saveSession, type Session, type Wallet } from './session';
+
+/**
+ * Signs in with whichever passkey the person picks: one prompt. An account Wallet Core does not
+ * know (its database was reset) signs up again with the same passkey: `register` asks for a
+ * Turnstile token and, when sign-up needs one (`invite`), an invitation; the open Mera session signs
+ * again without another prompt.
+ */
+export async function enter(
+  settings: ClientSettings,
+  register: (needs: { invite: boolean }) => Promise<{ turnstile: string; invite?: string }>,
+): Promise<Session> {
+  const wallet = await findAnyWallet(settings);
+  try {
+    return await signIn(settings, wallet);
+  } catch (error) {
+    const code = error instanceof ApiError ? error.code : null;
+    if (code !== 'TURNSTILE_REQUIRED' && code !== 'INVITE_REQUIRED') throw error;
+    return signIn(settings, wallet, await register({ invite: code === 'INVITE_REQUIRED' }));
+  }
+}
 
 /**
  * Sign-In with Ethereum (ERC-4361): the account signs the message with its passkey (ERC-1271, or
@@ -34,7 +55,8 @@ export async function signIn(
   const result = await api<{ token: string; expires_at: number; user_id: string }>(
     settings.apiOrigin,
     'auth/session',
-    { body: { message, signature, ...signUp } },
+    // Its initial owners: Wallet Core checks the signer against the account's owners now.
+    { body: { message, signature, initial_owners: wallet.initialOwners, ...signUp } },
   );
   const session = {
     token: result.token,

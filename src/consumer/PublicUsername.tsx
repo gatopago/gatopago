@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { ClientSettings } from '../lib/settings';
+import { useCopy } from '../lib/useCopy';
 import { networkName } from '../wallet/account';
 import { api, type Recipient } from '../wallet/api';
 import { failureMessage } from '../wallet/messages';
@@ -24,8 +25,7 @@ export function PublicUsername({
 }) {
   const [recipient, setRecipient] = useState<Recipient | null>(null);
   const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
-  const [copyError, setCopyError] = useState('');
+  const { copy, label, failed } = useCopy(en);
   useEffect(() => {
     const controller = new AbortController();
     api<Recipient>(settings.apiOrigin, `recipients/${username}`, { signal: controller.signal })
@@ -77,25 +77,15 @@ export function PublicUsername({
               <button
                 type="button"
                 className="auth-secondary btn btn-ghost btn-block"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(recipient.address);
-                    setCopied(true);
-                    setCopyError('');
-                  } catch {
-                    setCopyError(
-                      en
-                        ? 'Could not copy. Select the address above.'
-                        : 'No se pudo copiar. Selecciona la dirección de arriba.',
-                    );
-                  }
-                }}
+                onClick={() => copy(recipient.address)}
               >
-                {copied ? (en ? 'Copied' : 'Copiada') : en ? 'Copy address' : 'Copiar dirección'}
+                {label(en ? 'Copy address' : 'Copiar dirección')}
               </button>
-              {copyError ? (
+              {failed() ? (
                 <p role="alert" className="mt-3 text-[12px] text-danger">
-                  {copyError}
+                  {en
+                    ? 'Select the address above to copy it.'
+                    : 'Selecciona la dirección de arriba para copiarla.'}
                 </p>
               ) : null}
               <p className="mt-4 text-[12px] leading-relaxed text-text-muted">

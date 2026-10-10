@@ -1,5 +1,5 @@
 import type { Address, Hex } from 'viem';
-import { signOut } from './session';
+import { currentSession, signOut } from './session';
 
 /** A Wallet Core error: its `error_code`, or `NETWORK_ERROR` when it could not be reached. */
 export class ApiError extends Error {
@@ -70,8 +70,9 @@ export async function api<T>(
     throw new ApiError(0, 'NETWORK_ERROR');
   }
   const value = await response.json().catch(() => null);
-  // An expired or revoked session signs out; the app then returns to sign-in.
-  if (response.status === 401 && init.token) signOut();
+  // An expired or revoked session signs out and the app returns to sign-in; a late answer to an
+  // earlier session (another account since, or replaced) leaves the one in use alone.
+  if (response.status === 401 && init.token && init.token === currentSession()?.token) signOut();
   if (!response.ok) throw new ApiError(response.status, value?.error_code ?? 'UNAVAILABLE');
   return value as T;
 }

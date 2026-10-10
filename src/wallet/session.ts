@@ -2,11 +2,10 @@ import type { Address, Hex } from 'viem';
 
 /** The passkey this device signs with and the account it owns. */
 export interface Wallet {
+  /** The passkey in use on this device. */
   readonly credentialId: string;
-  /** The passkey's P-256 key; `0x` for a Mera account, which `meraOwner` signs for. */
-  readonly publicKey: Hex;
-  /** The key Mera derives from the passkey (`credentialId`), when it owns the account. */
-  readonly meraOwner?: Address;
+  /** The key Mera derives from that passkey, an owner of the account. */
+  readonly owner: Address;
   readonly address: Address;
   /** Owners the account was created with; its address derives from them. */
   readonly initialOwners: readonly Hex[];
@@ -64,7 +63,7 @@ function isWallet(value: Wallet | null | undefined): value is Wallet {
     value &&
     typeof value.address === 'string' &&
     typeof value.credentialId === 'string' &&
-    typeof value.publicKey === 'string' &&
+    typeof value.owner === 'string' &&
     Array.isArray(value.initialOwners)
   );
 }
@@ -116,8 +115,4 @@ export function signOut() {
 export function knownWallet(): Wallet | null {
   const wallet = parsed<Wallet>(read(WALLET));
   return isWallet(wallet) ? wallet : null;
-}
-
-export function forgetWallet() {
-  write(WALLET, null);
 }

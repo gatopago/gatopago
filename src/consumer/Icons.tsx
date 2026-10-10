@@ -1,9 +1,18 @@
 import type { ReactNode } from 'react';
 
-function Icon({ children, size = 20 }: { children: ReactNode; size?: number }) {
+function Icon({
+  children,
+  size = 20,
+  className,
+}: {
+  children: ReactNode;
+  size?: number;
+  className?: string;
+}) {
   return (
     <svg
       aria-hidden="true"
+      className={className}
       width={size}
       height={size}
       viewBox="0 0 24 24"
@@ -72,6 +81,14 @@ export function ChevronIcon() {
   return (
     <Icon size={18}>
       <path d="m9 18 6-6-6-6" />
+    </Icon>
+  );
+}
+/** Opens a list or a section; `className` turns it while open. */
+export function ChevronDownIcon({ size = 16, className }: { size?: number; className?: string }) {
+  return (
+    <Icon size={size} className={className}>
+      <path d="m6 9 6 6 6-6" />
     </Icon>
   );
 }

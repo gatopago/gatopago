@@ -1,4 +1,4 @@
-export type LegalCopy = {
+type LegalCopy = {
   title: string;
   updated: string;
   lead: string;

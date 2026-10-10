@@ -80,6 +80,24 @@ describe('Next migration inventory', () => {
 describe('Untrusted QR review', () => {
   const origin = 'https://gatopago.com';
   const address = '0x1111111111111111111111111111111111111111';
+  it('opens the Stellar address Receive shows in Send, on Stellar only', () => {
+    const stellar = 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA';
+    const scanned = parseConsumerQr(stellar, origin);
+    expect(scanned).toEqual({ kind: 'stellar', address: stellar });
+    const path = qrReviewPath(scanned!);
+    expect(path).toBe(`/send?recipient=${stellar}&network=stellar`);
+    const params = new URLSearchParams(path.split('?')[1]);
+    expect(reviewedRecipient(params, 'stellar:testnet')).toBe(stellar);
+    // Never as an EVM recipient, and nothing that only looks like one.
+    expect(reviewedRecipient(params, 'eip155:421614')).toBe('');
+    for (const value of [
+      stellar.toLowerCase(),
+      stellar.slice(1),
+      `${stellar}A`,
+      `web+stellar:${stellar}`,
+    ])
+      expect(parseConsumerQr(value, origin)).toBeNull();
+  });
   it("opens GatoPago Business's sign-in QR with its request only", () => {
     const request = '0123456789abcdef0123456789abcdef';
     const scanned = parseConsumerQr(`${origin}/approve?request=${request}&next=/send`, origin);

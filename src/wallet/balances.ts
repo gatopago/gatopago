@@ -166,7 +166,8 @@ class Balances {
     this.readAt = Date.now();
   }
 
-  private async readStellar() {
+  /** Reads the Stellar balances alone: once Wallet Core answered the Stellar account. */
+  async readStellar() {
     const known = this.settings.stellar ? knownStellarAccount(this.address) : null;
     // Not asked for yet: kept as it was until a screen with the session asks.
     if (this.settings.stellar && !known) return;
@@ -207,12 +208,14 @@ export function useBalances(settings: ClientSettings, session: Session) {
   const store = balancesOf(settings, session.wallet.address);
   const snapshot = useSyncExternalStore(store.subscribe, store.get, () => EMPTY);
   useEffect(() => {
-    if (!settings.stellar || knownStellarAccount(session.wallet.address)) void store.refresh();
-    // The first time, the Stellar account comes from Wallet Core; then its balance is read too.
-    else
-      void stellarAccount(settings, session)
-        .catch(() => null)
-        .then(() => store.refresh(true));
+    void store.refresh();
+    // The first time, the Stellar account comes from Wallet Core: its balance follows on its own,
+    // without holding the other networks back. If it fails, Stellar stays unknown, never zero.
+    if (settings.stellar && !knownStellarAccount(session.wallet.address))
+      void stellarAccount(settings, session).then(
+        () => store.readStellar(),
+        () => undefined,
+      );
   }, [store, settings, session]);
   const { stellar } = snapshot;
   return {
@@ -254,12 +257,28 @@ export function totalUsdc(
   return total;
 }
 
+/**
+ * An exact amount of any coin by its decimals (6 for USDC, 7 for XLM, 18 for ETH): every decimal
+ * it has, never rounded and without going through `Number`. What is signed and what a receipt
+ * says: one stroop is 0,0000001 XLM, never 0,00.
+ */
+export function formatAmount(amount: bigint, decimals: number, en: boolean, minimumDigits = 0) {
+  const negative = amount < 0n;
+  const [whole, fraction = ''] = formatUnits(negative ? -amount : amount, decimals).split('.');
+  const digits = fraction.padEnd(minimumDigits, '0');
+  const grouped = new Intl.NumberFormat(en ? 'en' : 'es').format(BigInt(whole));
+  return `${negative ? '-' : ''}${grouped}${digits ? (en ? '.' : ',') + digits : ''}`;
+}
+
+/** A coin's balance: up to six decimals, cut rather than rounded so it never shows more. */
+export const formatHolding = (amount: bigint, decimals: number, en: boolean) =>
+  decimals <= 6
+    ? formatAmount(amount, decimals, en)
+    : formatAmount(amount / 10n ** BigInt(decimals - 6), 6, en);
+
 /** An exact USDC amount (a transfer, a fee): two to six decimals, in the app's language. */
 export const formatUsdc = (amount: bigint, en: boolean) =>
-  Number(formatUnits(amount, USDC_DECIMALS)).toLocaleString(en ? 'en' : 'es', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 6,
-  });
+  formatAmount(amount, USDC_DECIMALS, en, 2);
 
 /** A balance: two decimals, cut rather than rounded so it never shows more than there is. */
 export const formatBalance = (amount: bigint, en: boolean) =>

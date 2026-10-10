@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { crosschainStatus, type CrosschainStage } from '@gatopago/shared/crosschain';
 import { cctpNetwork, networkName } from '../wallet/account';
+import type { StellarDelivery } from '../wallet/stellar';
 
 type StepState = 'waiting' | 'active' | 'done' | 'error';
 
@@ -87,8 +88,8 @@ export function CrosschainTimeline({
   hash: string;
   english: boolean;
   onDelivered?: () => void;
-  /** Where Circle does not deliver (toward Stellar): whether the attested burn arrived. */
-  delivery?: () => Promise<boolean>;
+  /** Where Circle does not deliver (toward Stellar): where the attested burn stands. */
+  delivery?: () => Promise<StellarDelivery>;
 }) {
   const [stage, setStage] = useState<CrosschainStage>('burned');
   const [delayed, setDelayed] = useState(false);
@@ -106,10 +107,12 @@ export function CrosschainTimeline({
       const status = await crosschainStatus(cctpNetwork(from), hash, controller.signal).catch(
         () => null,
       );
-      const landed =
-        status?.attested && arrival.current ? await arrival.current().catch(() => false) : false;
+      // A failed check is asked again; a rejection is final.
+      const delivery =
+        status?.attested && arrival.current ? await arrival.current().catch(() => null) : null;
       if (controller.signal.aborted) return;
-      const next = landed ? 'delivered' : status?.stage;
+      const next =
+        delivery === 'delivered' ? 'delivered' : delivery === 'rejected' ? 'failed' : status?.stage;
       if (next) setStage(next);
       if (next === 'delivered') return delivered.current?.();
       if (next === 'failed') return;

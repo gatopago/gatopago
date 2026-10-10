@@ -6,6 +6,7 @@ import { BackHeader, NoticeCard } from '../consumer/Primitives';
 import { SettingsSection } from '../consumer/SettingsSection';
 import { ScreenLoading } from '../consumer/Skeleton';
 import type { ClientSettings } from '../lib/settings';
+import { useCopy } from '../lib/useCopy';
 import { networkName } from './account';
 import { api, type Profile } from './api';
 import { failureMessage } from './messages';
@@ -54,16 +55,31 @@ export function ProfileScreen({
   session: Session;
   english: boolean;
 }) {
-  const { profile, error } = useProfile();
+  const { profile, error, retry } = useProfile();
   return (
     <>
       <BackHeader title={en ? 'Profile' : 'Perfil'} english={en} />
+      {/* A failed read never hides the profile already known; it says so and can be retried. */}
       {error ? (
         <p className="auth-error" role="alert">
-          {error}
+          {profile
+            ? en
+              ? 'We could not update your profile; this may be out of date. '
+              : 'No pudimos actualizar tu perfil; puede no estar al día. '
+            : `${error} `}
+          <button
+            type="button"
+            onClick={retry}
+            className="-my-3 inline-block py-3 font-semibold underline underline-offset-2"
+          >
+            {en ? 'Try again' : 'Reintentar'}
+          </button>
         </p>
-      ) : !profile ? (
-        <ScreenLoading kind="form" english={en} />
+      ) : null}
+      {!profile ? (
+        error ? null : (
+          <ScreenLoading kind="settings" english={en} bar={false} />
+        )
       ) : (
         <ProfileEditor
           key={profile.username ?? ''}
@@ -94,14 +110,8 @@ function ProfileEditor({
   const [username, setUsername] = useState('');
   const [busy, setBusy] = useState<'profile' | 'username' | null>(null);
   const [notice, setNotice] = useState<{ tone: 'success' | 'warning'; text: string } | null>(null);
-  const [copied, setCopied] = useState<'link' | 'address' | null>(null);
+  const { copy, label } = useCopy(en);
   const link = profile.username ? `${settings.webOrigin}/@${profile.username}` : null;
-  function copy(value: string, what: 'link' | 'address') {
-    void navigator.clipboard.writeText(value).then(() => {
-      setCopied(what);
-      setTimeout(() => setCopied(null), 2000);
-    });
-  }
   const profileChanged =
     displayName.trim() !== (profile.display_name ?? '') ||
     socialUrl.trim() !== (profile.social_url ?? '');
@@ -234,7 +244,7 @@ function ProfileEditor({
                 onClick={() => copy(link, 'link')}
                 className="btn btn-primary btn-sm shrink-0"
               >
-                {copied === 'link' ? (en ? 'Copied ✓' : 'Copiado ✓') : en ? 'Copy' : 'Copiar'}
+                {label(en ? 'Copy' : 'Copiar', 'link')}
               </button>
             </div>
           ) : (
@@ -301,7 +311,7 @@ function ProfileEditor({
               onClick={() => copy(session.wallet.address, 'address')}
               className="btn btn-ghost btn-sm flex-1"
             >
-              {copied === 'address' ? (en ? 'Copied ✓' : 'Copiada ✓') : en ? 'Copy' : 'Copiar'}
+              {label(en ? 'Copy' : 'Copiar', 'address')}
             </button>
             {explorer ? (
               <a

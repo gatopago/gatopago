@@ -1,11 +1,36 @@
 import { randomBytes } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
+import { englishLocation, LANGUAGE_COOKIE, preferredLanguage } from './lib/language';
 import { settings } from './lib/settings';
 import { documentCsp, documentSecurityHeaders } from './security/content-policy';
 import { NONCE_HEADER } from './security/nonce';
 import { STATIC_PAGES, staticCsp, staticSecurityHeaders } from './security/static-pages';
 
+/**
+ * A page opened without a language, by someone who chose English or whose browser prefers it,
+ * goes to its English version. Only full page loads (GET or HEAD of a document), never Next's
+ * own fetches; a 307, because where it goes depends on who asks. No browser preference (most
+ * crawlers) keeps the Spanish default, and a choice made with a language switch always wins.
+ */
+function languageRedirect(request: NextRequest) {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return null;
+  const { headers, nextUrl } = request;
+  if (headers.has('rsc') || headers.has('next-router-prefetch') || nextUrl.searchParams.has('_rsc'))
+    return null;
+  const destination = headers.get('sec-fetch-dest');
+  if (destination ? destination !== 'document' : !headers.get('accept')?.includes('text/html'))
+    return null;
+  const chosen = request.cookies.get(LANGUAGE_COOKIE)?.value;
+  const language =
+    chosen === 'es' || chosen === 'en' ? chosen : preferredLanguage(headers.get('accept-language'));
+  if (language !== 'en') return null;
+  const target = englishLocation(nextUrl.pathname, nextUrl.searchParams);
+  return target ? NextResponse.redirect(new URL(target, request.url), 307) : null;
+}
+
 export function proxy(request: NextRequest) {
+  const english = languageRedirect(request);
+  if (english) return english;
   // Prerendered pages carry no nonce: their own policy, and the CDN may keep them.
   if (STATIC_PAGES.has(request.nextUrl.pathname)) {
     const response = NextResponse.next();

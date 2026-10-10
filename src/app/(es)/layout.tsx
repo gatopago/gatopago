@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Translations } from '../../lib/Translations';
 import { Document, requestNonce } from '../Document';
 export { pwaMetadata as metadata, pwaViewport as viewport } from '../../pwa/manifest';
 
@@ -6,7 +7,7 @@ export { pwaMetadata as metadata, pwaViewport as viewport } from '../../pwa/mani
 export default async function Layout({ children }: { children: ReactNode }) {
   return (
     <Document lang="es" nonce={await requestNonce()}>
-      {children}
+      <Translations>{children}</Translations>
     </Document>
   );
 }

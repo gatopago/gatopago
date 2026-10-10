@@ -76,7 +76,6 @@ describe('Unified GatoPago presentation', () => {
           homeNetwork: 'eip155:421614',
           rpcUrls: {},
           turnstileSiteKey: '1x00000000000000000000AA',
-          mera: false,
           meraSessionMinutes: 15,
           passkeyRpId: 'localhost',
           stellar: null,
