@@ -131,3 +131,9 @@ a language follows the browser on a first visit (Spanish when it says nothing, a
 language chosen with the switch, or an `/en` link opened, is kept in next-intl's cookie
 (`NEXT_LOCALE`) and wins from then on. Links from before English had its own addresses
 (`/statement?lang=en`) redirect to `/en/…`.
+
+## License
+
+The code is MIT-licensed (see [LICENSE](LICENSE)). The GatoPago name, logo and the Meli
+illustrations (`vendor/gatopago-brand-*.tgz`) are not covered by the MIT license. All rights
+reserved.
