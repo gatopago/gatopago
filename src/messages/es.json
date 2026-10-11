@@ -420,7 +420,9 @@
     "unsupportedNetwork": "Red no admitida",
     "qrAsksNetworkGatopago": "El QR pide una red que GatoPago todavía no admite ({chain}). Elige una de las tuyas.",
     "continueTransfer": "Continuar al envío",
-    "scanAnotherQr": "Escanear otro QR"
+    "scanAnotherQr": "Escanear otro QR",
+    "switchCamera": "Cambiar cámara",
+    "flashlight": "Linterna"
   },
   "SelectMenu": {
     "close": "Cerrar"

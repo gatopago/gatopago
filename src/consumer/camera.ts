@@ -3,7 +3,8 @@
  * phones with several (the Galaxy S23, for one) Chrome can pick the ultra-wide, which has fixed
  * focus and blurs a QR held close. Android names its cameras `camera2 <n>, facing back`, and the
  * lowest number is the main lens: that one opens, once. Elsewhere (iPhone, computers) the browser's
- * own choice is already the main lens.
+ * own choice is already the main lens. A browser that hides the names (Brave may) leaves the choice
+ * to itself: the scan screen lets the person switch lenses, and the one chosen opens next time.
  */
 
 // The first version chose by reported focus, which an ultra-wide can pass: its choice is ignored.
@@ -18,18 +19,32 @@ const open = (video: MediaTrackConstraints) =>
 const androidIndex = (device: Pick<MediaDeviceInfo, 'label'>) =>
   Number(/camera2 (\d+)/.exec(device.label)?.[1]);
 
-/** Android's main back lens, by name; none where cameras are not named that way. */
-export function mainBackCamera<T extends Pick<MediaDeviceInfo, 'kind' | 'label' | 'deviceId'>>(
-  devices: readonly T[],
-): T | undefined {
-  return devices
+type Camera = Pick<MediaDeviceInfo, 'kind' | 'label' | 'deviceId'>;
+
+/** Android's back lenses by number, the main one first; none where cameras are not named that way. */
+const androidBackCameras = <T extends Camera>(devices: readonly T[]) =>
+  devices
     .filter(
       (device) =>
         device.kind === 'videoinput' &&
         /facing back/i.test(device.label) &&
         Number.isInteger(androidIndex(device)),
     )
-    .sort((a, b) => androidIndex(a) - androidIndex(b))[0];
+    .sort((a, b) => androidIndex(a) - androidIndex(b));
+
+/** Android's main back lens, by name; none where cameras are not named that way. */
+export const mainBackCamera = <T extends Camera>(devices: readonly T[]): T | undefined =>
+  androidBackCameras(devices)[0];
+
+/**
+ * The cameras the scan screen switches between: on Android, the back lenses, main one first.
+ * Where they are not named that way (an iPhone, a computer, or a browser that hides their names,
+ * so the choice above cannot be made), every camera not named as a front one.
+ */
+export function scanCameras<T extends Camera>(devices: readonly T[]): T[] {
+  const android = androidBackCameras(devices);
+  if (android.length) return android;
+  return devices.filter((device) => device.kind === 'videoinput' && !/front/i.test(device.label));
 }
 
 function remembered() {
@@ -49,8 +64,19 @@ function remember(deviceId: string | null) {
   }
 }
 
-/** Opens the main back camera, 4:3 in up to 1440×1080. */
-export async function openScanCamera(): Promise<MediaStream> {
+/** A camera's flashlight, where it has one (Chrome on Android); the DOM types do not list it yet. */
+export type Torch = MediaTrackConstraintSet & { torch?: boolean };
+
+/**
+ * Opens the main back camera, 4:3 in up to 1440×1080; with `deviceId`, the one the person chose,
+ * which opens from then on.
+ */
+export async function openScanCamera(deviceId?: string): Promise<MediaStream> {
+  if (deviceId) {
+    const stream = await open({ deviceId: { exact: deviceId } });
+    remember(deviceId);
+    return stream;
+  }
   const saved = remembered();
   if (saved) {
     try {

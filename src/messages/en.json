@@ -420,7 +420,9 @@
     "unsupportedNetwork": "Unsupported network",
     "qrAsksNetworkGatopago": "The QR asks for a network GatoPago does not support yet ({chain}). Choose one of yours.",
     "continueTransfer": "Continue to transfer",
-    "scanAnotherQr": "Scan another QR"
+    "scanAnotherQr": "Scan another QR",
+    "switchCamera": "Switch camera",
+    "flashlight": "Flashlight"
   },
   "SelectMenu": {
     "close": "Close"

@@ -9,7 +9,7 @@ import { networkName } from '../wallet/account';
 import { useProfile } from '../wallet/useProfile';
 import type { Session } from '../wallet/session';
 import { AddressQRCard } from './AddressQRCard';
-import { openScanCamera, qrDetector } from './camera';
+import { openScanCamera, qrDetector, scanCameras, type Torch } from './camera';
 import { BackHeader, MoneyPanel, NoticeCard, SectionLabel, TransactionActions } from './Primitives';
 import { parseConsumerQr, qrReviewPath } from './qr';
 import { NavigationLink } from './NavigationLink';
@@ -35,6 +35,13 @@ export default function ScanScreen({
   const [camera, setCamera] = useState(false);
   const [busy, setBusy] = useState(true);
   const [reading, setReading] = useState(false);
+  /** The back cameras to switch between, and the one open (its id as the browser reports it). */
+  const [lenses, setLenses] = useState<{ ids: string[]; current: string | null }>({
+    ids: [],
+    current: null,
+  });
+  /** The open camera's flashlight: `null` when it has none. */
+  const [torch, setTorch] = useState<boolean | null>(null);
   const video = useRef<HTMLVideoElement>(null),
     stream = useRef<MediaStream | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -105,65 +112,81 @@ export default function ScanScreen({
     },
     [],
   );
-  const start = useCallback(async () => {
-    stop();
-    const current = generation.current;
-    timer.current = setTimeout(() => {
-      if (current === generation.current) {
-        stop();
-        setBusy(false);
-        setCamera(false);
-        setError(t('cameraPermissionTookToo'));
-      }
-    }, 15000);
-    try {
-      const media = await openScanCamera();
-      if (generation.current !== current) {
-        media.getTracks().forEach((track) => track.stop());
-        return;
-      }
-      if (timer.current) clearTimeout(timer.current);
-      stream.current = media;
-      if (!video.current) throw new Error('Video unavailable');
-      video.current.srcObject = media;
-      await video.current.play();
-      if (generation.current !== current) return;
-      setCamera(true);
-      setBusy(false);
-      const scan = async () => {
-        if (generation.current !== current || !video.current) return;
-        try {
-          if (video.current.readyState >= 2) {
-            const raw = await decode(
-              video.current,
-              video.current.videoWidth,
-              video.current.videoHeight,
-              // The native reader takes the full 1080p; jsQR stays fast on a smaller frame.
-              (await qrDetector()) ? 1080 : 720,
-              true,
-            );
-            if (generation.current !== current) return;
-            if (raw && parse(raw)) {
-              stop();
-              setCamera(false);
-              return;
-            }
-          }
-        } catch {
-          /* empty */
+  const start = useCallback(
+    async (deviceId?: string) => {
+      stop();
+      setTorch(null);
+      const current = generation.current;
+      timer.current = setTimeout(() => {
+        if (current === generation.current) {
+          stop();
+          setBusy(false);
+          setCamera(false);
+          setError(t('cameraPermissionTookToo'));
         }
-        if (generation.current === current) timer.current = setTimeout(() => void scan(), 180);
-      };
-      void scan();
-    } catch {
-      if (generation.current === current) {
-        stop();
+      }, 15000);
+      try {
+        const media = await openScanCamera(deviceId);
+        if (generation.current !== current) {
+          media.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        if (timer.current) clearTimeout(timer.current);
+        stream.current = media;
+        if (!video.current) throw new Error('Video unavailable');
+        video.current.srcObject = media;
+        await video.current.play();
+        if (generation.current !== current) return;
+        setCamera(true);
         setBusy(false);
-        setCamera(false);
-        setError(t('couldNotUseCamera'));
+        const track = media.getVideoTracks()[0];
+        const capabilities = (track?.getCapabilities?.() ?? {}) as MediaTrackCapabilities & Torch;
+        setTorch(capabilities.torch ? false : null);
+        const cameras = scanCameras(
+          await navigator.mediaDevices.enumerateDevices().catch(() => []),
+        );
+        if (generation.current !== current) return;
+        setLenses({
+          ids: cameras.map((camera) => camera.deviceId),
+          current: track?.getSettings().deviceId ?? null,
+        });
+        const scan = async () => {
+          if (generation.current !== current || !video.current) return;
+          try {
+            if (video.current.readyState >= 2) {
+              const raw = await decode(
+                video.current,
+                video.current.videoWidth,
+                video.current.videoHeight,
+                // The native reader takes the full 1080p; jsQR stays fast on a smaller frame.
+                (await qrDetector()) ? 1080 : 720,
+                true,
+              );
+              if (generation.current !== current) return;
+              if (raw && parse(raw)) {
+                navigator.vibrate?.(40);
+                stop();
+                setCamera(false);
+                return;
+              }
+            }
+          } catch {
+            /* empty */
+          }
+          if (generation.current === current) timer.current = setTimeout(() => void scan(), 180);
+        };
+        void scan();
+      } catch {
+        if (generation.current === current) {
+          stop();
+          setBusy(false);
+          setCamera(false);
+          setError(t('couldNotUseCamera'));
+        }
       }
-    }
-  }, [t, stop, parse, decode]);
+    },
+    [t, stop, parse, decode],
+  );
   const scanning = view === 'scan' && !scanned;
   useEffect(() => {
     if (!scanning) return;
@@ -283,6 +306,42 @@ export default function ScanScreen({
               </div>
             )}
           </div>
+          {camera && (lenses.ids.length > 1 || torch !== null) ? (
+            <div className="-mt-2 mb-3 flex w-full justify-center gap-2">
+              {lenses.ids.length > 1 ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => {
+                    // The next lens; one the browser reports with another id starts the round.
+                    const next = lenses.ids.indexOf(lenses.current ?? '') + 1;
+                    setBusy(true);
+                    void start(lenses.ids[next % lenses.ids.length]);
+                  }}
+                >
+                  {t('switchCamera')}
+                </button>
+              ) : null}
+              {torch !== null ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  aria-pressed={torch}
+                  data-active={torch}
+                  onClick={() => {
+                    const track = stream.current?.getVideoTracks()[0];
+                    const advanced: Torch[] = [{ torch: !torch }];
+                    track
+                      ?.applyConstraints({ advanced })
+                      .then(() => setTorch(!torch))
+                      .catch(() => setTorch(null));
+                  }}
+                >
+                  {t('flashlight')}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <p
             className={`min-h-10 text-center text-[14px] ${error && camera ? 'text-danger' : 'text-text-muted'}`}
           >
