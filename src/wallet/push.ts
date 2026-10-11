@@ -45,6 +45,34 @@ export async function pushSupported(settings: ClientSettings) {
 export const pushEnabled = () =>
   'Notification' in window && Notification.permission === 'granted' && stored() !== null;
 
+/**
+ * Whether this site's notifications are blocked: the browser no longer asks, so a tap cannot turn
+ * them on; only its settings (or the phone's, for the installed app) can.
+ */
+export const notificationsBlocked = () =>
+  'Notification' in window && Notification.permission === 'denied';
+
+/** Calls `listener` when the permission may have changed: the browser says so, or the person is back. */
+export function subscribeNotificationPermission(listener: () => void) {
+  let active = true;
+  let status: PermissionStatus | null = null;
+  navigator.permissions
+    ?.query({ name: 'notifications' })
+    .then((result) => {
+      if (!active) return;
+      status = result;
+      result.addEventListener('change', listener);
+    })
+    // Without the Permissions API, coming back from the settings is enough.
+    .catch(() => {});
+  document.addEventListener('visibilitychange', listener);
+  return () => {
+    active = false;
+    status?.removeEventListener('change', listener);
+    document.removeEventListener('visibilitychange', listener);
+  };
+}
+
 /** How long the PWA's worker may take to activate before turning notifications on fails. */
 const WORKER_WAIT_MS = 15_000;
 

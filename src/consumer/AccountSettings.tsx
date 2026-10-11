@@ -1,10 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useRouter } from '../i18n/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import type { ClientSettings } from '../lib/settings';
-import { disablePush, enablePush, pushEnabled, pushSupported } from '../wallet/push';
+import { getPwaSnapshot, getServerPwaSnapshot, subscribePwa } from '../pwa/browser';
+import {
+  disablePush,
+  enablePush,
+  notificationsBlocked,
+  pushEnabled,
+  pushSupported,
+  subscribeNotificationPermission,
+} from '../wallet/push';
 import { signOut, type Session } from '../wallet/session';
 import { NavigationLink } from './NavigationLink';
 import { BackHeader } from './Primitives';
@@ -43,7 +51,13 @@ export function AccountSettings({
   const [pushAvailable, setPushAvailable] = useState(false);
   const [pushOn, setPushOn] = useState(() => typeof window !== 'undefined' && pushEnabled());
   const [pushBusy, setPushBusy] = useState(false);
-  const [pushProblem, setPushProblem] = useState<'blocked' | 'failed' | null>(null);
+  const [pushFailed, setPushFailed] = useState(false);
+  const blocked = useSyncExternalStore(
+    subscribeNotificationPermission,
+    notificationsBlocked,
+    () => false,
+  );
+  const { installed } = useSyncExternalStore(subscribePwa, getPwaSnapshot, getServerPwaSnapshot);
   useEffect(() => {
     void pushSupported(settings).then(setPushAvailable);
   }, [settings]);
@@ -77,31 +91,37 @@ export function AccountSettings({
               <p className="mb-3 text-[13px] leading-relaxed text-text-muted">
                 {t('notificationsHelp')}
               </p>
-              {pushProblem ? (
-                <p role="alert" className="mb-3 text-[12px] leading-relaxed text-pending">
-                  {t(pushProblem === 'blocked' ? 'notificationsBlocked' : 'notificationsFailed')}
+              {blocked ? (
+                <p role="status" className="text-[12px] leading-relaxed text-pending">
+                  {t(installed ? 'notificationsBlockedApp' : 'notificationsBlockedBrowser')}
                 </p>
-              ) : null}
-              <button
-                type="button"
-                disabled={pushBusy}
-                className="btn btn-primary btn-sm"
-                onClick={() => {
-                  setPushBusy(true);
-                  setPushProblem(null);
-                  enablePush(settings, session, locale)
-                    .catch(() => 'failed' as const)
-                    .then((outcome) => {
-                      setPushOn(outcome === 'on');
-                      setPushProblem(
-                        outcome === 'blocked' || outcome === 'failed' ? outcome : null,
-                      );
-                    })
-                    .finally(() => setPushBusy(false));
-                }}
-              >
-                {pushBusy ? t('turning') : t('turnOn')}
-              </button>
+              ) : (
+                <>
+                  {pushFailed ? (
+                    <p role="alert" className="mb-3 text-[12px] leading-relaxed text-pending">
+                      {t('notificationsFailed')}
+                    </p>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={pushBusy}
+                    className="btn btn-primary btn-sm"
+                    onClick={() => {
+                      setPushBusy(true);
+                      setPushFailed(false);
+                      enablePush(settings, session, locale)
+                        .catch(() => 'failed' as const)
+                        .then((outcome) => {
+                          setPushOn(outcome === 'on');
+                          setPushFailed(outcome === 'failed');
+                        })
+                        .finally(() => setPushBusy(false));
+                    }}
+                  >
+                    {pushBusy ? t('turning') : t('turnOn')}
+                  </button>
+                </>
+              )}
             </div>
           </SettingsSection>
         ) : null}
