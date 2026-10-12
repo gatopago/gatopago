@@ -14,6 +14,7 @@ import { useSearchParams } from 'next/navigation';
 import { usePathname, useRouter } from '../i18n/navigation';
 import { ConsumerFrame } from '../consumer/ConsumerFrame';
 import { useNavigationRecord } from '../consumer/history';
+import { PullToRefresh } from '../consumer/PullToRefresh';
 import type { ConsumerView } from '../consumer/routes';
 import { ScreenLoading } from '../consumer/Skeleton';
 import type { ClientSettings } from '../lib/settings';
@@ -87,6 +88,7 @@ export function AccountShell({
             businessOrigin: settings.businessOrigin,
           }}
         >
+          <PullToRefresh disabled={pathname === '/scan'} />
           {/* Keyed by screen: it slides in from where the member is going while the frame stays. */}
           <div key={pathname} className="auth-content screen-enter" data-direction={direction}>
             {children}

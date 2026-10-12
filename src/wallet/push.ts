@@ -166,12 +166,24 @@ export async function disablePush(settings: ClientSettings, session: Session) {
   }).catch(() => undefined);
 }
 
-/** Fires `listener` when the service worker relays a movement notification. */
+const REFRESH = 'gatopago:refresh';
+
+/** Asks the screens to read their data again, as a movement notification does (pull to refresh). */
+export const refreshScreens = () => window.dispatchEvent(new Event(REFRESH));
+
+/**
+ * Fires `listener` when the service worker relays a movement notification, or when the person
+ * pulls the screen down to refresh it.
+ */
 export function onMovement(listener: () => void) {
-  if (!('serviceWorker' in navigator)) return () => {};
+  window.addEventListener(REFRESH, listener);
   const handle = (event: MessageEvent) => {
     if (event.data?.type === 'GATOPAGO_MOVEMENT') listener();
   };
-  navigator.serviceWorker.addEventListener('message', handle);
-  return () => navigator.serviceWorker.removeEventListener('message', handle);
+  const worker = 'serviceWorker' in navigator ? navigator.serviceWorker : null;
+  worker?.addEventListener('message', handle);
+  return () => {
+    window.removeEventListener(REFRESH, listener);
+    worker?.removeEventListener('message', handle);
+  };
 }

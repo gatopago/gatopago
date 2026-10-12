@@ -14,6 +14,7 @@ import {
   subscribeNotificationPermission,
 } from '../wallet/push';
 import { signOut, type Session } from '../wallet/session';
+import { switchLanguage } from './history';
 import { NavigationLink } from './NavigationLink';
 import { BackHeader } from './Primitives';
 import { SettingsSection } from './SettingsSection';
@@ -132,6 +133,7 @@ export function AccountSettings({
                 locale="es"
                 href="/settings"
                 replace
+                onClick={locale === 'es' ? undefined : switchLanguage}
                 aria-current={locale === 'es' ? 'page' : undefined}
                 data-active={locale === 'es'}
                 className="seg-item"
@@ -142,6 +144,7 @@ export function AccountSettings({
                 locale="en"
                 href="/settings"
                 replace
+                onClick={locale === 'en' ? undefined : switchLanguage}
                 aria-current={locale === 'en' ? 'page' : undefined}
                 data-active={locale === 'en'}
                 className="seg-item"

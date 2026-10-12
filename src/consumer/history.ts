@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useLocale, type Locale } from 'next-intl';
 import { usePathname, useRouter } from '../i18n/navigation';
 import { isReloadBlocked } from '../pwa/reload-guard';
 
@@ -10,6 +11,15 @@ type Direction = 'forward' | 'back' | 'tab' | 'none';
 
 /** The screens visited in this tab, as far as the app saw them: back only goes where it came from. */
 const visited: string[] = [];
+/** The language of the screens in the record. */
+let language: Locale | undefined;
+/** Set by the language switch: the next change of language is the person's choice. */
+let switching = false;
+
+/** Called by the language switch before it opens the screen in the other language. */
+export const switchLanguage = () => {
+  switching = true;
+};
 let direction: Direction = 'none';
 let next: Direction | null = null;
 const listeners = new Set<() => void>();
@@ -39,7 +49,13 @@ let traversing = false;
  * screens at once: the record goes back to that screen, wherever it is. Otherwise, going to the
  * screen just before is going back too (a link to the parent).
  */
-export function record(screen: string, traversed = false): Direction {
+export function record(screen: string, traversed = false, locale?: Locale): Direction {
+  if (locale !== language) {
+    // The screens before a language change stay in the other one in the browser's history: the
+    // app's back goes to the parent in the new language instead of returning to them.
+    if (language !== undefined) visited.length = 0;
+    language = locale;
+  }
   if (visited.at(-1) === screen) return direction;
   const back = traversed
     ? visited.lastIndexOf(screen)
@@ -61,6 +77,8 @@ export function record(screen: string, traversed = false): Direction {
 /** Keeps the record of visited screens; mounted once by the account's layout. */
 export function useNavigationRecord(): Direction {
   const screen = useScreen();
+  const locale = useLocale();
+  const router = useRouter();
   useEffect(() => {
     const traverse = () => (traversing = true);
     window.addEventListener('popstate', traverse);
@@ -68,9 +86,17 @@ export function useNavigationRecord(): Direction {
   }, []);
   // Before paint, so the new screen enters from the right side.
   useLayoutEffect(() => {
-    record(screen, traversing);
+    // Screens left in the browser's history before a language change keep the other one: back (the
+    // phone's too) would bring them in it. Only the switch changes the language; they open again
+    // in the one in use.
+    if (language !== undefined && locale !== language && !switching) {
+      router.replace(screen, { locale: language });
+      return;
+    }
+    switching = false;
+    record(screen, traversing, locale);
     traversing = false;
-  }, [screen]);
+  }, [screen, locale, router]);
   return useSyncExternalStore(
     (listener) => {
       listeners.add(listener);

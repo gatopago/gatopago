@@ -1207,6 +1207,44 @@
   }
 }
 
+/* Pull to refresh: a tab that comes down from the top following the finger, then spins. */
+.consumer-ui .pull-refresh {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) - 44px);
+  left: 50%;
+  z-index: 60;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 2px solid var(--color-text);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 4px 4px 0 var(--color-cat-700);
+  pointer-events: none;
+}
+.consumer-ui .pull-refresh span {
+  display: grid;
+}
+.consumer-ui .pull-refresh svg {
+  width: 18px;
+  height: 18px;
+}
+/* Until the pull counts only the arrow is dim: the card stays opaque over what it covers. */
+.consumer-ui .pull-refresh[data-ready='false'] span {
+  color: var(--color-text-faint);
+}
+.consumer-ui .pull-refresh[data-busy='true'] svg {
+  animation: spin 900ms linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .consumer-ui .pull-refresh,
+  .consumer-ui .pull-refresh svg {
+    transition: none;
+    animation: none !important;
+  }
+}
+
 /* An amount being typed: large, but it fits a small phone. */
 .consumer-ui .amount-input {
   font-size: clamp(44px, 14vw, 56px);

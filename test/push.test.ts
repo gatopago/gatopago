@@ -120,3 +120,18 @@ describe('payment notifications', () => {
     }
   });
 });
+
+describe('pull to refresh', () => {
+  it('asks the screens to read again, as a movement notification does, while they listen', async () => {
+    vi.stubGlobal('window', new EventTarget());
+    vi.stubGlobal('navigator', {});
+    const { onMovement, refreshScreens } = await import('../src/wallet/push');
+    const listener = vi.fn();
+    const stop = onMovement(listener);
+    refreshScreens();
+    expect(listener).toHaveBeenCalledTimes(1);
+    stop();
+    refreshScreens();
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+});

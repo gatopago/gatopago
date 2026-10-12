@@ -26,6 +26,17 @@ describe('the record of visited screens', () => {
     expect(record('/app')).toBe('back');
   });
 
+  it('forgets the screens before a language change, so back goes to the parent in the new one', async () => {
+    const { record } = await import('../src/consumer/history');
+    record('/app', false, 'es');
+    record('/settings', false, 'es');
+    // The switch reopens Settings in English: the record holds only it, so the app's back cannot
+    // return to Home in Spanish through the browser's history.
+    expect(record('/settings', false, 'en')).toBe('none');
+    // Home is no longer in the record: reaching it through the history is a new screen.
+    expect(record('/app', true, 'en')).toBe('tab');
+  });
+
   it('goes forward with the browser to a screen no longer in the record', async () => {
     const { record } = await import('../src/consumer/history');
     record('/app');
