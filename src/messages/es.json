@@ -19,7 +19,7 @@
     "STELLAR_TRANSACTION_PENDING": "Tu operación sigue en proceso. Revisa Actividad en un momento antes de repetirla.",
     "INSUFFICIENT_COIN": "No te alcanza el saldo de esa moneda.",
     "INSUFFICIENT_FUNDS": "No te alcanza el saldo. Si está repartido entre redes, júntalo en “Entre redes”.",
-    "AUTHORIZED_ON_OTHER_NETWORK": "Ya empezaste este pago en otra red. Termínalo ahí o, en 5 minutos, págalo desde esta.",
+    "AUTHORIZED_ON_OTHER_NETWORK": "Este pago ya se empezó en otra red. Termínalo ahí, o espera hasta 5 minutos para pagarlo desde esta.",
     "INVALID_ADDRESS": "Dirección inválida: debe ser una dirección 0x válida.",
     "SELF_TRANSFER": "Esa es tu propia cuenta.",
     "INVALID_STELLAR_ADDRESS": "Dirección de Stellar inválida: debe empezar con G o C.",
