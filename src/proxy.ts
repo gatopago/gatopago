@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import createMiddleware from 'next-intl/middleware';
-import { NextResponse, type NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { routing } from './i18n/routing';
 import { settings } from './lib/settings';
 import { documentCsp, documentSecurityHeaders } from './security/content-policy';
@@ -10,21 +10,7 @@ import { STATIC_PAGES, staticCsp, staticSecurityHeaders } from './security/stati
 /** The address's language (`/en/…`), or the browser's on a first visit: next-intl's own routing. */
 const i18nRouting = createMiddleware(routing);
 
-/**
- * Links from before English had its own addresses (`/statement?lang=en`, in notifications already
- * delivered and bookmarks) open in English, whatever the browser prefers.
- */
-function englishAddress({ nextUrl }: NextRequest) {
-  if (nextUrl.searchParams.get('lang') !== 'en') return null;
-  const url = nextUrl.clone();
-  url.searchParams.delete('lang');
-  if (!/^\/en(\/|$)/.test(url.pathname)) url.pathname = `/en${url.pathname.replace(/\/$/, '')}`;
-  return NextResponse.redirect(url, 307);
-}
-
 export function proxy(request: NextRequest) {
-  const english = englishAddress(request);
-  if (english) return english;
   // Prerendered pages carry no nonce: their own policy, and the CDN may keep them.
   if (STATIC_PAGES.has(request.nextUrl.pathname)) {
     const response = i18nRouting(request);

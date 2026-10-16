@@ -129,8 +129,7 @@ Every page has an address per language, with next-intl's routing (`src/i18n/rout
 Links and navigation come from `src/i18n/navigation.ts`, which adds the prefix. An address without
 a language follows the browser on a first visit (Spanish when it says nothing, as crawlers do); a
 language chosen with the switch, or an `/en` link opened, is kept in next-intl's cookie
-(`NEXT_LOCALE`) and wins from then on. Links from before English had its own addresses
-(`/statement?lang=en`) redirect to `/en/…`.
+(`NEXT_LOCALE`) and wins from then on.
 
 ## License
 

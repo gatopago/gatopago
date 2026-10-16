@@ -36,16 +36,6 @@ describe('language of an address', () => {
       renders: '/es/app',
     });
   });
-
-  it('opens links from before English had its own addresses in English, whatever the browser', () => {
-    const spanish = { 'accept-language': 'es-BO' };
-    expect(route('/statement?lang=en', spanish)).toEqual({ redirect: '/en/statement' });
-    expect(route('/send?username=ana&lang=en', spanish)).toEqual({
-      redirect: '/en/send?username=ana',
-    });
-    expect(route('/?lang=en', spanish)).toEqual({ redirect: '/en' });
-    expect(route('/en/docs?lang=en', spanish)).toEqual({ redirect: '/en/docs' });
-  });
 });
 
 describe('files of the site', () => {

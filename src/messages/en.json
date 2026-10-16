@@ -19,6 +19,7 @@
     "STELLAR_TRANSACTION_PENDING": "Your operation is still in progress. Check Activity in a moment before repeating it.",
     "INSUFFICIENT_COIN": "You do not have enough of that coin.",
     "INSUFFICIENT_FUNDS": "Your balance is not enough. If it is spread across networks, gather it in “Between networks”.",
+    "AUTHORIZED_ON_OTHER_NETWORK": "You already started this payment on another network. Finish it there, or pay from this one in 5 minutes.",
     "INVALID_ADDRESS": "Invalid address: it must be a valid 0x address.",
     "SELF_TRANSFER": "That is your own account.",
     "INVALID_STELLAR_ADDRESS": "Invalid Stellar address: it must start with G or C.",
