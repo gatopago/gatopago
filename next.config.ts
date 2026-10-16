@@ -23,15 +23,6 @@ const config: NextConfig = {
   poweredByHeader: false,
   // The shared-link cards (`/og/…`) read their fonts and the cat from the repo at run time.
   outputFileTracingIncludes: { '/og/**/*': ['./src/og/assets/**/*', './public/Logo_gatopago.svg'] },
-  // Static pages have one path per language; links from before used `?lang=en`.
-  async redirects() {
-    return ['/docs', '/pay/demo-cafe-norte'].map((source) => ({
-      source,
-      has: [{ type: 'query' as const, key: 'lang', value: 'en' }],
-      destination: `/en${source}`,
-      permanent: true,
-    }));
-  },
   async headers() {
     return [
       {

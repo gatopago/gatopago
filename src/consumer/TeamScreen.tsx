@@ -71,7 +71,17 @@ interface Review {
 const teamKey = (account: Address) => `gatopago.team.${account.toLowerCase()}`;
 const units = (value: string, decimals: number) => exactUnits(value || '0', decimals);
 /** A percentage as typed ("12,5") in basis points. */
-const basisPoints = (value: string) => Math.round(Number(value.replace(',', '.') || '0') * 100);
+// Shares come from an AmountInput: always a plain decimal with a point.
+const basisPoints = (value: string) => Math.round(Number(value || '0') * 100);
+
+/** What `values` add up to in units; 0 while one is not an amount yet. */
+function total(values: readonly string[], decimals: number): bigint {
+  try {
+    return values.reduce((sum, value) => sum + units(value, decimals), 0n);
+  } catch {
+    return 0n;
+  }
+}
 
 /** A team as it is saved: who, and how much or what share. */
 type SavedMember = Pick<Member, 'who' | 'amount' | 'share'>;
@@ -194,20 +204,11 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
     : from === 'savings'
       ? saved[networkId]
       : balances[networkId];
-  const precision = (mode === 'shares' ? [splitting] : team.map(({ amount }) => amount)).some(
-    (value) => tooPrecise(value, decimals),
-  )
+  const typed = mode === 'shares' ? [splitting] : team.map(({ amount }) => amount);
+  const precision = typed.some((value) => tooPrecise(value, decimals))
     ? messageFor(new Error('TOO_MANY_DECIMALS'))
     : '';
-  const sum = (() => {
-    try {
-      return mode === 'shares'
-        ? units(splitting, decimals)
-        : team.reduce((total, member) => total + units(member.amount, decimals), 0n);
-    } catch {
-      return 0n;
-    }
-  })();
+  const sum = total(typed, decimals);
 
   const update = (id: number, change: Partial<Member>) =>
     setTeam((current) =>

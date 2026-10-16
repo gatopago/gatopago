@@ -80,16 +80,16 @@ export function Security({ settings, session }: { settings: ClientSettings; sess
     if (renewed) saveSession(active);
     // Each network on its own: one that fails does not stop the others, and it applies the change
     // before its next operation anyway.
+    const applyOn = async (id: string) => {
+      if (
+        everywhere ||
+        id === settings.homeNetwork ||
+        (await publicClient(settings, id).getCode({ address: wallet.address }))
+      )
+        await applyApprovals(settings, active, id);
+    };
     const pending: string[] = [];
-    for (const id of settings.networks)
-      await (async () => {
-        if (
-          everywhere ||
-          id === settings.homeNetwork ||
-          (await publicClient(settings, id).getCode({ address: wallet.address }))
-        )
-          await applyApprovals(settings, active, id);
-      })().catch(() => pending.push(id));
+    for (const id of settings.networks) await applyOn(id).catch(() => pending.push(id));
     // A removed key must not keep signing on Stellar either; added ones are synced from the list.
     if (everywhere)
       await syncStellarSigners(settings, active, ownersAfter(state!.owners, [call])).catch(() =>
