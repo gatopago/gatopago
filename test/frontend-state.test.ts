@@ -29,7 +29,11 @@ vi.mock('../src/wallet/account', () => ({
     multicall: (options: unknown) => balances.multicall(id, options),
   }),
 }));
-vi.mock('../src/wallet/push', () => ({ onMovement: () => () => {} }));
+const pushed = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock('../src/wallet/push', () => ({
+  onMovement: () => () => {},
+  refreshScreens: pushed.refresh,
+}));
 const stellar = vi.hoisted(() => ({ account: new Promise<never>(() => {}) }));
 vi.mock('../src/wallet/stellar', () => ({
   knownStellarAccount: () => null,
@@ -182,6 +186,42 @@ describe('bounded API requests', () => {
 });
 
 describe('shared balance reads', () => {
+  it('read again every 10 s while the screen is visible, and ask for the activity when money moved', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    pushed.refresh.mockReset();
+    let usdc = 5n;
+    balances.multicall.mockImplementation(() => values(usdc));
+    const page = Object.assign(new EventTarget(), { visibilityState: 'visible' });
+    vi.stubGlobal('document', page);
+    try {
+      const { useBalances, useLiveBalances } = await import('../src/wallet/balances');
+      useBalances(settings, session);
+      useLiveBalances(settings, session);
+      await vi.waitFor(() => expect(balances.get().refreshing).toBe(false));
+      const reads = () => balances.multicall.mock.calls.length;
+      const first = reads();
+      // Nothing moved: read again, and no reason to read the activity.
+      vi.advanceTimersByTime(10_000);
+      await vi.waitFor(() => expect(reads()).toBe(first + networks.length));
+      await vi.waitFor(() => expect(balances.get().refreshing).toBe(false));
+      expect(pushed.refresh).not.toHaveBeenCalled();
+      // A payment arrives, with no notification: the next read finds it.
+      usdc = 6n;
+      vi.advanceTimersByTime(10_000);
+      await vi.waitFor(() => expect(pushed.refresh).toHaveBeenCalledTimes(1));
+      expect(balances.get().usdc[networks[0]]).toBe(6n);
+      // Hidden, it stops reading.
+      page.visibilityState = 'hidden';
+      page.dispatchEvent(new Event('visibilitychange'));
+      await vi.waitFor(() => expect(balances.get().refreshing).toBe(false));
+      const hidden = reads();
+      vi.advanceTimersByTime(30_000);
+      expect(reads()).toBe(hidden);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('publishes a fast network without waiting for a slow one, and isolates Aave failures', async () => {
     const slow = Promise.withResolvers<ReturnType<typeof values>>();
     balances.multicall.mockImplementation((id: string) =>

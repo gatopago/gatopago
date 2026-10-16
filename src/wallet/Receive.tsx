@@ -9,7 +9,7 @@ import { SelectMenu } from '../consumer/SelectMenu';
 import { TokenSelect } from '../consumer/TokenSelect';
 import type { ClientSettings } from '../lib/settings';
 import { networkName } from './account';
-import { refreshBalances } from './balances';
+import { refreshBalances, useLiveBalances } from './balances';
 import { useFailureMessage } from './messages';
 import { send } from './operations';
 import type { Session } from './session';
@@ -26,6 +26,7 @@ import { NetworkIcon } from '../consumer/TokenIcon';
 export function Receive({ settings, session }: { settings: ClientSettings; session: Session }) {
   const messageFor = useFailureMessage();
   const t = useTranslations('Receive');
+  useLiveBalances(settings, session);
   const [symbol, setSymbol] = useState('USDC');
   const [usdcNetwork, setUsdcNetwork] = useState(settings.homeNetwork);
   const [requested, setRequested] = useState<'busy' | 'done' | string | null>(null);
@@ -144,6 +145,7 @@ export function Receive({ settings, session }: { settings: ClientSettings; sessi
           <AddressQRCard
             address={onStellar ? stellar! : session.wallet.address}
             chainId={chainId}
+            token={onStellar ? undefined : held.token}
           />
         )}
       </MoneyPanel>

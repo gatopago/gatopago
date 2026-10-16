@@ -85,7 +85,20 @@ export function Send({ settings, session }: { settings: ClientSettings; session:
   const others = walletAssets(settings.networks, settings.stellar?.network).filter(
     (asset) => asset.symbol !== 'USDC',
   );
-  const [coin, setCoin] = useState('USDC');
+  // A scanned payment request may ask for a coin: used only when the catalog has it there.
+  const [coin, setCoin] = useState(() => {
+    const asset = params.get('asset');
+    const chain = params.get('chain');
+    if (!asset || !chain) return 'USDC';
+    const requested = walletAssets(settings.networks, settings.stellar?.network).find((item) =>
+      item.holdings.some(
+        ({ networkId, token }) =>
+          networkId === `eip155:${chain}` &&
+          (asset === 'native' ? token === null : token?.toLowerCase() === asset.toLowerCase()),
+      ),
+    );
+    return requested?.symbol ?? 'USDC';
+  });
   const chosen = others.find((asset) => asset.symbol === coin);
   const symbol = chosen?.symbol ?? 'USDC';
   // XLM never leaves Stellar: it goes to a Stellar address, or to a @username's Stellar account.
@@ -145,10 +158,7 @@ export function Send({ settings, session }: { settings: ClientSettings; session:
           settings.apiOrigin,
           `recipients/${encodeURIComponent(text.replace(/^@/, '').toLowerCase())}`,
         );
-        return {
-          found,
-          label: `@${found.username}${found.display_name ? ` · ${found.display_name}` : ''}`,
-        };
+        return { found, label: `@${found.username}` };
       };
       if (xlm) {
         let to = text;
@@ -289,7 +299,7 @@ export function Send({ settings, session }: { settings: ClientSettings; session:
         amount: current.amount,
         currency: current.coin?.symbol ?? 'USDC',
         decimals: current.coin?.decimals ?? USDC_DECIMALS,
-        counterparty: current.label.split(' · ')[0],
+        counterparty: current.label,
         hash,
         networkId: current.from,
         date: Date.now(),
@@ -539,7 +549,7 @@ export function Send({ settings, session }: { settings: ClientSettings; session:
           onConfirm={() => confirm(review)}
           onCancel={() => setReview(null)}
         >
-          <ConfirmDestination label={review.label.split(' · ')[0]} address={review.recipient} />
+          <ConfirmDestination label={review.label} address={review.recipient} />
           <ConfirmDetails
             rows={[
               ...(review.settle

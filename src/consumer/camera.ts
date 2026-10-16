@@ -141,3 +141,27 @@ export function qrDetector() {
     }
   })());
 }
+
+/**
+ * The QR drawn on `canvas` (`context` is its 2D context), or null: read natively where the browser
+ * can, else with jsQR. When the native reader finds nothing, jsQR tries as well if `retry`: it reads
+ * some codes the native one misses, at a cost the camera pays only every few frames.
+ */
+export async function readQr(
+  canvas: HTMLCanvasElement,
+  context: CanvasRenderingContext2D,
+  retry = true,
+): Promise<string | null> {
+  const native = await qrDetector();
+  if (native) {
+    try {
+      const raw = (await native.detect(canvas))[0]?.rawValue;
+      if (raw || !retry) return raw ?? null;
+    } catch {
+      /* jsQR below. */
+    }
+  }
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+  const { default: jsQR } = await import('jsqr');
+  return jsQR(pixels.data, pixels.width, pixels.height)?.data ?? null;
+}

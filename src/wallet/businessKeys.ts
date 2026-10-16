@@ -14,11 +14,29 @@ export interface BusinessKey {
   created_at: number;
 }
 
-/** The accounts' accesses to Business, newest first (`GET /app/v1/business-keys`). */
-export const listBusinessKeys = (settings: ClientSettings, session: Session) =>
-  api<{ keys: BusinessKey[] }>(settings.apiOrigin, 'business-keys', { token: session.token }).then(
-    ({ keys }) => keys,
-  );
+/** A console session a QR opened without a key: it lasts until `ends_at`, unless ended before. */
+export interface BusinessSession {
+  id: string;
+  device: string;
+  place: string | null;
+  ends_at: number;
+}
+
+/**
+ * The account's accesses to Business, newest first (`GET /app/v1/business-keys`): its keys, and the
+ * sessions a QR opened without one.
+ */
+export const listBusinessAccess = (settings: ClientSettings, session: Session) =>
+  api<{ keys: BusinessKey[]; sessions: BusinessSession[] }>(settings.apiOrigin, 'business-keys', {
+    token: session.token,
+  });
+
+/** Ends a console session a QR opened without a key. */
+export const removeBusinessSession = (settings: ClientSettings, session: Session, id: string) =>
+  api(settings.apiOrigin, `business-sessions/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    token: session.token,
+  });
 
 /** Removes an access: that key no longer signs in, and its open console sessions end. */
 export const removeBusinessKey = (settings: ClientSettings, session: Session, publicKey: Hex) =>

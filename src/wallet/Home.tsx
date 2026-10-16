@@ -14,7 +14,7 @@ import { Skeleton } from '../consumer/Skeleton';
 import { NavigationLink } from '../consumer/NavigationLink';
 import type { ClientSettings } from '../lib/settings';
 import { networkName } from './account';
-import { formatBalance, formatHolding, useBalances } from './balances';
+import { formatBalance, formatHolding, useBalances, useLiveBalances } from './balances';
 import type { Session } from './session';
 import { useTranslations, useLocale } from 'next-intl';
 
@@ -26,6 +26,7 @@ export function Home({ settings, session }: { settings: ClientSettings; session:
   const locale = useLocale();
   const t = useTranslations('Home');
   const { balances, saved, holding, refreshing, refresh } = useBalances(settings, session);
+  useLiveBalances(settings, session);
   const home = settings.homeNetwork;
   const [hidden, setHidden] = useState(balanceHidden);
   const savedValues = settings.networks
@@ -130,13 +131,15 @@ export function Home({ settings, session }: { settings: ClientSettings; session:
         )}
         <div className="mt-3 flex items-center justify-between gap-3 text-[12px] text-text-faint">
           {/* The selector already says the coin and its network. Only a coin that is not your dollar
-              balance needs a word. */}
+              balance needs a word, and a test token says it is worth nothing. */}
           <span className="min-w-0 truncate">
-            {native
-              ? held.token !== null
-                ? t('keptApartUsdc')
-                : t('notCountedDollarBalance')
-              : null}
+            {asset.test
+              ? t('testToken')
+              : native
+                ? held.token !== null
+                  ? t('keptApartUsdc')
+                  : t('notCountedDollarBalance')
+                : null}
           </span>
           <button
             type="button"

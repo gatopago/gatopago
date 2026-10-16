@@ -5,14 +5,28 @@ import { useCopy } from '../lib/useCopy';
 import { shortAddress } from '../wallet/account';
 import { useTranslations } from 'next-intl';
 
+/**
+ * The QR of an address: a payment request for one coin (EIP-681) when Receive chose it: `token` is
+ * its contract, or null for the network's own coin. Without a coin, the address and its network.
+ */
+function qrValue(address: string, chainId?: number, token?: string | null) {
+  if (chainId === undefined) return address;
+  if (token === undefined) return `eip155:${chainId}:${address}`;
+  return token
+    ? `ethereum:${token}@${chainId}/transfer?address=${address}`
+    : `ethereum:${address}@${chainId}`;
+}
+
 /** V2's address QR with its copy row, shared by every "show my address" surface. */
 export function AddressQRCard({
   address,
   chainId,
+  token,
   qrSize = 188,
 }: {
   address: string;
   chainId?: number;
+  token?: string | null;
   qrSize?: number;
 }) {
   const t = useTranslations('AddressQRCard');
@@ -22,7 +36,7 @@ export function AddressQRCard({
       <div className="mb-5 flex justify-center" role="img" aria-label={t('address')}>
         <div className="border-2 border-text bg-white p-3 shadow-[6px_6px_0_var(--color-cat-700)]">
           <QRCodeSVG
-            value={chainId ? `eip155:${chainId}:${address}` : address}
+            value={qrValue(address, chainId, token)}
             size={qrSize}
             bgColor="#ffffff"
             fgColor="#0A0A0B"

@@ -14,7 +14,7 @@ import {
   presentMovement,
   useActivity,
 } from '../wallet/activity';
-import { formatAmount } from '../wallet/balances';
+import { formatAmount, useLiveBalances } from '../wallet/balances';
 import type { Session } from '../wallet/session';
 import { balanceHidden, Receipt } from './PaymentSheets';
 import { SelectMenu } from './SelectMenu';
@@ -219,6 +219,7 @@ export function ActivityScreen({
   const router = useRouter();
   const pathname = usePathname();
   const { movements, hasMore, loadingMore, loadMore, error } = useActivity(settings, session);
+  useLiveBalances(settings, session);
   // Older movements load on their own as the end of the list comes near; the button stays for
   // the keyboard and where the browser cannot tell. Watched again after each page, so a short
   // list keeps filling while its end is still on screen.

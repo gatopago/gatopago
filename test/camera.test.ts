@@ -52,6 +52,34 @@ describe('Cameras to switch between', () => {
   });
 });
 
+describe('Reading a QR', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.doUnmock('jsqr');
+    vi.resetModules();
+  });
+
+  it('tries jsQR when the native reader finds nothing, only when asked', async () => {
+    const detect = vi.fn(async () => []);
+    class BarcodeDetector {
+      static getSupportedFormats = async () => ['qr_code'];
+      detect = detect;
+    }
+    vi.stubGlobal('window', { BarcodeDetector });
+    vi.doMock('jsqr', () => ({ default: () => ({ data: 'read by jsQR' }) }));
+    vi.resetModules();
+    const { readQr } = await import('../src/consumer/camera');
+    const canvas = { width: 2, height: 2 } as HTMLCanvasElement;
+    const context = {
+      getImageData: () => ({ data: new Uint8ClampedArray(16), width: 2, height: 2 }),
+    } as unknown as CanvasRenderingContext2D;
+    // A camera frame without the retry: only the native reader.
+    expect(await readQr(canvas, context, false)).toBeNull();
+    expect(await readQr(canvas, context)).toBe('read by jsQR');
+    expect(detect).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('Opening the scan camera', () => {
   afterEach(() => vi.unstubAllGlobals());
   it('returns the camera it opened when listing cameras fails, never leaves it running', async () => {

@@ -147,6 +147,22 @@ describe('Untrusted QR review', () => {
     for (const path of ['/@a', '/@ab', `/@${'a'.repeat(31)}`, '/@0daniel', '/@dan-iel'])
       expect(parseConsumerQr(path, origin)).toBeNull();
   });
+  it('keeps the coin a payment request asks for, never an amount', () => {
+    const token = '0x2222222222222222222222222222222222222222';
+    const erc20 = parseConsumerQr(
+      `ethereum:${token}@10143/transfer?address=${address}&uint256=9000`,
+      origin,
+    );
+    expect(erc20).toEqual({ kind: 'address', address, chain: '10143', asset: token });
+    expect(qrReviewPath(erc20!)).toBe(`/send?recipient=${address}&chain=10143&asset=${token}`);
+    // With its network and no function, the request is for the network's own coin.
+    const native = parseConsumerQr(`ethereum:${address}@10143`, origin);
+    expect(qrReviewPath(native!)).toBe(`/send?recipient=${address}&chain=10143&asset=native`);
+    // An address alone, or with only its network, asks for no coin.
+    for (const value of [address, `eip155:10143:${address}`, `ethereum:${address}`])
+      expect(qrReviewPath(parseConsumerQr(value, origin)!)).not.toContain('asset');
+  });
+
   it('rejects duplicated ERC-681 recipients and unsupported functions', () => {
     expect(
       parseConsumerQr(`ethereum:${address}/transfer?address=${address}&address=${address}`, origin),

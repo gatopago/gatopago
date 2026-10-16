@@ -4,8 +4,13 @@ const addressPattern = /^0x[a-fA-F0-9]{40}$/;
  * where it is used: Send checks the address before preparing anything.
  */
 const stellarPattern = /^[GC][A-Z2-7]{55}$/;
+/**
+ * The coin a QR asks for: a token's contract, or `native` for the network's own coin (an EIP-681
+ * request without a function). Send only uses it when the coin is in its catalog for that network.
+ */
+type QrAsset = string | 'native' | null;
 type QrDestination =
-  | { kind: 'address'; address: string; chain: string | null }
+  | { kind: 'address'; address: string; chain: string | null; asset: QrAsset }
   | { kind: 'stellar'; address: string }
   | { kind: 'link'; path: string };
 
@@ -18,11 +23,12 @@ export function parseConsumerQr(raw: string, origin: string): QrDestination | nu
     [...text].some((char) => char.charCodeAt(0) < 32)
   )
     return null;
-  if (addressPattern.test(text)) return { kind: 'address', address: text, chain: null };
+  if (addressPattern.test(text))
+    return { kind: 'address', address: text, chain: null, asset: null };
   if (stellarPattern.test(text)) return { kind: 'stellar', address: text };
   const caip = /^eip155:([1-9][0-9]*):(0x[a-fA-F0-9]{40})$/.exec(text);
   if (caip && Number.isSafeInteger(Number(caip[1])))
-    return { kind: 'address', address: caip[2], chain: caip[1] };
+    return { kind: 'address', address: caip[2], chain: caip[1], asset: null };
   const eip =
     /^ethereum:(?:pay-)?(0x[a-fA-F0-9]{40})(?:@([1-9][0-9]*))?(?:\/(transfer))?(?:\?(.*))?$/.exec(
       text,
@@ -31,7 +37,13 @@ export function parseConsumerQr(raw: string, origin: string): QrDestination | nu
     if (eip[2] && !Number.isSafeInteger(Number(eip[2]))) return null;
     const recipient = eip[3] ? new URLSearchParams(eip[4]).getAll('address') : [eip[1]];
     if (recipient.length !== 1 || !addressPattern.test(recipient[0])) return null;
-    return { kind: 'address', address: recipient[0], chain: eip[2] ?? null };
+    const chain = eip[2] ?? null;
+    return {
+      kind: 'address',
+      address: recipient[0],
+      chain,
+      asset: eip[3] ? eip[1] : chain ? 'native' : null,
+    };
   }
   try {
     const url = new URL(text, origin);
@@ -58,6 +70,7 @@ export function qrReviewPath(destination: QrDestination): string {
       : `/send?username=${encodeURIComponent(destination.path.slice(2))}`;
   const query = new URLSearchParams({ recipient: destination.address });
   if (destination.chain) query.set('chain', destination.chain);
+  if (destination.chain && destination.asset) query.set('asset', destination.asset);
   return `/send?${query}`;
 }
 

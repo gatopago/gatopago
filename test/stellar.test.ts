@@ -6,7 +6,9 @@ import type { Session } from '../src/wallet/session';
 const fake = vi.hoisted(() => ({
   api: vi.fn(),
   signer: vi.fn(),
-  nonceUsed: vi.fn(),
+  /** Wallet Core's record of the last call, by its nonce; null when it has none. */
+  record: null as null | { status: string },
+  ledger: 100,
   nonce: 0,
   fee: 0n,
   allowance: 0n,
@@ -24,7 +26,7 @@ vi.mock('../src/wallet/mera', () => ({
 }));
 vi.mock('@gatopago/shared/crosschain', () => ({ crosschainFee: async () => fake.fee }));
 vi.mock('@gatopago/shared/stellar', () => ({
-  stellarServer: () => ({ getLatestLedger: async () => ({ sequence: 100 }) }),
+  stellarServer: () => ({ getLatestLedger: async () => ({ sequence: fake.ledger }) }),
   stellarKeyApproval: (_network: unknown, account: string, key: string, expires: number) =>
     `approve ${account} ${key} ${expires}`,
   stellarAccountExists: async () => true,
@@ -33,7 +35,6 @@ vi.mock('@gatopago/shared/stellar', () => ({
     return [];
   },
   isStellarKeySigner: fake.signer,
-  stellarNonceUsed: fake.nonceUsed,
   toStellarUnits: (amount: bigint) => amount * 10n,
   transferOperation: () => 'transfer',
   crosschainToStellarCalls: () => [],
@@ -72,6 +73,8 @@ let storage: Map<string, string>;
 beforeEach(() => {
   vi.resetModules();
   fake.nonce = 0;
+  fake.record = null;
+  fake.ledger = 100;
   fake.fee = 0n;
   fake.allowance = 0n;
   fake.keys = [];
@@ -79,7 +82,6 @@ beforeEach(() => {
   approvals = 0;
   submit = async () => ({ transaction_hash: `hash${submits}` });
   fake.signer.mockReset().mockResolvedValue(true);
-  fake.nonceUsed.mockReset().mockResolvedValue(false);
   fake.api.mockReset().mockImplementation(async (_origin: string, path: string) => {
     const { ApiError } = await import('../src/wallet/api');
     if (path === 'stellar')
@@ -91,7 +93,10 @@ beforeEach(() => {
         keys: fake.keys,
       };
     if (path === 'stellar/keys') return void approvals++;
-    if (path.startsWith('stellar/submit?')) throw new ApiError(404, 'NOT_FOUND');
+    if (path.startsWith('stellar/submit?')) {
+      if (fake.record) return fake.record;
+      throw new ApiError(404, 'NOT_FOUND');
+    }
     if (path === 'stellar/submit') {
       submits++;
       return submit();
@@ -132,7 +137,7 @@ describe('a Stellar payment', () => {
     await expect(sendOnStellar(settings, session, 'GRECIPIENT', 1n)).rejects.toThrow(
       'OPERATION_PENDING',
     );
-    // Still valid on the network and unknown to Wallet Core: it may land, so nothing else goes.
+    // Unknown to Wallet Core while its signature is valid: the request may still arrive.
     await expect(sendOnStellar(settings, session, 'GRECIPIENT', 1n)).rejects.toThrow(
       'OPERATION_PENDING',
     );
@@ -141,13 +146,61 @@ describe('a Stellar payment', () => {
       'stellar/submit?nonce=1',
       expect.anything(),
     );
+    // Recorded and pending: the network has not answered yet, so nothing else goes.
+    fake.record = { status: 'pending' };
+    await expect(sendOnStellar(settings, session, 'GRECIPIENT', 1n)).rejects.toThrow(
+      'OPERATION_PENDING',
+    );
     expect(submits).toBe(1);
     // It landed: the person checks it instead of paying again.
-    fake.nonceUsed.mockResolvedValue(true);
+    fake.record = { status: 'confirmed' };
     await expect(sendOnStellar(settings, session, 'GRECIPIENT', 1n)).rejects.toThrow(
       'PREVIOUS_OPERATION_CONFIRMED',
     );
     expect(submits).toBe(1);
+  });
+
+  it('sent but unanswered stays pending until the network says it failed', async () => {
+    const { sendOnStellar } = await import('../src/wallet/stellar');
+    const { ApiError } = await import('../src/wallet/api');
+    // Wallet Core broadcast it and lost the result.
+    submit = async () => {
+      throw new ApiError(400, 'STELLAR_TRANSACTION_PENDING');
+    };
+    await expect(sendOnStellar(settings, session, 'GRECIPIENT', 1n)).rejects.toThrow(
+      'OPERATION_PENDING',
+    );
+    fake.record = { status: 'pending' };
+    await expect(sendOnStellar(settings, session, 'GRECIPIENT', 1n)).rejects.toThrow(
+      'OPERATION_PENDING',
+    );
+    // Past its time bound the network did not have it: it never landed, so the next one goes.
+    fake.record = { status: 'failed' };
+    submit = async () => ({ transaction_hash: 'hash2' });
+    expect(await sendOnStellar(settings, session, 'GRECIPIENT', 1n)).toBe('hash2');
+    expect(submits).toBe(2);
+  });
+
+  it('refused for sure is forgotten at once, and so is one never recorded once its signature expired', async () => {
+    const { sendOnStellar } = await import('../src/wallet/stellar');
+    const { ApiError } = await import('../src/wallet/api');
+    submit = async () => {
+      throw new ApiError(400, 'STELLAR_SEND_FAILED');
+    };
+    await expect(sendOnStellar(settings, session, 'GRECIPIENT', 1n)).rejects.toThrow(
+      'STELLAR_SEND_FAILED',
+    );
+    submit = async () => {
+      throw new ApiError(0, 'NETWORK_ERROR');
+    };
+    await expect(sendOnStellar(settings, session, 'GRECIPIENT', 1n)).rejects.toThrow(
+      'OPERATION_PENDING',
+    );
+    expect(submits).toBe(2);
+    // Never recorded and its signature expired: it can no longer be sent.
+    fake.ledger = 151;
+    submit = async () => ({ transaction_hash: 'hash3' });
+    expect(await sendOnStellar(settings, session, 'GRECIPIENT', 1n)).toBe('hash3');
   });
 
   it("from a Mera key the account does not sign with yet: approved once, sent once it's synced", async () => {

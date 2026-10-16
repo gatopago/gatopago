@@ -331,31 +331,30 @@ function recall(account: string): Pending | null {
 }
 
 /**
- * Settles the last call sent from this browser before another one, as on EVM: landed (Wallet Core
- * sent it, or the network used its nonce) stops the new attempt; still valid means it may land.
+ * Settles the last call sent from this browser before another one, as on EVM. Wallet Core records
+ * each call before broadcasting it: confirmed stops the new attempt, pending may still land, failed
+ * never did. Without a record it was never sent, unless its request is still on the way, which it
+ * no longer can be once its signature expired.
  */
 async function settlePending(settings: ClientSettings, session: Session, account: string) {
   const pending = recall(account);
   if (!pending) return;
-  const { stellarNonceUsed } = await sdk();
-  const client = await server(settings);
-  const sent = await api(settings.apiOrigin, `stellar/submit?nonce=${pending.nonce}`, {
-    token: session.token,
-  }).then(
-    () => true,
-    (error: unknown) => {
-      if (error instanceof ApiError && error.status === 404) return false;
-      throw error;
-    },
-  );
-  if (sent || (await stellarNonceUsed(client, account, pending.nonce))) {
-    forget(account);
+  const record = await api<{ status: 'pending' | 'confirmed' | 'failed' }>(
+    settings.apiOrigin,
+    `stellar/submit?nonce=${pending.nonce}`,
+    { token: session.token },
+  ).catch((error: unknown) => {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  });
+  if (record?.status === 'pending') throw new Error('OPERATION_PENDING');
+  if (!record && (await (await server(settings)).getLatestLedger()).sequence <= pending.validUntil)
+    throw new Error('OPERATION_PENDING');
+  forget(account);
+  if (record?.status === 'confirmed') {
     invalidateActivity(session.token);
     throw new Error('PREVIOUS_OPERATION_CONFIRMED');
   }
-  if ((await client.getLatestLedger()).sequence <= pending.validUntil)
-    throw new Error('OPERATION_PENDING');
-  forget(account);
 }
 
 /** Device keys seen signing for an account (`account:key`), so a send checks the network once. */
@@ -411,6 +410,7 @@ export async function registerStellarKey(
  */
 async function deviceKey(settings: ClientSettings, session: Session, found: StellarAccount) {
   const { wallet } = session;
+  // Mera loads when a key is needed, as everywhere else (`account.ts`, `passkey.ts`).
   const { meraSigner, meraStellarKey } = await import('./mera');
   const owner = await meraStellarKey(settings, wallet.credentialId, wallet.owner);
   const publicKey = owner.publicKey.toLowerCase() as Hex;

@@ -9,7 +9,7 @@ import { networkName } from '../wallet/account';
 import { useProfile } from '../wallet/useProfile';
 import type { Session } from '../wallet/session';
 import { AddressQRCard } from './AddressQRCard';
-import { openScanCamera, qrDetector, scanCameras, type Torch } from './camera';
+import { openScanCamera, qrDetector, readQr, scanCameras, type Torch } from './camera';
 import { BackHeader, MoneyPanel, NoticeCard, SectionLabel, TransactionActions } from './Primitives';
 import { parseConsumerQr, qrReviewPath } from './qr';
 import { NavigationLink } from './NavigationLink';
@@ -67,7 +67,10 @@ export default function ScanScreen({
     },
     [t, router, settings.stellar],
   );
-  /** Reads a QR from an image, or from the centered square the preview shows (`square`). */
+  /**
+   * Reads a QR from an image, or from the centered square the preview shows (`square`); `retry` as
+   * in `readQr`.
+   */
   const decode = useCallback(
     async (
       source: CanvasImageSource,
@@ -75,6 +78,7 @@ export default function ScanScreen({
       height: number,
       max: number,
       square = false,
+      retry = true,
     ) => {
       if (!width || !height || width * height > 40_000_000) throw new Error('Image too large');
       const side = Math.min(width, height);
@@ -98,17 +102,7 @@ export default function ScanScreen({
         canvas.width,
         canvas.height,
       );
-      const detector = await qrDetector();
-      if (detector) {
-        try {
-          return (await detector.detect(canvas))[0]?.rawValue ?? null;
-        } catch {
-          /* jsQR below. */
-        }
-      }
-      const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-      const { default: jsQR } = await import('jsqr');
-      return jsQR(pixels.data, pixels.width, pixels.height)?.data ?? null;
+      return readQr(canvas, context, retry);
     },
     [],
   );
@@ -150,6 +144,7 @@ export default function ScanScreen({
           ids: cameras.map((camera) => camera.deviceId),
           current: track?.getSettings().deviceId ?? null,
         });
+        let frames = 0;
         const scan = async () => {
           if (generation.current !== current || !video.current) return;
           try {
@@ -161,6 +156,7 @@ export default function ScanScreen({
                 // The native reader takes the full 1080p; jsQR stays fast on a smaller frame.
                 (await qrDetector()) ? 1080 : 720,
                 true,
+                ++frames % 3 === 0,
               );
               if (generation.current !== current) return;
               if (raw && parse(raw)) {

@@ -13,7 +13,7 @@ import type { WalletHolding } from '@gatopago/shared/assets';
 import { walletNetwork } from '@gatopago/shared/networks';
 import type { ClientSettings } from '../lib/settings';
 import { publicClient, USDC_DECIMALS } from './account';
-import { onMovement } from './push';
+import { onMovement, refreshScreens } from './push';
 import type { Session } from './session';
 import { knownStellarAccount, stellarAccount, stellarBalance, stellarXlmBalance } from './stellar';
 import type { Locale } from 'next-intl';
@@ -22,6 +22,8 @@ const multicall3Abi = parseAbi(['function getEthBalance(address) view returns (u
 
 /** A read the screen already has is reused unless something happened since. */
 const FRESH_MS = 30_000;
+/** How often a screen waiting for money reads the balances while it is visible. */
+const LIVE_MS = 10_000;
 
 interface Snapshot {
   /** USDC per network: empty until the first read, `null` where a network could not be read. */
@@ -190,6 +192,46 @@ class Balances {
 }
 
 const stores = new Map<string, Balances>();
+
+/** The balances of a snapshot, comparable: what changes when money moves. */
+const fingerprint = ({ usdc, native, saved, tokens, stellar }: Snapshot) =>
+  JSON.stringify({ usdc, native, saved, tokens, stellar }, (_, value: unknown) =>
+    typeof value === 'bigint' ? value.toString() : value,
+  );
+
+/**
+ * For a screen where money is expected (Home, Receive, Activity): while it is visible, the balances
+ * are read every 10 s, so a payment shows up without a notification (push denied, unsupported or
+ * late). When they change, the screens read their activity too, as a notification makes them.
+ */
+export function useLiveBalances(settings: ClientSettings, session: Session) {
+  useEffect(() => {
+    const store = balancesOf(settings, session.wallet.address);
+    let seen = store.get().refreshing ? null : fingerprint(store.get());
+    const stopWatching = store.subscribe(() => {
+      const snapshot = store.get();
+      if (snapshot.refreshing) return;
+      const now = fingerprint(snapshot);
+      if (seen !== null && now !== seen) refreshScreens();
+      seen = now;
+    });
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const follow = () => {
+      clearInterval(timer);
+      timer =
+        document.visibilityState === 'visible'
+          ? setInterval(() => void store.refresh(true), LIVE_MS)
+          : undefined;
+    };
+    follow();
+    document.addEventListener('visibilitychange', follow);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', follow);
+      stopWatching();
+    };
+  }, [settings, session]);
+}
 
 function balancesOf(settings: ClientSettings, address: Address) {
   const key = `${address}:${settings.networks.join(',')}`;
