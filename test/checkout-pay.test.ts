@@ -9,7 +9,10 @@ const fake = vi.hoisted(() => ({
   confirm: vi.fn(),
   receipt: vi.fn(),
   sendTransaction: vi.fn(),
+  authorize: vi.fn(),
 }));
+// Circle's fee to cross from another network: 0.1 USDC.
+vi.mock('@gatopago/shared/crosschain', () => ({ crosschainFee: async () => 100_000n }));
 vi.mock('../src/wallet/operations', () => ({ send: fake.send }));
 vi.mock('../src/wallet/account', () => ({
   publicClient: () => ({
@@ -38,12 +41,14 @@ vi.mock('../src/wallet/api', async (original) => ({
   ...(await original<object>()),
   api: async (_origin: string, path: string, init: { body?: unknown }) => {
     if (path.endsWith('/confirm')) return fake.confirm(init.body);
-    if (path.endsWith('/authorize'))
+    if (path.endsWith('/authorize')) {
+      fake.authorize(init.body);
       return {
         total: '18',
         payment: { amount: '18000000', fee: '0', maxCctpFee: '0' },
         signature: '0xsig',
       };
+    }
     throw new Error(`unexpected ${path}`);
   },
 }));
@@ -59,6 +64,7 @@ beforeEach(() => {
   fake.confirm.mockReset();
   fake.receipt.mockReset();
   fake.sendTransaction.mockReset().mockResolvedValue('0xwallet');
+  fake.authorize.mockReset();
   vi.stubGlobal('window', { ethereum: {} });
   const storage = new Map<string, string>();
   vi.stubGlobal('localStorage', {
@@ -68,6 +74,32 @@ beforeEach(() => {
   });
 });
 afterEach(() => vi.unstubAllGlobals());
+
+describe('choosing the network an account pays from', () => {
+  it('asks Flow once, for a network that covers the amount with its fees', async () => {
+    const { planAccountPayment } = await import('../src/wallet/flow');
+    const networks = { homeNetwork: 'eip155:421614', networks: ['eip155:421614', 'eip155:43113'] };
+    const payer = {
+      wallet: { address: '0x2222222222222222222222222222222222222222' },
+    } as unknown as Session;
+    // The home network holds the amount but not the fee: Fuji pays, and Flow authorizes only Fuji.
+    await planAccountPayment(
+      { ...settings, ...networks },
+      payer,
+      {
+        ...intent,
+        amount: '17.5',
+        fee: '0.5',
+      },
+      { 'eip155:421614': 17_900_000n, 'eip155:43113': 30_000_000n },
+    );
+    expect(fake.authorize).toHaveBeenCalledOnce();
+    expect(fake.authorize).toHaveBeenCalledWith({
+      payer: payer.wallet.address,
+      network: 'eip155:43113',
+    });
+  });
+});
 
 describe('paying a checkout with the account', () => {
   it('registers the same payment again when Flow did not answer, never paying twice', async () => {

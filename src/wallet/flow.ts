@@ -9,6 +9,7 @@ import {
   type EIP1193Provider,
   type Hex,
 } from 'viem';
+import { crosschainFee } from '@gatopago/shared/crosschain';
 import { walletNetwork } from '@gatopago/shared/networks';
 import {
   paymentCalls,
@@ -38,6 +39,8 @@ export interface Intent {
     paid_at: number | null;
   } | null;
   merchant?: { name: string | null; address: Address };
+  /** On the checkout read: what the payer adds to the amount (Circle's fee aside, when crossing). */
+  fee?: string;
 }
 
 /** Flow's authorization to pay an intent from `network`, and the USDC it costs there. */
@@ -136,7 +139,9 @@ async function settle(settings: ClientSettings, id: string, network: string, has
 
 /**
  * How the GatoPago account pays `intent`: from the home network when it holds the total, otherwise
- * from the network holding the most (the router crosses to the merchant with CCTP).
+ * from the network holding the most (the router crosses to the merchant with CCTP). The network is
+ * chosen here, with the checkout's fee and Circle's, and Flow is asked once: it authorizes one
+ * network at a time.
  */
 export async function planAccountPayment(
   settings: ClientSettings,
@@ -145,6 +150,8 @@ export async function planAccountPayment(
   balances: Record<string, bigint | null>,
 ): Promise<Plan> {
   const amount = parseUnits(intent.amount, 6);
+  const fee = parseUnits(intent.fee ?? '0', 6);
+  const home = walletNetwork(settings.homeNetwork);
   const networks = [
     settings.homeNetwork,
     ...settings.networks
@@ -152,9 +159,16 @@ export async function planAccountPayment(
       .sort((a, b) => ((balances[b] ?? 0n) > (balances[a] ?? 0n) ? 1 : -1)),
   ];
   for (const network of networks) {
-    if ((balances[network] ?? 0n) < amount) continue;
+    const balance = balances[network] ?? 0n;
+    if (balance < amount + fee) continue;
+    const crossing =
+      network === settings.homeNetwork
+        ? 0n
+        : await crosschainFee(walletNetwork(network), home, amount);
+    if (balance < amount + fee + crossing) continue;
     const plan = await authorize(settings, intent.id, session.wallet.address, network);
-    if ((balances[network] ?? 0n) >= plan.total) return plan;
+    if (balance < plan.total) throw new Error('INSUFFICIENT_FUNDS');
+    return plan;
   }
   throw new Error('INSUFFICIENT_FUNDS');
 }
