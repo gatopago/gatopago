@@ -611,6 +611,7 @@
     "hideBalance": "Hide balance",
     "keptApartUsdc": "Kept apart from your USDC",
     "notCountedDollarBalance": "Not counted in your dollar balance",
+    "testToken": "A test coin with no value",
     "refreshBalance": "Refresh balance",
     "refreshing": "Refreshing",
     "refresh": "Refresh",
@@ -820,7 +821,7 @@
   },
   "BusinessAccess": {
     "title": "Business access",
-    "what": "These accesses sign you in to GatoPago Business. They cannot move your money, but they can manage your API keys and webhooks. Each one belongs to a passkey, not to a computer: if that passkey is synced, it works on all its devices.",
+    "what": "With these accesses you sign in to GatoPago Business: they see your payments and manage your API keys and webhooks, but they cannot move your money. A key's access works on every device that has the key; a session opened with a QR code, only on that computer and until it expires.",
     "access": "Access from one of your keys",
     "since": "Approved with key …{key} · since {date}",
     "remove": "Remove",
@@ -828,6 +829,9 @@
     "confirmRemove": "Yes, remove the access",
     "removing": "Removing…",
     "keep": "No, keep it",
+    "qrSession": "Session opened with a QR code",
+    "qrDetail": "{device} · expires {date}",
+    "removeSessionWarning": "Business closes on that computer.",
     "couldNotLoad": "We could not load your Business access.",
     "tryAgain": "Try again"
   },

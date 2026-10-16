@@ -611,6 +611,7 @@
     "hideBalance": "Ocultar saldo",
     "keptApartUsdc": "Aparte de tus USDC",
     "notCountedDollarBalance": "No se suma a tu saldo en dólares",
+    "testToken": "Moneda de prueba, sin valor",
     "refreshBalance": "Actualizar saldo",
     "refreshing": "Actualizando",
     "refresh": "Actualizar",
@@ -820,7 +821,7 @@
   },
   "BusinessAccess": {
     "title": "Acceso a Negocios",
-    "what": "Con estos accesos entras a GatoPago Negocios. No pueden mover tu dinero, pero sí gestionar tus claves de API y webhooks. Cada uno es de una passkey, no de una computadora: si esa passkey está sincronizada, sirve en todos sus dispositivos.",
+    "what": "Con estos accesos entras a GatoPago Negocios: ven tus cobros y manejan tus claves API y webhooks, pero no pueden mover tu dinero. El acceso de una llave sirve en todos los dispositivos que la tienen; una sesión abierta con un QR, solo en esa computadora y hasta que vence.",
     "access": "Acceso de una de tus llaves",
     "since": "Aprobado con la llave …{key} · desde el {date}",
     "remove": "Quitar",
@@ -828,6 +829,9 @@
     "confirmRemove": "Sí, quitar el acceso",
     "removing": "Quitando…",
     "keep": "No, dejarlo",
+    "qrSession": "Sesión abierta con un QR",
+    "qrDetail": "{device} · vence el {date}",
+    "removeSessionWarning": "Se cierra Negocios en esa computadora.",
     "couldNotLoad": "No pudimos cargar tus accesos a Negocios.",
     "tryAgain": "Reintentar"
   },
