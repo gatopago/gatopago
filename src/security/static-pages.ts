@@ -10,11 +10,13 @@ import { documentSecurityHeaders } from './content-policy';
 export const STATIC_PAGES: ReadonlySet<string> = new Set([
   '/',
   '/docs',
+  '/flow',
   '/privacy',
   '/terms',
   '/pay/demo-cafe-norte',
   '/en',
   '/en/docs',
+  '/en/flow',
   '/en/privacy',
   '/en/terms',
   '/en/pay/demo-cafe-norte',

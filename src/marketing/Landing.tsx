@@ -3,6 +3,7 @@ import type { Locale, Messages } from 'next-intl';
 import { CatGlyph } from './CatGlyph';
 import { MeliSprite } from './MeliSprite';
 import { LandingInteractions } from './LandingInteractions';
+import { API_EXAMPLE } from './apiExample';
 import { settings } from '../lib/settings';
 
 /** The landing in `lang`, with its texts (`Landing` of the catalog) read by the page. */
@@ -14,23 +15,6 @@ export function Landing({ lang, copy: t }: { lang: Locale; copy: Messages['Landi
   // Static pages: each language has its own path.
   const demoPaymentPath = '/pay/demo-cafe-norte';
   const businessHref = settings.businessOrigin;
-  const apiExample = `const response = await fetch(
-  API_ORIGIN + "/v1/payment_intents",
-  {
-    method: "POST",
-    headers: {
-      "Authorization": "Bearer " + API_KEY,
-      "Content-Type": "application/json",
-      "Idempotency-Key": "order-001"
-    },
-    body: JSON.stringify({
-      amount: "18.00",
-      description: "Order 1042",
-      metadata: { order_id: "1042" }
-    })
-  }
-);
-const intent = await response.json();`;
   return (
     <>
       <a className="meli-skip-link" href="#main-content">
@@ -708,6 +692,10 @@ const intent = await response.json();`;
                     {t.developers.docs}
                     <span aria-hidden="true">→</span>
                   </Link>
+                  <Link className="meli-text-link" href="/flow">
+                    {t.developers.flow}
+                    <span aria-hidden="true">→</span>
+                  </Link>
                   <a className="meli-text-link" href={businessHref}>
                     {t.developers.pilot}
                     <span aria-hidden="true">↗</span>
@@ -730,7 +718,7 @@ const intent = await response.json();`;
                         : 'create a payment from your server'}
                     </span>
                     {'\n'}
-                    {apiExample}
+                    {API_EXAMPLE}
                   </code>
                 </pre>
                 <div className="meli-code-response">

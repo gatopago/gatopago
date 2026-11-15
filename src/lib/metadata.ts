@@ -56,22 +56,22 @@ export async function publicMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
-/** The docs, the legal pages and the example payment: each with the card that fits it. */
+/** The docs, Flow, the legal pages and the example payment: each with the card that fits it. */
 export const staticMetadata =
-  (page: 'docs' | 'privacy' | 'terms' | 'demo') =>
+  (page: 'docs' | 'flow' | 'privacy' | 'terms' | 'demo') =>
   async ({ params }: Params): Promise<Metadata> => {
     const lang = await pageLocale(params);
     const t = await getTranslations({ locale: lang, namespace: 'Metadata' });
-    if (page === 'docs') {
-      const title = t('docs.title');
-      const description = t('docs.description');
+    if (page === 'docs' || page === 'flow') {
+      const title = t(`${page}.title`);
+      const description = t(`${page}.description`);
       return {
         title,
         description,
         ...sharing(lang, {
           title,
           description,
-          path: getPathname({ href: '/docs', locale: lang }),
+          path: getPathname({ href: `/${page}`, locale: lang }),
           image: `/og/${lang}/developers`,
         }),
       };

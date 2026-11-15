@@ -3,6 +3,7 @@ import type { Messages } from 'next-intl';
 /** Texts read only on the server (public pages, page titles): they never reach the browser. */
 const SERVER_ONLY = [
   'Landing',
+  'Flow',
   'Terms',
   'Privacy',
   'Legal',

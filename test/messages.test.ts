@@ -6,7 +6,7 @@ import english from '../src/messages/en.json';
 import spanish from '../src/messages/es.json';
 
 /** Namespaces the public pages read as written (`getMessages`), not through `t`. */
-const AS_WRITTEN = new Set(['Landing', 'Terms', 'Privacy', 'Legal']);
+const AS_WRITTEN = new Set(['Landing', 'Flow', 'Terms', 'Privacy', 'Legal']);
 
 /** Every text with its full key: `Send.title`, `Activity.periods.today`, `Landing.signals.0.1`. */
 const texts = (tree: object, prefix = ''): [string, string][] =>

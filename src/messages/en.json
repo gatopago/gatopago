@@ -1117,6 +1117,7 @@
       ],
       "docs": "Read the documentation",
       "pilot": "Open the console",
+      "flow": "Flow for businesses",
       "response": "intent created",
       "note": "Create your API key in the console and make your first test charge in minutes."
     },
@@ -1342,6 +1343,111 @@
       }
     ]
   },
+  "Flow": {
+    "skip": "Skip to content",
+    "nav": {
+      "aria": "GatoPago Flow navigation",
+      "home": "GatoPago home",
+      "how": "How it works",
+      "steps": "How to start",
+      "gets": "What's included",
+      "docs": "Documentation",
+      "console": "Open the console",
+      "language": "Switch to Spanish",
+      "menuOpen": "Open menu",
+      "menuClose": "Close menu"
+    },
+    "hero": {
+      "eyebrow": "GatoPago Flow · Beta",
+      "titleLead": "Get paid in digital dollars with a link.",
+      "titleAccent": "GatoPago never holds your money.",
+      "copy": "Flow is a payments API for businesses. You create a charge, share the link, and your system gets a signed notification when it is paid. The payment goes straight to your company's GatoPago account.",
+      "primary": "Open the console",
+      "secondary": "Read the documentation",
+      "status": "Beta on testnet with test funds",
+      "custody": "Only your company's keys move the money"
+    },
+    "how": {
+      "kicker": "How a charge works",
+      "title": "Your customer pays with a link. You receive it in your GatoPago account.",
+      "items": [
+        [
+          "The payer",
+          "Pays from GatoPago with one tap and no gas, or from any wallet that holds USDC."
+        ],
+        [
+          "Your company",
+          "Receives the payment in its GatoPago account. Only your company's keys can move it."
+        ],
+        [
+          "Your system",
+          "Gets a signed notification for every payment and can check the status at any time."
+        ]
+      ]
+    },
+    "steps": {
+      "kicker": "How to start",
+      "title": "From sign-up to your first charge in five steps",
+      "items": [
+        [
+          "Open your account",
+          "At gatopago.com, with your fingerprint. That account is already your merchant account, with no separate sign-up."
+        ],
+        [
+          "Open the console",
+          "At business.gatopago.com. The first time, you approve it with a QR code from the app."
+        ],
+        [
+          "Create your key and your webhook",
+          "A test key and the address that receives the notifications."
+        ],
+        ["Create a charge", "One API call with the amount. It returns a payment link."],
+        ["Share the link", "Your customer pays and your system receives the signed notification."]
+      ]
+    },
+    "gets": {
+      "kicker": "Included in the beta",
+      "title": "What your company gets",
+      "features": [
+        "A payment link for every charge",
+        "Signed notifications for every status change, with up to 10 retries",
+        "A console to see the events and resend them",
+        "A sandbox with test keys and simulated payments",
+        "Protection against duplicate charges",
+        "Documentation in Spanish and English"
+      ],
+      "docs": "Read the documentation",
+      "demo": "See an example payment link",
+      "comment": "create a charge from your server",
+      "response": "charge created",
+      "code": "Code example to create a charge"
+    },
+    "notYet": {
+      "kicker": "Beta on testnet",
+      "title": "Not yet",
+      "items": [
+        ["Real money", "Launch comes after an external audit."],
+        ["Pricing", "We don't charge today and the commercial fee is not set yet."],
+        ["Other currencies", "USDC only, for now."]
+      ]
+    },
+    "final": {
+      "eyebrow": "Beta on testnet",
+      "title": "Try it.",
+      "copy": "Create your key in the console and make your first charge with test funds.",
+      "primary": "Open the console",
+      "secondary": "Read the documentation"
+    },
+    "footer": {
+      "line": "Digital dollar payments for businesses.",
+      "product": "Product",
+      "app": "The app",
+      "docs": "Documentation",
+      "legal": "Legal",
+      "terms": "Terms",
+      "privacy": "Privacy"
+    }
+  },
   "Metadata": {
     "home": {
       "title": "GatoPago · Money without borders. Always yours.",
@@ -1350,6 +1456,10 @@
     "docs": {
       "title": "API documentation · GatoPago",
       "description": "Get paid in USDC from your server: charges, statuses and signed webhooks."
+    },
+    "flow": {
+      "title": "GatoPago Flow · Get paid in digital dollars with a link",
+      "description": "A payments API for businesses. The payment goes straight to your company's GatoPago account, and GatoPago never holds your money."
     },
     "privacy": "Privacy Policy — GatoPago",
     "terms": "Terms of Service — GatoPago",

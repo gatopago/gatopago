@@ -1114,6 +1114,7 @@
       ],
       "docs": "Ver la documentación",
       "pilot": "Abrir la consola",
+      "flow": "Flow para negocios",
       "response": "intent creada",
       "note": "Crea tu API key en la consola y haz tu primer cobro de prueba en minutos."
     },
@@ -1339,6 +1340,108 @@
       }
     ]
   },
+  "Flow": {
+    "skip": "Saltar al contenido",
+    "nav": {
+      "aria": "Navegación de GatoPago Flow",
+      "home": "Inicio de GatoPago",
+      "how": "Cómo funciona",
+      "steps": "Cómo empiezas",
+      "gets": "Qué incluye",
+      "docs": "Documentación",
+      "console": "Abrir la consola",
+      "language": "Cambiar a inglés",
+      "menuOpen": "Abrir menú",
+      "menuClose": "Cerrar menú"
+    },
+    "hero": {
+      "eyebrow": "GatoPago Flow · Beta",
+      "titleLead": "Cobra en dólares digitales con un link.",
+      "titleAccent": "GatoPago nunca tiene tu dinero.",
+      "copy": "Flow es una API de cobros para empresas. Creas un cobro, compartes el link y tu sistema recibe un aviso firmado cuando se paga. El pago va directo a la cuenta GatoPago de tu empresa.",
+      "primary": "Abrir la consola",
+      "secondary": "Ver la documentación",
+      "status": "Beta en testnet con fondos de prueba",
+      "custody": "Solo las llaves de tu empresa mueven el dinero"
+    },
+    "how": {
+      "kicker": "Cómo funciona un cobro",
+      "title": "Tu cliente paga con un link. Tú recibes en tu cuenta GatoPago.",
+      "items": [
+        [
+          "Quien paga",
+          "Lo hace desde GatoPago con un toque y sin gas, o desde cualquier wallet con USDC."
+        ],
+        [
+          "Tu empresa",
+          "Recibe el pago en su cuenta GatoPago. Solo las llaves de tu empresa lo mueven."
+        ],
+        [
+          "Tu sistema",
+          "Recibe un aviso firmado por cada pago y puede consultar el estado cuando quiera."
+        ]
+      ]
+    },
+    "steps": {
+      "kicker": "Cómo empiezas",
+      "title": "Del registro al primer cobro, en cinco pasos",
+      "items": [
+        [
+          "Abre tu cuenta",
+          "En gatopago.com, con tu huella. Esa cuenta ya es tu comercio, sin otro registro."
+        ],
+        [
+          "Entra a la consola",
+          "En business.gatopago.com. La primera vez la apruebas con un QR desde la app."
+        ],
+        ["Crea tu clave y tu webhook", "Una clave de prueba y la dirección que recibe los avisos."],
+        ["Crea un cobro", "Una llamada a la API con el monto. Te devuelve un link de pago."],
+        ["Comparte el link", "Tu cliente paga y tu sistema recibe el aviso firmado."]
+      ]
+    },
+    "gets": {
+      "kicker": "Incluido en la beta",
+      "title": "Lo que recibe tu empresa",
+      "features": [
+        "Un link de pago por cada cobro",
+        "Avisos firmados por cada cambio de estado, con hasta 10 reintentos",
+        "Una consola para ver los eventos y reenviarlos",
+        "Un sandbox con claves de prueba y pagos simulados",
+        "Protección contra cobros duplicados",
+        "Documentación en español y en inglés"
+      ],
+      "docs": "Ver la documentación",
+      "demo": "Ver un link de cobro de ejemplo",
+      "comment": "crear un cobro desde tu servidor",
+      "response": "cobro creado",
+      "code": "Ejemplo de código para crear un cobro"
+    },
+    "notYet": {
+      "kicker": "Beta en testnet",
+      "title": "Todavía no",
+      "items": [
+        ["Dinero real", "El lanzamiento viene después de una auditoría externa."],
+        ["Precio", "Hoy no cobramos y la comisión comercial está por definirse."],
+        ["Otras monedas", "Por ahora, solo USDC."]
+      ]
+    },
+    "final": {
+      "eyebrow": "Beta en testnet",
+      "title": "Pruébalo.",
+      "copy": "Crea tu clave en la consola y haz tu primer cobro con fondos de prueba.",
+      "primary": "Abrir la consola",
+      "secondary": "Ver la documentación"
+    },
+    "footer": {
+      "line": "Cobros en dólares digitales para empresas.",
+      "product": "Producto",
+      "app": "La app",
+      "docs": "Documentación",
+      "legal": "Legal",
+      "terms": "Términos",
+      "privacy": "Privacidad"
+    }
+  },
   "Metadata": {
     "home": {
       "title": "GatoPago · Dinero sin fronteras. Siempre tuyo.",
@@ -1347,6 +1450,10 @@
     "docs": {
       "title": "Documentación del API · GatoPago",
       "description": "Cobra en USDC desde tu servidor: cobros, estados y webhooks firmados."
+    },
+    "flow": {
+      "title": "GatoPago Flow · Cobra en dólares digitales con un link",
+      "description": "Una API de cobros para empresas. El pago va directo a la cuenta GatoPago de tu empresa y GatoPago nunca tiene tu dinero."
     },
     "privacy": "Política de Privacidad — GatoPago",
     "terms": "Términos de Servicio — GatoPago",
