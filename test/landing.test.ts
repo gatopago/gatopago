@@ -85,14 +85,14 @@ describe('Complete product landing', () => {
               '/terms',
               '/privacy',
               '/docs',
-              '/flow',
+              '/cascabel',
               '/login',
               '/pay/demo-cafe-norte',
             ]).toContain(path);
         }
       }
       const prefix = lang === 'en' ? '/en' : '';
-      for (const href of ['/app', '/login', '/docs', '/flow', '/pay/demo-cafe-norte'])
+      for (const href of ['/app', '/login', '/docs', '/cascabel', '/pay/demo-cafe-norte'])
         expect(links).toContain(`${prefix}${href}`);
     },
   );

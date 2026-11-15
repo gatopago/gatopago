@@ -56,13 +56,13 @@ export async function publicMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
-/** The docs, Flow, the legal pages and the example payment: each with the card that fits it. */
+/** The docs, Cascabel, the legal pages and the example payment: each with the card that fits it. */
 export const staticMetadata =
-  (page: 'docs' | 'flow' | 'privacy' | 'terms' | 'demo') =>
+  (page: 'docs' | 'cascabel' | 'privacy' | 'terms' | 'demo') =>
   async ({ params }: Params): Promise<Metadata> => {
     const lang = await pageLocale(params);
     const t = await getTranslations({ locale: lang, namespace: 'Metadata' });
-    if (page === 'docs' || page === 'flow') {
+    if (page === 'docs' || page === 'cascabel') {
       const title = t(`${page}.title`);
       const description = t(`${page}.description`);
       return {

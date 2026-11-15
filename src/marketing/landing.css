@@ -320,7 +320,7 @@ body:has(.meli-landing) {
   background: var(--meli-cat-fire);
   color: var(--meli-ink);
   font-family: var(--meli-mono);
-  font-size: 0.55rem;
+  font-size: 0.68rem;
   font-variation-settings:
     'MONO' 1,
     'wght' 780;
@@ -637,7 +637,7 @@ body:has(.meli-landing) {
   padding: 0;
   color: rgb(255 248 240 / 56%);
   font-family: var(--meli-mono);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   font-variation-settings:
     'MONO' 1,
     'wght' 580;
@@ -2637,7 +2637,8 @@ body:has(.meli-landing) {
   gap: 12px;
   align-items: center;
   margin: 0 24px 24px;
-  padding: 14px;
+  /* Room on the right for the peeking cat, so it never covers the answer. */
+  padding: 14px 112px 14px 14px;
   border: 1px solid rgb(113 213 161 / 32%);
   background: rgb(113 213 161 / 7%);
 }
@@ -2936,7 +2937,6 @@ body:has(.meli-landing) {
 .meli-footer__grid > div:not(.meli-footer__brand) {
   display: flex;
   flex-direction: column;
-  gap: 12px;
 }
 
 .meli-footer__grid > div > strong {
@@ -2952,7 +2952,11 @@ body:has(.meli-landing) {
 }
 
 .meli-footer__grid > div > a {
+  display: inline-flex;
   width: fit-content;
+  /* A finger-sized target. */
+  min-height: 44px;
+  align-items: center;
   color: rgb(255 248 240 / 58%);
   font-size: 0.78rem;
   transition: color 160ms ease;

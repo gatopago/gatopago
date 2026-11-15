@@ -692,8 +692,8 @@ export function Landing({ lang, copy: t }: { lang: Locale; copy: Messages['Landi
                     {t.developers.docs}
                     <span aria-hidden="true">→</span>
                   </Link>
-                  <Link className="meli-text-link" href="/flow">
-                    {t.developers.flow}
+                  <Link className="meli-text-link" href="/cascabel">
+                    {t.developers.cascabel}
                     <span aria-hidden="true">→</span>
                   </Link>
                   <a className="meli-text-link" href={businessHref}>
@@ -714,11 +714,11 @@ export function Landing({ lang, copy: t }: { lang: Locale; copy: Messages['Landi
                   <code>
                     <span className="code-muted">
                       {isSpanish
-                        ? 'crear un cobro desde tu servidor'
-                        : 'create a payment from your server'}
+                        ? '// crear un cobro desde tu servidor'
+                        : '// create a payment from your server'}
                     </span>
                     {'\n'}
-                    {apiExample(t.developers.order)}
+                    {apiExample('18.00', t.developers.order)}
                   </code>
                 </pre>
                 <div className="meli-code-response">

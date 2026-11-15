@@ -57,7 +57,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
   );
 }
 
-/** `/docs`: GatoPago Flow's API, from the first charge to verifying webhooks. */
+/** `/docs`: Cascabel's API (GatoPago Business), from the first charge to verifying webhooks. */
 export async function DevelopersDocs({
   apiOrigin,
   businessOrigin,
@@ -162,7 +162,7 @@ export function verifyGatoPago(rawBody, header, secret) {
 
         <main id="main-content" className="min-w-0 max-w-3xl">
           <p className="mb-3 font-mono text-[11px] tracking-[0.12em] text-cat-700 uppercase">
-            GatoPago Flow · API
+            Cascabel · API
           </p>
           <h1 className="docs-title text-[34px] leading-[1.05] md:text-[46px]">{t('title')}</h1>
           <p className="mt-4 mb-6 text-[17px] leading-relaxed text-text-muted">{t('lead')}</p>

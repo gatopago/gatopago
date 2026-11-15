@@ -852,7 +852,7 @@
     "openConsole": "Abrir la consola",
     "onThisPage": "En esta página",
     "title": "Cobra en USDC desde tu servidor",
-    "lead": "Crea un cobro, comparte su link o QR y recibe un webhook firmado cuando se paga. Tu cliente paga desde GatoPago o desde cualquier wallet, y el dinero llega directo a tu cuenta: GatoPago nunca lo custodia.",
+    "lead": "Crea un cobro, comparte su link o QR y recibe un webhook firmado cuando se paga. Tu cliente paga desde GatoPago o desde una wallet con USDC en las redes de prueba de Arbitrum, Avalanche o Monad, y el dinero llega directo a tu cuenta: GatoPago nunca lo custodia.",
     "beta": "Beta pública en redes de prueba: usa claves de prueba (sk_test_…) y USDC de prueba.",
     "stepConsole": "Abre la <link>consola</link> con tu cuenta GatoPago y crea una clave API.",
     "stepCharge": "Crea un cobro desde tu servidor y envía a tu cliente su <code>checkout_url</code>.",
@@ -863,7 +863,7 @@
     "response": "Respuesta · 201",
     "retry": "<strong>Reintenta sin miedo:</strong> con la misma Idempotency-Key y los mismos datos recibes el mismo cobro, nunca uno segundo. Si la respuesta se perdió, repite la solicitud antes de crear otro.",
     "simulate": "En redes de prueba, POST /v1/payment_intents/:id/simulate marca un cobro como pagado, así pruebas tu webhook sin pagar.",
-    "webhooks": "Registra tu URL en la consola. GatoPago envía cada evento con un POST y reintenta las entregas fallidas hasta 10 veces; responde con un 2xx apenas lo recibas.",
+    "webhooks": "Registra tu URL en la consola. GatoPago envía cada evento con un POST y, si falla, lo vuelve a intentar, hasta 10 intentos en total; responde con un 2xx apenas lo recibas.",
     "event": "Evento",
     "verify": "<strong>Verifica cada evento.</strong> El encabezado <code>GatoPago-Signature</code> es <code>{format}</code>: un HMAC-SHA256 de <code>{payload}</code> con el secreto de tu endpoint (whsec_…), que la consola muestra una sola vez.",
     "baseUrl": "URL base: <code>{origin}</code>",
@@ -1114,7 +1114,7 @@
       ],
       "docs": "Ver la documentación",
       "pilot": "Abrir la consola",
-      "flow": "Flow para negocios",
+      "cascabel": "Conocer Cascabel",
       "order": "Pedido 1042",
       "note": "Crea tu API key en la consola y haz tu primer cobro de prueba en minutos."
     },
@@ -1340,100 +1340,104 @@
       }
     ]
   },
-  "Flow": {
+  "Cascabel": {
     "skip": "Saltar al contenido",
     "nav": {
-      "aria": "Navegación de GatoPago Flow",
+      "aria": "Navegación de Cascabel",
       "home": "Inicio de GatoPago",
-      "how": "Cómo funciona",
-      "steps": "Cómo empiezas",
-      "gets": "Qué incluye",
+      "example": "Un ejemplo",
+      "ways": "Cómo se usa",
+      "tech": "Para tu equipo técnico",
       "docs": "Documentación",
-      "console": "Abrir la consola",
+      "console": "Abrir GatoPago Business",
       "language": "Cambiar a inglés",
       "menuOpen": "Abrir menú",
       "menuClose": "Cerrar menú"
     },
     "hero": {
-      "eyebrow": "GatoPago Flow · Beta",
-      "titleLead": "Cobra en dólares digitales con un link.",
-      "titleAccent": "GatoPago nunca tiene tu dinero.",
-      "copy": "Flow es una API de cobros para empresas. Creas un cobro, compartes el link y tu sistema recibe un aviso firmado cuando se paga. El pago va directo a la cuenta GatoPago de tu empresa.",
-      "primary": "Abrir la consola",
-      "secondary": "Ver la documentación",
+      "eyebrow": "GatoPago Business",
+      "brand": "Cascabel, de GatoPago",
+      "titleLead": "Cobra con un link.",
+      "titleAccent": "Cascabel suena cuando te pagan.",
+      "copy": "Cascabel es el producto de cobros de GatoPago Business. Creas un link de cobro, tu cliente lo paga en dólares digitales y el dinero llega a la cuenta GatoPago de tu negocio. GatoPago nunca tiene tu dinero: solo tus llaves lo mueven.",
+      "primary": "Abrir GatoPago Business",
+      "secondary": "Ver un ejemplo",
       "status": "Beta en testnet con fondos de prueba",
-      "custody": "Solo las llaves de tu empresa mueven el dinero"
+      "checkout": "Así ve tu cliente un link de cobro: quién le cobra, el monto y el concepto"
     },
-    "how": {
-      "kicker": "Cómo funciona un cobro",
-      "title": "Tu cliente paga con un link. Tú recibes en tu cuenta GatoPago.",
+    "example": {
+      "kicker": "Un ejemplo",
+      "title": "Un estudio en Santa Cruz cobra USD 500 a un cliente en Estados Unidos.",
+      "copy": "El estudio termina un logo y le manda al cliente un link de cobro por USD 500. El cliente ya tiene dólares digitales en una wallet y paga desde ahí. Los USD 500 llegan a la cuenta GatoPago del estudio, sin pasar por GatoPago, y Cascabel le avisa que ya le pagaron.",
+      "demo": "Abrir un link de cobro de ejemplo"
+    },
+    "ways": {
+      "kicker": "Cómo se usa",
+      "title": "Dos formas de usarlo",
       "items": [
         [
-          "Quien paga",
-          "Lo hace desde GatoPago con un toque y sin gas, o desde cualquier wallet con USDC."
+          "Sin código",
+          "Desde la app GatoPago: creas el link de cobro en la app y lo compartes por WhatsApp, correo o donde quieras."
         ],
         [
-          "Tu empresa",
-          "Recibe el pago en su cuenta GatoPago. Solo las llaves de tu empresa lo mueven."
-        ],
-        [
-          "Tu sistema",
-          "Recibe un aviso firmado por cada pago y puede consultar el estado cuando quiera."
+          "Con código",
+          "Desde tu sistema: con la API de cobros, tu sistema crea los links y recibe un aviso firmado cuando se pagan."
         ]
-      ]
+      ],
+      "app": "Abrir GatoPago",
+      "docs": "Ver la documentación",
+      "payTitle": "Cómo paga tu cliente",
+      "pay": "Con USDC desde su wallet, en las redes de prueba de Arbitrum, Avalanche o Monad. Si paga desde GatoPago, lo hace con un toque y sin comisión de red."
     },
     "steps": {
-      "kicker": "Cómo empiezas",
-      "title": "Del registro al primer cobro, en cinco pasos",
+      "kicker": "Para tu equipo técnico",
+      "title": "Del registro al primer cobro",
       "items": [
+        ["Abre tu cuenta", "En gatopago.com, con tu huella. Esa cuenta ya es tu comercio."],
         [
-          "Abre tu cuenta",
-          "En gatopago.com, con tu huella. Esa cuenta ya es tu comercio, sin otro registro."
+          "Entra a Business",
+          "En business.gatopago.com. La primera vez lo apruebas con un QR desde la app."
         ],
-        [
-          "Entra a la consola",
-          "En business.gatopago.com. La primera vez la apruebas con un QR desde la app."
-        ],
-        ["Crea tu clave y tu webhook", "Una clave de prueba y la dirección que recibe los avisos."],
-        ["Crea un cobro", "Una llamada a la API con el monto. Te devuelve un link de pago."],
+        ["Clave API y webhook", "Una clave de prueba y la URL que recibe los avisos."],
+        ["Crea un cobro", "Una llamada a la API con el monto. Te devuelve un link de cobro."],
         ["Comparte el link", "Tu cliente paga y tu sistema recibe el aviso firmado."]
-      ]
-    },
-    "gets": {
-      "kicker": "Incluido en la beta",
-      "title": "Lo que recibe tu empresa",
-      "features": [
-        "Un link de pago por cada cobro",
-        "Avisos firmados por cada cambio de estado, con hasta 10 reintentos",
-        "Una consola para ver los eventos y reenviarlos",
-        "Un sandbox con claves de prueba y pagos simulados",
-        "Protección contra cobros duplicados",
-        "Documentación en español y en inglés"
       ],
-      "docs": "Ver la documentación",
-      "demo": "Ver un link de cobro de ejemplo",
-      "comment": "crear un cobro desde tu servidor",
+      "comment": "// crear un cobro desde tu servidor",
       "order": "Pedido 1042",
       "code": "Ejemplo de código para crear un cobro"
     },
+    "gets": {
+      "kicker": "Incluido en la beta",
+      "title": "Lo que recibe tu negocio",
+      "features": [
+        "Un link de cobro por cada cobro",
+        "Un aviso firmado por cada cambio de estado, con hasta 10 intentos",
+        "Un panel en Business para ver los avisos y reenviarlos",
+        "Un sandbox con claves de prueba y pagos simulados",
+        "Protección contra cobros duplicados",
+        "Documentación en español y en inglés"
+      ]
+    },
     "notYet": {
-      "kicker": "Beta en testnet",
+      "kicker": "Lo que falta",
       "title": "Todavía no",
       "items": [
         ["Dinero real", "El lanzamiento viene después de una auditoría externa."],
-        ["Precio", "Hoy no cobramos y la comisión comercial está por definirse."],
+        ["Pagar desde un exchange", "Hoy tu cliente necesita una wallet."],
+        ["Varias personas por negocio", "Hoy la cuenta es de una sola persona."],
+        ["Precio", "Hoy no cobramos y la comisión está por definirse."],
         ["Otras monedas", "Por ahora, solo USDC."]
       ]
     },
     "final": {
       "eyebrow": "Beta en testnet",
-      "title": "Pruébalo.",
-      "copy": "Crea tu clave en la consola y haz tu primer cobro con fondos de prueba.",
-      "primary": "Abrir la consola",
+      "title": "Pruébalo con fondos de prueba.",
+      "copy": "Crea tu clave en GatoPago Business y haz tu primer cobro.",
+      "primary": "Abrir GatoPago Business",
       "secondary": "Ver la documentación"
     },
     "footer": {
-      "line": "Cobros en dólares digitales para empresas.",
+      "line": "Cascabel, de GatoPago: cobra con un link.",
       "product": "Producto",
       "app": "La app",
       "docs": "Documentación",
@@ -1451,9 +1455,9 @@
       "title": "Documentación del API · GatoPago",
       "description": "Cobra en USDC desde tu servidor: cobros, estados y webhooks firmados."
     },
-    "flow": {
-      "title": "GatoPago Flow · Cobra en dólares digitales con un link",
-      "description": "Una API de cobros para empresas. El pago va directo a la cuenta GatoPago de tu empresa y GatoPago nunca tiene tu dinero."
+    "cascabel": {
+      "title": "Cascabel, de GatoPago · Cobra con un link",
+      "description": "Cobra con un link en dólares digitales. El dinero llega a la cuenta GatoPago de tu negocio y Cascabel te avisa cuando te pagan."
     },
     "privacy": "Política de Privacidad — GatoPago",
     "terms": "Términos de Servicio — GatoPago",

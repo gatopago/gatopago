@@ -852,7 +852,7 @@
     "openConsole": "Open the console",
     "onThisPage": "On this page",
     "title": "Get paid in USDC from your server",
-    "lead": "Create a charge, share its link or QR, and receive a signed webhook when it is paid. Your customer pays from GatoPago or from any wallet, and the money reaches your account directly: GatoPago never holds it.",
+    "lead": "Create a charge, share its link or QR, and receive a signed webhook when it is paid. Your customer pays from GatoPago or from a wallet with USDC on the Arbitrum, Avalanche or Monad test networks, and the money reaches your account directly: GatoPago never holds it.",
     "beta": "Public beta on test networks: use test keys (sk_test_…) and test USDC.",
     "stepConsole": "Open the <link>console</link> with your GatoPago account and create an API key.",
     "stepCharge": "Create a charge from your server and send your customer its <code>checkout_url</code>.",
@@ -863,7 +863,7 @@
     "response": "Response · 201",
     "retry": "<strong>Retry safely:</strong> with the same Idempotency-Key and the same data you get the same charge back, never a second one. If the response was lost, repeat the request before creating another.",
     "simulate": "On test networks, POST /v1/payment_intents/:id/simulate marks a charge as paid, so you can try your webhook without paying.",
-    "webhooks": "Register your URL in the console. GatoPago sends each event with a POST and retries failed deliveries up to 10 times; answer with a 2xx as soon as you receive it.",
+    "webhooks": "Register your URL in the console. GatoPago sends each event with a POST and, if it fails, tries again, up to 10 attempts in all; answer with a 2xx as soon as you receive it.",
     "event": "Event",
     "verify": "<strong>Verify every event.</strong> The <code>GatoPago-Signature</code> header is <code>{format}</code>: an HMAC-SHA256 of <code>{payload}</code> with your endpoint’s secret (whsec_…), which the console shows once.",
     "baseUrl": "Base URL: <code>{origin}</code>",
@@ -1117,7 +1117,7 @@
       ],
       "docs": "Read the documentation",
       "pilot": "Open the console",
-      "flow": "Flow for businesses",
+      "cascabel": "Meet Cascabel",
       "order": "Order 1042",
       "note": "Create your API key in the console and make your first test charge in minutes."
     },
@@ -1343,103 +1343,107 @@
       }
     ]
   },
-  "Flow": {
+  "Cascabel": {
     "skip": "Skip to content",
     "nav": {
-      "aria": "GatoPago Flow navigation",
+      "aria": "Cascabel navigation",
       "home": "GatoPago home",
-      "how": "How it works",
-      "steps": "How to start",
-      "gets": "What's included",
+      "example": "An example",
+      "ways": "How to use it",
+      "tech": "For your tech team",
       "docs": "Documentation",
-      "console": "Open the console",
+      "console": "Open GatoPago Business",
       "language": "Switch to Spanish",
       "menuOpen": "Open menu",
       "menuClose": "Close menu"
     },
     "hero": {
-      "eyebrow": "GatoPago Flow · Beta",
-      "titleLead": "Get paid in digital dollars with a link.",
-      "titleAccent": "GatoPago never holds your money.",
-      "copy": "Flow is a payments API for businesses. You create a charge, share the link, and your system gets a signed notification when it is paid. The payment goes straight to your company's GatoPago account.",
-      "primary": "Open the console",
-      "secondary": "Read the documentation",
+      "eyebrow": "GatoPago Business",
+      "brand": "Cascabel by GatoPago",
+      "titleLead": "Get paid with a link.",
+      "titleAccent": "Cascabel rings when you get paid.",
+      "copy": "Cascabel is the payments product inside GatoPago Business. You create a payment link, your customer pays it in digital dollars, and the money lands in your business's GatoPago account. GatoPago never holds your money: only your keys can move it.",
+      "primary": "Open GatoPago Business",
+      "secondary": "See an example",
       "status": "Beta on testnet with test funds",
-      "custody": "Only your company's keys move the money"
+      "checkout": "What your customer sees in a payment link: who is charging, the amount and the concept"
     },
-    "how": {
-      "kicker": "How a charge works",
-      "title": "Your customer pays with a link. You receive it in your GatoPago account.",
+    "example": {
+      "kicker": "An example",
+      "title": "A studio in Santa Cruz charges a client in the United States USD 500.",
+      "copy": "The studio finishes a logo and sends the client a USD 500 payment link. The client already holds digital dollars in a wallet and pays from there. The USD 500 lands in the studio's GatoPago account without passing through GatoPago, and Cascabel lets the studio know it got paid.",
+      "demo": "Open an example payment link"
+    },
+    "ways": {
+      "kicker": "How to use it",
+      "title": "Two ways to use it",
       "items": [
         [
-          "The payer",
-          "Pays from GatoPago with one tap and no gas, or from any wallet that holds USDC."
+          "No code",
+          "From the GatoPago app: create the payment link in the app and share it on WhatsApp, by email or anywhere else."
         ],
         [
-          "Your company",
-          "Receives the payment in its GatoPago account. Only your company's keys can move it."
-        ],
-        [
-          "Your system",
-          "Gets a signed notification for every payment and can check the status at any time."
+          "With code",
+          "From your system: with the payments API, your system creates the links and gets a signed notification when they are paid."
         ]
-      ]
+      ],
+      "app": "Open GatoPago",
+      "docs": "Read the documentation",
+      "payTitle": "How your customer pays",
+      "pay": "With USDC from their wallet, on the Arbitrum, Avalanche or Monad test networks. If they pay from GatoPago, it takes one tap and no network fee."
     },
     "steps": {
-      "kicker": "How to start",
-      "title": "From sign-up to your first charge in five steps",
+      "kicker": "For your tech team",
+      "title": "From sign-up to your first charge",
       "items": [
         [
           "Open your account",
-          "At gatopago.com, with your fingerprint. That account is already your merchant account, with no separate sign-up."
+          "At gatopago.com, with your fingerprint. That account is already your merchant account."
         ],
         [
-          "Open the console",
+          "Open Business",
           "At business.gatopago.com. The first time, you approve it with a QR code from the app."
         ],
-        [
-          "Create your key and your webhook",
-          "A test key and the address that receives the notifications."
-        ],
+        ["API key and webhook", "A test key and the URL that receives the notifications."],
         ["Create a charge", "One API call with the amount. It returns a payment link."],
-        ["Share the link", "Your customer pays and your system receives the signed notification."]
-      ]
-    },
-    "gets": {
-      "kicker": "Included in the beta",
-      "title": "What your company gets",
-      "features": [
-        "A payment link for every charge",
-        "Signed notifications for every status change, with up to 10 retries",
-        "A console to see the events and resend them",
-        "A sandbox with test keys and simulated payments",
-        "Protection against duplicate charges",
-        "Documentation in Spanish and English"
+        ["Share the link", "Your customer pays and your system gets the signed notification."]
       ],
-      "docs": "Read the documentation",
-      "demo": "See an example payment link",
-      "comment": "create a charge from your server",
+      "comment": "// create a charge from your server",
       "order": "Order 1042",
       "code": "Code example to create a charge"
     },
+    "gets": {
+      "kicker": "Included in the beta",
+      "title": "What your business gets",
+      "features": [
+        "A payment link for every charge",
+        "A signed notification for every status change, with up to 10 attempts",
+        "A panel in Business to see the notifications and resend them",
+        "A sandbox with test keys and simulated payments",
+        "Protection against duplicate charges",
+        "Documentation in Spanish and English"
+      ]
+    },
     "notYet": {
-      "kicker": "Beta on testnet",
+      "kicker": "What is missing",
       "title": "Not yet",
       "items": [
         ["Real money", "Launch comes after an external audit."],
-        ["Pricing", "We don't charge today and the commercial fee is not set yet."],
-        ["Other currencies", "USDC only, for now."]
+        ["Paying from an exchange", "Today your customer needs a wallet."],
+        ["Several people per business", "Today the account belongs to one person."],
+        ["Pricing", "We don't charge today and the fee is not set yet."],
+        ["Other currencies", "For now, only USDC."]
       ]
     },
     "final": {
       "eyebrow": "Beta on testnet",
-      "title": "Try it.",
-      "copy": "Create your key in the console and make your first charge with test funds.",
-      "primary": "Open the console",
+      "title": "Try it with test funds.",
+      "copy": "Create your key in GatoPago Business and make your first charge.",
+      "primary": "Open GatoPago Business",
       "secondary": "Read the documentation"
     },
     "footer": {
-      "line": "Digital dollar payments for businesses.",
+      "line": "Cascabel by GatoPago: get paid with a link.",
       "product": "Product",
       "app": "The app",
       "docs": "Documentation",
@@ -1457,9 +1461,9 @@
       "title": "API documentation · GatoPago",
       "description": "Get paid in USDC from your server: charges, statuses and signed webhooks."
     },
-    "flow": {
-      "title": "GatoPago Flow · Get paid in digital dollars with a link",
-      "description": "A payments API for businesses. The payment goes straight to your company's GatoPago account, and GatoPago never holds your money."
+    "cascabel": {
+      "title": "Cascabel by GatoPago · Get paid with a link",
+      "description": "Get paid with a link in digital dollars. The money lands in your business's GatoPago account, and Cascabel tells you when you get paid."
     },
     "privacy": "Privacy Policy — GatoPago",
     "terms": "Terms of Service — GatoPago",
