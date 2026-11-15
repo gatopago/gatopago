@@ -1118,7 +1118,7 @@
       "docs": "Read the documentation",
       "pilot": "Open the console",
       "flow": "Flow for businesses",
-      "response": "intent created",
+      "order": "Order 1042",
       "note": "Create your API key in the console and make your first test charge in minutes."
     },
     "faq": {
@@ -1419,7 +1419,7 @@
       "docs": "Read the documentation",
       "demo": "See an example payment link",
       "comment": "create a charge from your server",
-      "response": "charge created",
+      "order": "Order 1042",
       "code": "Code example to create a charge"
     },
     "notYet": {

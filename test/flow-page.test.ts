@@ -32,6 +32,9 @@ describe('Flow page', () => {
     );
     expect(html).toContain(lang === 'es' ? 'hasta 10 reintentos' : 'up to 10 retries');
     expect(html).toContain(lang === 'es' ? 'auditoría externa' : 'external audit');
+    // The example answers what the API answers, with its order in the page's language.
+    expect(html).toContain('requires_payment');
+    expect(html).toContain(lang === 'es' ? 'Pedido 1042' : 'Order 1042');
     // Not claimed until anyone can move their money without GatoPago (roadmap/SALIDA.md).
     expect(html).not.toMatch(/autocustodi|self-custod/i);
     // AUSD charges are not deployed yet.

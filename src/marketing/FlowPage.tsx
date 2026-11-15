@@ -3,7 +3,7 @@ import type { Locale, Messages } from 'next-intl';
 import { CatGlyph } from './CatGlyph';
 import { MeliSprite } from './MeliSprite';
 import { LandingInteractions } from './LandingInteractions';
-import { API_EXAMPLE } from './apiExample';
+import { API_RESPONSE, apiExample } from './apiExample';
 import { settings } from '../lib/settings';
 
 /** `/flow`: GatoPago Flow for businesses, with only what works today (`Flow` of the catalog). */
@@ -142,12 +142,12 @@ export function FlowPage({ lang, copy: t }: { lang: Locale; copy: Messages['Flow
                     <code>
                       <span className="code-muted">{t.gets.comment}</span>
                       {'\n'}
-                      {API_EXAMPLE}
+                      {apiExample(t.gets.order)}
                     </code>
                   </pre>
                   <div className="meli-code-response">
                     <span>201</span>
-                    <code>{`{ status: "${t.gets.response}" }`}</code>
+                    <code>{API_RESPONSE}</code>
                   </div>
                   <div className="meli-code-cat" aria-hidden="true">
                     <MeliSprite variant="head-peek" />
@@ -253,7 +253,7 @@ export function FlowPage({ lang, copy: t }: { lang: Locale; copy: Messages['Flow
                 {t.notYet.items.map(([title, text]) => (
                   <article key={title} className="meli-control-card">
                     <span className="meli-control-card__index" aria-hidden="true">
-                      —
+                      ■
                     </span>
                     <div>
                       <h3>{title}</h3>

@@ -3,7 +3,7 @@ import type { Locale, Messages } from 'next-intl';
 import { CatGlyph } from './CatGlyph';
 import { MeliSprite } from './MeliSprite';
 import { LandingInteractions } from './LandingInteractions';
-import { API_EXAMPLE } from './apiExample';
+import { API_RESPONSE, apiExample } from './apiExample';
 import { settings } from '../lib/settings';
 
 /** The landing in `lang`, with its texts (`Landing` of the catalog) read by the page. */
@@ -718,12 +718,12 @@ export function Landing({ lang, copy: t }: { lang: Locale; copy: Messages['Landi
                         : 'create a payment from your server'}
                     </span>
                     {'\n'}
-                    {API_EXAMPLE}
+                    {apiExample(t.developers.order)}
                   </code>
                 </pre>
                 <div className="meli-code-response">
                   <span>201</span>
-                  <code>{`{ status: "${t.developers.response}" }`}</code>
+                  <code>{API_RESPONSE}</code>
                 </div>
                 <div className="meli-code-cat" aria-hidden="true">
                   <MeliSprite variant="head-peek" />

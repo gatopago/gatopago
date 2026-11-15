@@ -1,5 +1,5 @@
-/** Creating a charge from a server, as the landing and `/flow` show it. */
-export const API_EXAMPLE = `const response = await fetch(
+/** Creating a charge from a server, as the landing and `/flow` show it, with its order in the page's language. */
+export const apiExample = (description: string) => `const response = await fetch(
   API_ORIGIN + "/v1/payment_intents",
   {
     method: "POST",
@@ -10,9 +10,12 @@ export const API_EXAMPLE = `const response = await fetch(
     },
     body: JSON.stringify({
       amount: "18.00",
-      description: "Order 1042",
+      description: "${description}",
       metadata: { order_id: "1042" }
     })
   }
 );
 const intent = await response.json();`;
+
+/** What the API answers: a new charge waits for its payment (see `/docs`). */
+export const API_RESPONSE = '{ status: "requires_payment" }';

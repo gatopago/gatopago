@@ -1115,7 +1115,7 @@
       "docs": "Ver la documentación",
       "pilot": "Abrir la consola",
       "flow": "Flow para negocios",
-      "response": "intent creada",
+      "order": "Pedido 1042",
       "note": "Crea tu API key en la consola y haz tu primer cobro de prueba en minutos."
     },
     "faq": {
@@ -1413,7 +1413,7 @@
       "docs": "Ver la documentación",
       "demo": "Ver un link de cobro de ejemplo",
       "comment": "crear un cobro desde tu servidor",
-      "response": "cobro creado",
+      "order": "Pedido 1042",
       "code": "Ejemplo de código para crear un cobro"
     },
     "notYet": {
