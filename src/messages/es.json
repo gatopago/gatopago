@@ -1345,99 +1345,124 @@
     "nav": {
       "aria": "Navegación de Cascabel",
       "home": "Inicio de GatoPago",
-      "example": "Un ejemplo",
-      "ways": "Cómo se usa",
-      "tech": "Para tu equipo técnico",
-      "docs": "Documentación",
-      "console": "Abrir GatoPago Business",
+      "how": "Cómo funciona",
+      "today": "Hoy y lo que viene",
+      "why": "Por qué Cascabel",
+      "docs": "API de hoy",
+      "contact": "Hablemos",
       "language": "Cambiar a inglés",
       "menuOpen": "Abrir menú",
       "menuClose": "Cerrar menú"
     },
     "hero": {
-      "eyebrow": "GatoPago Business",
-      "brand": "Cascabel, de GatoPago",
-      "titleLead": "Cobra con un link.",
-      "titleAccent": "Cascabel suena cuando te pagan.",
-      "copy": "Cascabel es el producto de cobros de GatoPago Business. Creas un link de cobro, tu cliente lo paga en dólares digitales y el dinero llega a la cuenta GatoPago de tu negocio. GatoPago nunca tiene tu dinero: solo tus llaves lo mueven.",
-      "primary": "Abrir GatoPago Business",
-      "secondary": "Ver un ejemplo",
-      "status": "Beta en testnet con fondos de prueba",
-      "checkout": "Así ve tu cliente un link de cobro: quién le cobra, el monto y el concepto"
+      "eyebrow": "Cascabel, de GatoPago",
+      "titleLead": "Stablecoins para tu plataforma de pagos.",
+      "titleAccent": "Tus clientes pagan con lo que tienen. Tú recibes como quieres.",
+      "copy": "Cascabel es la capa onchain de cobros y pagos para empresas de pago, fintechs y plataformas. Tus clientes pagan en dólares digitales desde su wallet o su exchange, y tú recibes en la red, la moneda y la tesorería que elijas. Sin custodia: el dinero va directo a tu tesorería.",
+      "primary": "Hablemos",
+      "secondary": "Cómo funciona",
+      "today": "Hoy, en beta: cobros en USDC por API",
+      "building": "En construcción: depósitos desde exchanges, USDT, liquidación a elección y payouts",
+      "routeLabel": "Ejemplo de un cobro",
+      "routeFrom": "Tu cliente paga",
+      "routeFromValue": "USDT en Avalanche",
+      "routeVia": "Cascabel convierte y cruza de red",
+      "routeTo": "Tu tesorería recibe",
+      "routeToValue": "USDC en Arbitrum",
+      "routeChip": "En construcción"
     },
-    "example": {
-      "kicker": "Un ejemplo",
-      "title": "Un estudio en Santa Cruz cobra USD 500 a un cliente en Estados Unidos.",
-      "copy": "El estudio termina un logo y le manda al cliente un link de cobro por USD 500. El cliente ya tiene dólares digitales en una wallet y paga desde ahí. Los USD 500 llegan a la cuenta GatoPago del estudio, sin pasar por GatoPago, y Cascabel le avisa que ya le pagaron.",
-      "demo": "Abrir un link de cobro de ejemplo"
-    },
-    "ways": {
-      "kicker": "Cómo se usa",
-      "title": "Dos formas de usarlo",
+    "how": {
+      "kicker": "Cómo funciona",
+      "title": "De la billetera de tu cliente a tu tesorería",
       "items": [
         [
-          "Sin código",
-          "Desde la app GatoPago: creas el link de cobro en la app y lo compartes por WhatsApp, correo o donde quieras."
+          "Creas el cobro",
+          "Tu sistema pide un cobro por API con el monto. Cascabel te devuelve una dirección de depósito única para ese cobro."
         ],
         [
-          "Con código",
-          "Desde tu sistema: con la API de cobros, tu sistema crea los links y recibe un aviso firmado cuando se pagan."
+          "Tu cliente paga con lo que tiene",
+          "USDC o USDT, desde su wallet o su exchange, con una transferencia simple."
+        ],
+        [
+          "Cascabel hace el camino",
+          "Si pagó en otra moneda o en otra red, Cascabel la convierte y la cruza a la red que elegiste."
+        ],
+        [
+          "Llega a tu tesorería",
+          "El dinero va directo a la dirección que configuraste, y tu sistema recibe un aviso firmado."
+        ],
+        [
+          "Y pagas igual",
+          "Con la API de payouts envías a muchas personas o proveedores a la vez, en la red y la moneda que quieras."
         ]
       ],
-      "app": "Abrir GatoPago",
-      "docs": "Ver la documentación",
-      "payTitle": "Cómo paga tu cliente",
-      "pay": "Con USDC desde su wallet, en las redes de prueba de Arbitrum, Avalanche o Monad. Si paga desde GatoPago, lo hace con un toque y sin comisión de red."
+      "note": "Este es el modelo completo. Abajo está qué funciona hoy y qué estamos construyendo."
     },
-    "steps": {
-      "kicker": "Para tu equipo técnico",
-      "title": "Del registro al primer cobro",
-      "items": [
-        ["Abre tu cuenta", "En gatopago.com, con tu huella. Esa cuenta ya es tu comercio."],
-        [
-          "Entra a Business",
-          "En business.gatopago.com. La primera vez lo apruebas con un QR desde la app."
-        ],
-        ["Clave API y webhook", "Una clave de prueba y la URL que recibe los avisos."],
-        ["Crea un cobro", "Una llamada a la API con el monto. Te devuelve un link de cobro."],
-        ["Comparte el link", "Tu cliente paga y tu sistema recibe el aviso firmado."]
+    "today": {
+      "kicker": "Hoy y lo que viene",
+      "title": "Qué funciona hoy y qué estamos construyendo",
+      "nowTitle": "Funciona hoy, en beta y en redes de prueba",
+      "now": [
+        "Cobros por API, con un link de pago para cada uno",
+        "USDC desde Arbitrum, Avalanche o Monad",
+        "Cruce entre redes con CCTP de Circle",
+        "Avisos firmados, con hasta 10 intentos",
+        "Sandbox y protección contra cobros duplicados",
+        "Consola en GatoPago Business"
       ],
-      "comment": "// crear un cobro desde tu servidor",
-      "order": "Pedido 1042",
-      "code": "Ejemplo de código para crear un cobro"
+      "nextTitle": "En construcción",
+      "next": [
+        "Direcciones de depósito: pagar desde una wallet o un exchange con una transferencia simple",
+        "Liquidación en la red, la moneda y la tesorería que elijas",
+        "USDT y conversión entre monedas",
+        "API de payouts",
+        "Varios comercios por cliente"
+      ],
+      "notYet": "Dinero real, después de una auditoría externa. Precio, por definir.",
+      "docs": "Ver la API de hoy"
     },
-    "gets": {
-      "kicker": "Incluido en la beta",
-      "title": "Lo que recibe tu negocio",
-      "features": [
-        "Un link de cobro por cada cobro",
-        "Un aviso firmado por cada cambio de estado, con hasta 10 intentos",
-        "Un panel en Business para ver los avisos y reenviarlos",
-        "Un sandbox con claves de prueba y pagos simulados",
-        "Protección contra cobros duplicados",
-        "Documentación en español y en inglés"
-      ]
-    },
-    "notYet": {
-      "kicker": "Lo que falta",
-      "title": "Todavía no",
+    "why": {
+      "kicker": "Por qué Cascabel",
+      "title": "Lo que gana tu plataforma",
       "items": [
-        ["Dinero real", "El lanzamiento viene después de una auditoría externa."],
-        ["Pagar desde un exchange", "Hoy tu cliente necesita una wallet."],
-        ["Varias personas por negocio", "Hoy la cuenta es de una sola persona."],
-        ["Precio", "Hoy no cobramos y la comisión está por definirse."],
-        ["Otras monedas", "Por ahora, solo USDC."]
+        [
+          "Sin custodia",
+          "El dinero va directo de quien paga a tu tesorería. GatoPago nunca lo tiene, así que encaja con tu licencia."
+        ],
+        [
+          "Sin gas",
+          "No necesitas tener AVAX ni ETH en cada red: Cascabel paga las comisiones de red."
+        ],
+        [
+          "Pagar a quien no tiene wallet",
+          "Quien recibe un payout abre una cuenta GatoPago con su huella, sin frase semilla, y recibe ahí."
+        ],
+        [
+          "Hecho en Bolivia, para la región",
+          "En español, cerca tuyo y pensado para conectarse con tus rieles en moneda local."
+        ]
       ]
+    },
+    "avalanche": {
+      "kicker": "Por qué Avalanche",
+      "title": "La red que destacamos para liquidar",
+      "items": [
+        "USDC de Circle y USDT de Tether, emitidos de forma nativa",
+        "Uniswap v4 y LFJ para convertir entre monedas",
+        "Aave para que una tesorería rinda",
+        "Transacciones que se confirman en segundos"
+      ],
+      "note": "Cascabel también cobra en Arbitrum y Monad."
     },
     "final": {
       "eyebrow": "Beta en testnet",
-      "title": "Pruébalo con fondos de prueba.",
-      "copy": "Crea tu clave en GatoPago Business y haz tu primer cobro.",
-      "primary": "Abrir GatoPago Business",
-      "secondary": "Ver la documentación"
+      "title": "Hablemos.",
+      "copy": "Si tu empresa mueve pagos y quiere sumar stablecoins, escríbenos. Mientras tanto, puedes probar la API de cobros de hoy.",
+      "primary": "Escríbenos en X",
+      "secondary": "Ver la API de hoy"
     },
     "footer": {
-      "line": "Cascabel, de GatoPago: cobra con un link.",
+      "line": "Cascabel, de GatoPago: stablecoins para plataformas de pago.",
       "product": "Producto",
       "app": "La app",
       "docs": "Documentación",
@@ -1456,8 +1481,8 @@
       "description": "Cobra en USDC desde tu servidor: cobros, estados y webhooks firmados."
     },
     "cascabel": {
-      "title": "Cascabel, de GatoPago · Cobra con un link",
-      "description": "Cobra con un link en dólares digitales. El dinero llega a la cuenta GatoPago de tu negocio y Cascabel te avisa cuando te pagan."
+      "title": "Cascabel, de GatoPago · Stablecoins para plataformas de pago",
+      "description": "Cobros y pagos en dólares digitales para empresas de pago y fintechs: tus clientes pagan con lo que tienen y tú recibes como quieres, sin custodia."
     },
     "privacy": "Política de Privacidad — GatoPago",
     "terms": "Términos de Servicio — GatoPago",

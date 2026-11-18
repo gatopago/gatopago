@@ -1,17 +1,13 @@
-import Image, { type StaticImageData } from 'next/image';
 import type { ReactNode } from 'react';
 import { Link } from '../i18n/navigation';
 import type { Locale, Messages } from 'next-intl';
 import { CatGlyph } from './CatGlyph';
 import { MeliSprite } from './MeliSprite';
 import { LandingInteractions } from './LandingInteractions';
-import { API_RESPONSE, apiExample } from './apiExample';
-import { settings } from '../lib/settings';
-import checkoutEn from './cascabel/checkout-en.webp';
-import checkoutEs from './cascabel/checkout-es.webp';
 import './docs.css';
 
-const CHECKOUT: Record<Locale, StaticImageData> = { es: checkoutEs, en: checkoutEn };
+/** Where payment companies reach us until gatopago.com has its own address. */
+const CONTACT = 'https://x.com/gatopago';
 
 /** A section's label and title, sized for full sentences (the landing's are for two words). */
 function Heading({
@@ -38,28 +34,28 @@ function Heading({
   );
 }
 
-/** A text link for the light sections (the landing's is for dark ones). */
-function TextLink({ href, children }: { href: string; children: ReactNode }) {
+/** One leg of the example charge: who and in what. */
+function Leg({ label, value, children }: { label: string; value: string; children?: ReactNode }) {
   return (
-    <Link
-      href={href}
-      className="inline-flex min-h-11 items-center gap-2 border-b-2 border-cat-500 font-bold"
-    >
+    <div className="border border-canvas/20 bg-canvas/[0.04] px-5 py-4">
+      <p className="font-mono text-[0.72rem] tracking-[0.08em] text-canvas/60 uppercase">{label}</p>
+      <p className="docs-title mt-1 text-[1.35rem]">{value}</p>
       {children}
-      <span aria-hidden="true">→</span>
-    </Link>
+    </div>
   );
 }
 
-/** `/cascabel`: Cascabel, GatoPago Business's payments, with only what works today (`Cascabel` of the catalog). */
+/**
+ * `/cascabel`: Cascabel, GatoPago Business's stablecoin layer for payment companies. It shows the
+ * model and keeps apart what works today from what is being built (`Cascabel` of the catalog).
+ */
 export function CascabelPage({ lang, copy: t }: { lang: Locale; copy: Messages['Cascabel'] }) {
   const otherLocale = lang === 'es' ? 'en' : 'es';
   const localeLabel = lang === 'es' ? 'EN' : 'ES';
-  const consoleHref = settings.businessOrigin;
   const sections = [
-    ['#example', t.nav.example],
-    ['#ways', t.nav.ways],
-    ['#steps', t.nav.tech],
+    ['#how', t.nav.how],
+    ['#today', t.nav.today],
+    ['#why', t.nav.why],
   ] as const;
   return (
     <>
@@ -95,8 +91,8 @@ export function CascabelPage({ lang, copy: t }: { lang: Locale; copy: Messages['
               >
                 {localeLabel}
               </Link>
-              <a className="meli-button meli-button--brand meli-nav__cta" href={consoleHref}>
-                {t.nav.console}
+              <a className="meli-button meli-button--brand meli-nav__cta" href={CONTACT}>
+                {t.nav.contact}
                 <span aria-hidden="true">↗</span>
               </a>
               <button
@@ -123,8 +119,8 @@ export function CascabelPage({ lang, copy: t }: { lang: Locale; copy: Messages['
               </a>
             ))}
             <Link href="/docs">{t.nav.docs}</Link>
-            <a className="meli-button meli-button--brand" href={consoleHref}>
-              {t.nav.console} <span aria-hidden="true">↗</span>
+            <a className="meli-button meli-button--brand" href={CONTACT}>
+              {t.nav.contact} <span aria-hidden="true">↗</span>
             </a>
           </div>
         </header>
@@ -138,11 +134,7 @@ export function CascabelPage({ lang, copy: t }: { lang: Locale; copy: Messages['
                   <span aria-hidden="true"></span>
                   {t.hero.eyebrow}
                 </p>
-                {/* On phones the landing orders the hero's parts; the name goes with the label. */}
-                <p className="docs-title order-1 mb-4 text-[clamp(1.4rem,2.4vw,1.9rem)] text-cat-500">
-                  {t.hero.brand}
-                </p>
-                <h1 id="hero-title" className="text-[clamp(2.4rem,4.4vw,4.2rem)]!">
+                <h1 id="hero-title" className="text-[clamp(2.3rem,4.2vw,4rem)]!">
                   {t.hero.titleLead}
                   <br />
                   <span>{t.hero.titleAccent}</span>
@@ -150,181 +142,163 @@ export function CascabelPage({ lang, copy: t }: { lang: Locale; copy: Messages['
                 <p className="meli-hero__lead">{t.hero.copy}</p>
 
                 <div className="meli-hero__actions">
-                  <a
-                    className="meli-button meli-button--brand meli-button--large"
-                    href={consoleHref}
-                  >
+                  <a className="meli-button meli-button--brand meli-button--large" href={CONTACT}>
                     {t.hero.primary}
                     <span aria-hidden="true">↗</span>
                   </a>
                   <a
                     className="meli-button meli-button--ghost-light meli-button--large"
-                    href="#example"
+                    href="#how"
                   >
                     {t.hero.secondary}
                     <span aria-hidden="true">↓</span>
                   </a>
                 </div>
 
-                <ul className="meli-alpha-list" aria-label={t.hero.status}>
+                <ul className="meli-alpha-list" aria-label={t.hero.today}>
                   <li>
                     <i aria-hidden="true"></i>
-                    {t.hero.status}
+                    {t.hero.today}
                   </li>
+                  <li>{t.hero.building}</li>
                 </ul>
               </div>
 
               <div className="meli-hero__visual">
-                <Image
-                  src={CHECKOUT[lang]}
-                  alt={t.hero.checkout}
-                  width={500}
-                  height={296}
-                  className="h-auto w-full max-w-[420px] border-2 border-canvas/30 shadow-[12px_12px_0_var(--color-cat-300)]"
-                  sizes="420px"
-                  priority
-                />
+                <figure className="w-full max-w-[420px]" aria-label={t.hero.routeLabel}>
+                  <figcaption className="mb-4 flex items-center justify-between gap-3">
+                    <span className="font-mono text-[0.75rem] tracking-[0.08em] text-canvas/60 uppercase">
+                      {t.hero.routeLabel}
+                    </span>
+                    <span className="border border-pending/60 px-2 py-1 font-mono text-[0.7rem] text-[#f6c65b] uppercase">
+                      {t.hero.routeChip}
+                    </span>
+                  </figcaption>
+                  <Leg label={t.hero.routeFrom} value={t.hero.routeFromValue} />
+                  <div className="flex items-center gap-3 py-4 pl-5">
+                    <span aria-hidden="true" className="text-[1.4rem] text-cat-500">
+                      ↓
+                    </span>
+                    <span className="font-bold text-cat-500">{t.hero.routeVia}</span>
+                  </div>
+                  <Leg label={t.hero.routeTo} value={t.hero.routeToValue} />
+                </figure>
               </div>
             </div>
           </section>
 
-          <section className="meli-section meli-section--milk" id="example">
-            <div className="meli-container grid gap-10 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] md:items-end">
-              <Heading id="example-title" kicker={t.example.kicker} title={t.example.title} />
+          <section className="meli-section meli-section--milk" id="how" aria-labelledby="how-title">
+            <div className="meli-container grid gap-12 lg:grid-cols-2 lg:items-start">
               <div className="space-y-6">
-                <p className="text-[1.05rem] leading-relaxed text-text-muted">{t.example.copy}</p>
-                <TextLink href="/pay/demo-cafe-norte">{t.example.demo}</TextLink>
+                <Heading id="how-title" kicker={t.how.kicker} title={t.how.title} />
+                <p className="max-w-md leading-relaxed text-text-muted">{t.how.note}</p>
               </div>
+              <ol className="border-t-2 border-text">
+                {t.how.items.map(([title, text], index) => (
+                  <li
+                    key={title}
+                    className="grid grid-cols-[2.5rem_1fr] gap-x-2 border-b border-border py-5"
+                  >
+                    <span className="font-mono text-[0.75rem] font-bold text-cat-300">
+                      0{index + 1}
+                    </span>
+                    <div>
+                      <h3 className="font-bold">{title}</h3>
+                      <p className="mt-1 leading-relaxed text-text-muted">{text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
             </div>
           </section>
 
           <section
             className="meli-section meli-section--ink"
-            id="ways"
-            aria-labelledby="ways-title"
+            id="today"
+            aria-labelledby="today-title"
           >
             <div className="meli-container space-y-12">
-              <Heading id="ways-title" kicker={t.ways.kicker} title={t.ways.title} light />
+              <Heading id="today-title" kicker={t.today.kicker} title={t.today.title} light />
               <div className="grid gap-4 md:grid-cols-2">
-                {t.ways.items.map(([title, text], index) => (
+                <div className="border border-growth/50 bg-canvas/[0.03] p-7">
+                  <h3 className="flex items-center gap-3 font-bold">
+                    <span aria-hidden="true" className="size-2.5 bg-[#71d5a1]"></span>
+                    {t.today.nowTitle}
+                  </h3>
+                  <ul className="mt-5 space-y-3 text-canvas/75">
+                    {t.today.now.map((item) => (
+                      <li key={item} className="leading-snug">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="border border-[#f6c65b]/50 bg-canvas/[0.03] p-7">
+                  <h3 className="flex items-center gap-3 font-bold">
+                    <span aria-hidden="true" className="size-2.5 bg-[#f6c65b]"></span>
+                    {t.today.nextTitle}
+                  </h3>
+                  <ul className="mt-5 space-y-3 text-canvas/75">
+                    {t.today.next.map((item) => (
+                      <li key={item} className="leading-snug">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-6">
+                <p className="text-canvas/70">{t.today.notYet}</p>
+                <Link href="/docs" className="meli-text-link">
+                  {t.today.docs}
+                  <span aria-hidden="true">→</span>
+                </Link>
+              </div>
+            </div>
+          </section>
+
+          <section className="meli-section meli-section--milk" id="why" aria-labelledby="why-title">
+            <div className="meli-container space-y-12">
+              <Heading id="why-title" kicker={t.why.kicker} title={t.why.title} />
+              <div className="grid gap-4 md:grid-cols-2">
+                {t.why.items.map(([title, text]) => (
                   <article
                     key={title}
-                    className="flex flex-col border border-canvas/15 bg-canvas/[0.03] p-7"
+                    className="border-2 border-text bg-surface p-6 shadow-[5px_5px_0_var(--color-cat-300)]"
                   >
-                    <h3 className="docs-title text-[1.5rem]">{title}</h3>
-                    <p className="mt-3 flex-1 leading-relaxed text-canvas/70">{text}</p>
-                    {index === 0 ? (
-                      <Link href="/app" prefetch={false} className="meli-text-link mt-6 self-start">
-                        {t.ways.app}
-                        <span aria-hidden="true">↗</span>
-                      </Link>
-                    ) : (
-                      <Link href="/docs" className="meli-text-link mt-6 self-start">
-                        {t.ways.docs}
-                        <span aria-hidden="true">→</span>
-                      </Link>
-                    )}
+                    <h3 className="docs-title text-[1.35rem]">{title}</h3>
+                    <p className="mt-2 leading-relaxed text-text-muted">{text}</p>
                   </article>
                 ))}
               </div>
-              <div className="border-l-4 border-cat-500 py-1 pl-5">
-                <h3 className="font-bold">{t.ways.payTitle}</h3>
-                <p className="mt-2 max-w-3xl leading-relaxed text-canvas/70">{t.ways.pay}</p>
-              </div>
-            </div>
-          </section>
-
-          <section
-            className="meli-section meli-section--milk"
-            id="steps"
-            aria-labelledby="steps-title"
-          >
-            <div className="meli-container grid gap-12 lg:grid-cols-2 lg:items-start">
-              <div className="space-y-10">
-                <Heading id="steps-title" kicker={t.steps.kicker} title={t.steps.title} />
-                <ol className="border-t-2 border-text">
-                  {t.steps.items.map(([title, text], index) => (
-                    <li
-                      key={title}
-                      className="grid grid-cols-[2.5rem_1fr] gap-x-2 border-b border-border py-5"
-                    >
-                      <span className="font-mono text-[0.75rem] font-bold text-cat-300">
-                        0{index + 1}
-                      </span>
-                      <div>
-                        <h3 className="font-bold">{title}</h3>
-                        <p className="mt-1 leading-relaxed text-text-muted">{text}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-              <div className="min-w-0">
-                <div className="meli-code-window" role="figure" aria-label={t.steps.code}>
-                  <div className="meli-code-window__bar">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                    <small>payment-intent.js</small>
-                  </div>
-                  <pre>
-                    <code>
-                      <span className="code-muted">{t.steps.comment}</span>
-                      {'\n'}
-                      {apiExample('500.00', t.steps.order)}
-                    </code>
-                  </pre>
-                  <div className="meli-code-response">
-                    <span>201</span>
-                    <code>{API_RESPONSE}</code>
-                  </div>
-                  <div className="meli-code-cat" aria-hidden="true">
-                    <MeliSprite variant="head-peek" />
-                    <span>webhook ✓</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </section>
 
           <section
             className="meli-section meli-section--ink"
-            id="gets"
-            aria-labelledby="gets-title"
+            id="avalanche"
+            aria-labelledby="avalanche-title"
           >
             <div className="meli-container grid gap-12 lg:grid-cols-2 lg:items-start">
-              <Heading id="gets-title" kicker={t.gets.kicker} title={t.gets.title} light />
-              <ul className="border-t-2 border-canvas/60">
-                {t.gets.features.map((feature) => (
-                  <li
-                    key={feature}
-                    className="flex items-baseline gap-3 border-b border-canvas/15 py-4 leading-snug before:text-[0.6rem] before:text-cat-500 before:content-['■']"
-                  >
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-
-          <section
-            className="meli-section meli-section--milk"
-            id="not-yet"
-            aria-labelledby="not-yet-title"
-          >
-            <div className="meli-container grid gap-12 lg:grid-cols-2 lg:items-start">
-              <Heading id="not-yet-title" kicker={t.notYet.kicker} title={t.notYet.title} />
-              <ul className="grid gap-3">
-                {t.notYet.items.map(([title, text]) => (
-                  <li
-                    key={title}
-                    className="border-2 border-text bg-surface p-5 shadow-[5px_5px_0_var(--color-cat-300)]"
-                  >
-                    <h3 className="font-bold">{title}</h3>
-                    <p className="mt-1 text-text-muted">{text}</p>
-                  </li>
-                ))}
-              </ul>
+              <Heading
+                id="avalanche-title"
+                kicker={t.avalanche.kicker}
+                title={t.avalanche.title}
+                light
+              />
+              <div>
+                <ul className="border-t-2 border-canvas/60">
+                  {t.avalanche.items.map((item) => (
+                    <li
+                      key={item}
+                      className="flex items-baseline gap-3 border-b border-canvas/15 py-4 leading-snug before:text-[0.6rem] before:text-cat-500 before:content-['■']"
+                    >
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-5 text-canvas/60">{t.avalanche.note}</p>
+              </div>
             </div>
           </section>
 
@@ -344,7 +318,7 @@ export function CascabelPage({ lang, copy: t }: { lang: Locale; copy: Messages['
               <h2 id="final-title">{t.final.title}</h2>
               <p>{t.final.copy}</p>
               <div className="meli-final__actions">
-                <a className="meli-button meli-button--ink meli-button--large" href={consoleHref}>
+                <a className="meli-button meli-button--ink meli-button--large" href={CONTACT}>
                   {t.final.primary}
                   <span aria-hidden="true">↗</span>
                 </a>
@@ -373,7 +347,7 @@ export function CascabelPage({ lang, copy: t }: { lang: Locale; copy: Messages['
               <strong>{t.footer.product}</strong>
               <Link href="/">{t.footer.app}</Link>
               <Link href="/docs">{t.footer.docs}</Link>
-              <a href={consoleHref}>GatoPago Business</a>
+              <a href={CONTACT}>X</a>
             </div>
             <div>
               <strong>{t.footer.legal}</strong>

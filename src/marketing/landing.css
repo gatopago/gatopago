@@ -3162,6 +3162,19 @@ body:has(.meli-landing) {
     --meli-section-space: clamp(3.75rem, 15vw, 5.5rem);
   }
 
+  /* Too narrow to share a line: the peeking cat goes under the API answer. */
+  .meli-code-response {
+    padding-right: 14px;
+  }
+
+  .meli-code-cat {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    justify-content: flex-end;
+    margin: -12px 24px 16px;
+  }
+
   html:has(.meli-landing) {
     scroll-padding-top: 80px;
   }
