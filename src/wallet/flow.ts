@@ -33,6 +33,8 @@ export interface Intent {
   status: 'requires_payment' | 'processing' | 'succeeded' | 'canceled' | 'expired';
   description: string | null;
   checkout_url: string;
+  /** Where it can also be paid with a plain transfer of its coin, on any of its networks. */
+  deposit_address: Address | null;
   expires_at: number;
   created_at: number;
   payment: {

@@ -569,7 +569,13 @@
     "chooseWhereAlreadyUsdc": "Elige dónde ya tienes USDC. GatoPago resuelve la entrega al comercio.",
     "confirmPaymentWallet": "Confirma el pago en tu wallet…",
     "dontNeedGatopagoAccount": "No necesitas una cuenta GatoPago. Pagas directamente desde tu wallet.",
-    "connectWalletPay": "Conectar wallet y pagar"
+    "connectWalletPay": "Conectar wallet y pagar",
+    "transfer": "Transferir",
+    "paymentAddress": "Dirección de pago de este cobro",
+    "sendExactly": "Envía {amount} {currency} a esta dirección, en {network}.",
+    "transferHint": "Puede ser en una o varias transferencias. Otra moneda no paga este cobro.",
+    "waitingTransfer": "Esperando tu transferencia…",
+    "paymentReceived": "Pago recibido"
   },
   "Crosschain": {
     "betweenNetworks": "Entre redes",

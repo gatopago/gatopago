@@ -569,7 +569,13 @@
     "chooseWhereAlreadyUsdc": "Choose where you already have USDC. GatoPago takes care of delivering it to the merchant.",
     "confirmPaymentWallet": "Confirm the payment in your wallet…",
     "dontNeedGatopagoAccount": "You don't need a GatoPago account. You pay directly from your wallet.",
-    "connectWalletPay": "Connect wallet and pay"
+    "connectWalletPay": "Connect wallet and pay",
+    "transfer": "Transfer",
+    "paymentAddress": "This request's payment address",
+    "sendExactly": "Send {amount} {currency} to this address, on {network}.",
+    "transferHint": "It can take one or several transfers. Another coin does not pay this request.",
+    "waitingTransfer": "Waiting for your transfer…",
+    "paymentReceived": "Payment received"
   },
   "Crosschain": {
     "betweenNetworks": "Between networks",

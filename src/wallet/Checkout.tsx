@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useEffectEvent, useState, useSyncExternalStore } from 'react';
 import { useAction } from './useAction';
-import { isAddressEqual, parseUnits } from 'viem';
+import { isAddressEqual, parseUnits, type Address } from 'viem';
 import { walletNetwork } from '@gatopago/shared/networks';
 import { paymentCalls } from '@gatopago/shared/payments';
+import { AddressQRCard } from '../consumer/AddressQRCard';
 import { ConsumerFrame } from '../consumer/ConsumerFrame';
 import { CrosschainTimeline } from '../consumer/CrosschainTimeline';
 import { NavigationLink } from '../consumer/NavigationLink';
@@ -174,7 +175,9 @@ function Request({
         state={intent.status === 'succeeded' ? 'success' : 'failed'}
         lead={
           intent.status === 'succeeded'
-            ? t('requestAlreadyPaid')
+            ? mine
+              ? t('paymentReceived')
+              : t('requestAlreadyPaid')
             : intent.status === 'canceled'
               ? t('merchantCanceledRequest')
               : t('requestExpired')
@@ -216,7 +219,12 @@ function Pay({
 }) {
   const locale = useLocale();
   const t = useTranslations('Checkout');
-  const [method, setMethod] = useState<'balance' | 'external'>(session ? 'balance' : 'external');
+  const methods = [
+    ...(session ? (['balance'] as const) : []),
+    'external' as const,
+    ...(intent.deposit_address ? (['transfer'] as const) : []),
+  ];
+  const [method, setMethod] = useState<(typeof methods)[number]>(methods[0]);
   const [hasWallet] = useState(() => typeof window !== 'undefined' && 'ethereum' in window);
   const decimals = intentDecimals(intent);
   const amount = parseUnits(intent.amount, decimals);
@@ -234,11 +242,11 @@ function Pay({
         ) : null}
         {session ? <Balance intent={intent} settings={settings} session={session} /> : null}
       </MoneyPanel>
-      {session ? (
+      {methods.length > 1 ? (
         <div className="mb-2">
           <SectionLabel>{t('payWith')}</SectionLabel>
           <div className="seg-track seg-track-block">
-            {(['balance', 'external'] as const).map((value) => (
+            {methods.map((value) => (
               <button
                 key={value}
                 type="button"
@@ -247,13 +255,24 @@ function Pay({
                 aria-pressed={method === value}
                 onClick={() => setMethod(value)}
               >
-                {value === 'external' ? t('anotherWallet') : t('gatopagoBalance')}
+                {value === 'balance'
+                  ? t('gatopagoBalance')
+                  : value === 'external'
+                    ? t('anotherWallet')
+                    : t('transfer')}
               </button>
             ))}
           </div>
         </div>
       ) : null}
-      {session && method === 'balance' ? (
+      {method === 'transfer' && intent.deposit_address ? (
+        <TransferPay
+          intent={intent}
+          address={intent.deposit_address}
+          settings={settings}
+          onPaid={onPaid}
+        />
+      ) : session && method === 'balance' ? (
         <AccountPay intent={intent} settings={settings} session={session} onPaid={onPaid} />
       ) : session || hasWallet ? (
         <WalletPay intent={intent} settings={settings} hasWallet={hasWallet} onPaid={onPaid} />
@@ -501,5 +520,93 @@ function WalletPay({
         </button>
       </TransactionActions>
     </>
+  );
+}
+
+/**
+ * Pays with a plain transfer to the intent's deposit address, from any wallet: the address is the
+ * same on every network it can be paid on, and the QR asks for the amount on the one chosen. The
+ * page reads the intent every 10 s while it is visible, and shows the payment once Flow sees it.
+ */
+function TransferPay({
+  intent,
+  address,
+  settings,
+  onPaid,
+}: {
+  intent: Intent;
+  address: Address;
+  settings: ClientSettings;
+  onPaid: (intent: Intent) => void;
+}) {
+  const locale = useLocale();
+  const t = useTranslations('Checkout');
+  const payable = payableNetworks(settings, intent);
+  const [network, setNetwork] = useState(
+    payable.includes(settings.homeNetwork) ? settings.homeNetwork : payable[0],
+  );
+  const decimals = intentDecimals(intent);
+  const amount = parseUnits(intent.amount, decimals);
+  const { chain, usdc } = walletNetwork(network);
+  const token = intent.currency === 'USDC' ? usdc : coinToken(network, intent.currency);
+  // The page's callback changes with each render; the reads must not start over with it.
+  const paid = useEffectEvent(onPaid);
+
+  useEffect(() => {
+    const leaving = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const check = async () => {
+      if (!document.hidden) {
+        const next = await readCheckout(settings, intent.id, leaving.signal).catch(() => null);
+        if (next && next.status !== 'requires_payment') return paid(next);
+      }
+      if (!leaving.signal.aborted) timer = setTimeout(check, 10_000);
+    };
+    timer = setTimeout(check, 10_000);
+    return () => {
+      leaving.abort();
+      clearTimeout(timer);
+    };
+  }, [settings, intent.id]);
+
+  return (
+    <div className="mt-6 border-t border-border pt-5">
+      {payable.length > 1 ? (
+        <div className="mb-5">
+          <SectionLabel>{t('whereUsdc')}</SectionLabel>
+          <SelectMenu
+            label={t('sourceNetworkUsdc')}
+            showLabel={false}
+            value={network}
+            options={payable.map((id) => ({ value: id, label: networkName(id), network: id }))}
+            onChange={setNetwork}
+          />
+        </div>
+      ) : null}
+      <p className="mb-4 text-center text-[14px] leading-relaxed">
+        {t('sendExactly', {
+          amount: formatAmount(amount, decimals, locale, 2),
+          currency: intent.currency,
+          network: networkName(network),
+        })}
+      </p>
+      <AddressQRCard
+        address={address}
+        chainId={chain.id}
+        token={token}
+        amount={amount}
+        addressLabel={t('paymentAddress')}
+      />
+      <p className="mt-3 text-center text-[12px] leading-relaxed text-text-faint">
+        {t('transferHint')}
+      </p>
+      <p
+        role="status"
+        aria-live="polite"
+        className="animate-pulse-soft mt-4 text-center text-[13px] text-text-muted"
+      >
+        {t('waitingTransfer')}
+      </p>
+    </div>
   );
 }
