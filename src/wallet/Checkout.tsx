@@ -22,8 +22,11 @@ import { StageOverlay } from '../consumer/StageOverlay';
 import { TxResult } from '../consumer/TxResult';
 import type { ClientSettings } from '../lib/settings';
 import { useCopy } from '../lib/useCopy';
-import { networkName, shortAddress, USDC_DECIMALS } from './account';
+import { networkName, shortAddress } from './account';
 import {
+  coinToken,
+  intentDecimals,
+  payableNetworks,
   payWithAccount,
   payWithBrowserWallet,
   planAccountPayment,
@@ -31,7 +34,7 @@ import {
   type Intent,
   type Plan,
 } from './flow';
-import { formatBalance, formatUsdc, useBalances } from './balances';
+import { formatAmount, formatBalance, formatHolding, useBalances } from './balances';
 import { useFailureMessage } from './messages';
 import { currentSession, subscribeSession, type Session } from './session';
 import { useTranslations, useLocale } from 'next-intl';
@@ -115,7 +118,8 @@ function Request({
 }) {
   const locale = useLocale();
   const t = useTranslations('Checkout');
-  const amount = parseUnits(intent.amount, USDC_DECIMALS);
+  const decimals = intentDecimals(intent);
+  const amount = parseUnits(intent.amount, decimals);
   const merchant = merchantLabel(intent);
   const payment = intent.payment;
   const mine =
@@ -133,8 +137,8 @@ function Request({
         receipt={{
           kind: 'paid',
           amount,
-          currency: 'USDC',
-          decimals: USDC_DECIMALS,
+          currency: intent.currency,
+          decimals,
           counterparty: merchant,
           reference: intent.description,
           hash: payment.transaction_hash,
@@ -150,8 +154,8 @@ function Request({
       <TxResult
         state="pending"
         lead={t('paymentProgress')}
-        amount={formatUsdc(amount, locale)}
-        unit="USDC"
+        amount={formatAmount(amount, decimals, locale, 2)}
+        unit={intent.currency}
         body={t('confirmingNetworkLeavePayment')}
       >
         <div className="mt-4 w-full">
@@ -175,8 +179,8 @@ function Request({
               ? t('merchantCanceledRequest')
               : t('requestExpired')
         }
-        amount={formatUsdc(amount, locale)}
-        unit="USDC"
+        amount={formatAmount(amount, decimals, locale, 2)}
+        unit={intent.currency}
       >
         {intent.description ? (
           <p className="mt-3 text-[14px] text-text-muted">{intent.description}</p>
@@ -214,20 +218,21 @@ function Pay({
   const t = useTranslations('Checkout');
   const [method, setMethod] = useState<'balance' | 'external'>(session ? 'balance' : 'external');
   const [hasWallet] = useState(() => typeof window !== 'undefined' && 'ethereum' in window);
-  const amount = parseUnits(intent.amount, USDC_DECIMALS);
+  const decimals = intentDecimals(intent);
+  const amount = parseUnits(intent.amount, decimals);
   // Signing in comes back to this payment.
   const signIn = `/login?next=${encodeURIComponent(`/pay/${intent.id}`)}`;
   return (
     <>
       <MoneyPanel className="mb-6 flex flex-col items-center text-center">
         <p className="tabular max-w-full break-words font-display text-[clamp(40px,13vw,56px)] leading-tight">
-          {formatUsdc(amount, locale)}
-          <span className="ml-2 text-[0.42em] text-text-muted">USDC</span>
+          {formatAmount(amount, decimals, locale, 2)}
+          <span className="ml-2 text-[0.42em] text-text-muted">{intent.currency}</span>
         </p>
         {intent.description ? (
           <p className="mt-1 text-[14px] leading-relaxed text-text-muted">{intent.description}</p>
         ) : null}
-        {session ? <Balance settings={settings} session={session} /> : null}
+        {session ? <Balance intent={intent} settings={settings} session={session} /> : null}
       </MoneyPanel>
       {session ? (
         <div className="mb-2">
@@ -289,17 +294,45 @@ function CopyCheckoutLink() {
   );
 }
 
-function Balance({ settings, session }: { settings: ClientSettings; session: Session }) {
+/**
+ * What the account holds of the intent's coin on `networkId`: USDC there, or the other coin on its
+ * own network.
+ */
+function useCoinBalance(intent: Intent, settings: ClientSettings, session: Session) {
+  const { balances, holding } = useBalances(settings, session);
+  return (networkId: string) => {
+    if (intent.currency === 'USDC') return balances[networkId];
+    const token = coinToken(networkId, intent.currency);
+    return token ? holding({ networkId, token }) : null;
+  };
+}
+
+function Balance({
+  intent,
+  settings,
+  session,
+}: {
+  intent: Intent;
+  settings: ClientSettings;
+  session: Session;
+}) {
   const locale = useLocale();
   const t = useTranslations('Checkout');
-  const { balances } = useBalances(settings, session);
-  // USDC lives on the home network, as everywhere in the app. Nothing is said about other networks:
-  // a payment comes from one that covers it on its own (`planAccountPayment`).
-  const available = balances[settings.homeNetwork];
+  const balanceOn = useCoinBalance(intent, settings, session);
+  // USDC lives on the home network, as everywhere in the app; another coin on its own network.
+  // Nothing is said about other networks: a payment comes from one that covers it on its own
+  // (`planAccountPayment`).
+  const where =
+    intent.currency === 'USDC' ? settings.homeNetwork : payableNetworks(settings, intent)[0];
+  const available = where ? balanceOn(where) : null;
   if (typeof available !== 'bigint') return null;
   return (
     <p className="mt-3 text-[12px] text-text-faint">
-      {t('balance')}: {formatBalance(available, locale)} USDC
+      {t('balance')}:{' '}
+      {intent.currency === 'USDC'
+        ? formatBalance(available, locale)
+        : formatHolding(available, intentDecimals(intent), locale)}{' '}
+      {intent.currency}
     </p>
   );
 }
@@ -318,10 +351,12 @@ function AccountPay({
   const locale = useLocale();
   const t = useTranslations('Checkout');
   const { balances, refresh } = useBalances(settings, session);
+  const balanceOn = useCoinBalance(intent, settings, session);
   const [plan, setPlan] = useState<Plan | null>(null);
   const { busy, error, run: perform } = useAction();
 
-  const amount = parseUnits(intent.amount, USDC_DECIMALS);
+  const decimals = intentDecimals(intent);
+  const amount = parseUnits(intent.amount, decimals);
   return (
     <>
       <StageOverlay label={busy && !plan ? t('preparingPayment') : null} />
@@ -337,7 +372,7 @@ function AccountPay({
           disabled={busy || Object.keys(balances).length === 0}
           onClick={() =>
             perform(async () =>
-              setPlan(await planAccountPayment(settings, session, intent, balances)),
+              setPlan(await planAccountPayment(settings, session, intent, balanceOn)),
             )
           }
         >
@@ -348,8 +383,8 @@ function AccountPay({
         <ConfirmSheet
           title={t('confirmPayment')}
           amountLabel={t('send')}
-          amount={formatUsdc(plan.total, locale)}
-          unit="USDC"
+          amount={formatAmount(plan.total, decimals, locale, 2)}
+          unit={intent.currency}
           warning={t('checkWhoPayingPayment')}
           confirmLabel={t('confirmPay')}
           paymentAction
@@ -372,7 +407,12 @@ function AccountPay({
             rows={[
               [t('from'), networkName(plan.network)],
               ...(plan.total > amount
-                ? ([[t('feesUp'), `${formatUsdc(plan.total - amount, locale)} USDC`]] as const)
+                ? ([
+                    [
+                      t('feesUp'),
+                      `${formatAmount(plan.total - amount, decimals, locale, 2)} ${intent.currency}`,
+                    ],
+                  ] as const)
                 : []),
             ]}
           />
@@ -400,7 +440,10 @@ function WalletPay({
   onPaid: (intent: Intent) => void;
 }) {
   const t = useTranslations('Checkout');
-  const [network, setNetwork] = useState(settings.homeNetwork);
+  const payable = payableNetworks(settings, intent);
+  const [network, setNetwork] = useState(
+    payable.includes(settings.homeNetwork) ? settings.homeNetwork : payable[0],
+  );
   // One wallet prompt at a time: a double tap must not ask the wallet twice.
   const { busy, error, run } = useAction();
   if (!hasWallet)
@@ -411,24 +454,26 @@ function WalletPay({
     );
   return (
     <>
-      <div className="mt-6 border-t border-border pt-5">
-        <SectionLabel>{t('whereUsdc')}</SectionLabel>
-        <SelectMenu
-          label={t('sourceNetworkUsdc')}
-          showLabel={false}
-          value={network}
-          options={settings.networks.map((id) => ({
-            value: id,
-            label: networkName(id),
-            network: id,
-          }))}
-          onChange={setNetwork}
-          disabled={busy}
-        />
-        <p className="mt-2 text-[12px] leading-relaxed text-text-faint">
-          {t('chooseWhereAlreadyUsdc')}
-        </p>
-      </div>
+      {payable.length > 1 ? (
+        <div className="mt-6 border-t border-border pt-5">
+          <SectionLabel>{t('whereUsdc')}</SectionLabel>
+          <SelectMenu
+            label={t('sourceNetworkUsdc')}
+            showLabel={false}
+            value={network}
+            options={payable.map((id) => ({
+              value: id,
+              label: networkName(id),
+              network: id,
+            }))}
+            onChange={setNetwork}
+            disabled={busy}
+          />
+          <p className="mt-2 text-[12px] leading-relaxed text-text-faint">
+            {t('chooseWhereAlreadyUsdc')}
+          </p>
+        </div>
+      ) : null}
       {error ? (
         <p role="alert" className="mt-4 text-center text-[13px] leading-relaxed text-danger">
           {error}

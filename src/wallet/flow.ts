@@ -9,6 +9,7 @@ import {
   type EIP1193Provider,
   type Hex,
 } from 'viem';
+import { coinDecimals } from '@gatopago/shared/assets';
 import { crosschainFee } from '@gatopago/shared/crosschain';
 import { walletNetwork } from '@gatopago/shared/networks';
 import {
@@ -27,6 +28,8 @@ import type { Session } from './session';
 export interface Intent {
   id: string;
   amount: string;
+  /** The coin it is priced in: USDC, or another coin of a network (AUSD), paid on its own network. */
+  currency: string;
   status: 'requires_payment' | 'processing' | 'succeeded' | 'canceled' | 'expired';
   description: string | null;
   checkout_url: string;
@@ -41,9 +44,26 @@ export interface Intent {
   merchant?: { name: string | null; address: Address };
   /** On the checkout read: what the payer adds to the amount (Circle's fee aside, when crossing). */
   fee?: string;
+  /** On the checkout read: the networks it can be paid on (every one for USDC, its own otherwise). */
+  networks?: string[];
 }
 
-/** Flow's authorization to pay an intent from `network`, and the USDC it costs there. */
+/** The decimals of the intent's coin: Flow only prices intents in coins GatoPago knows. */
+export function intentDecimals(intent: Intent): number {
+  const decimals = coinDecimals(intent.currency);
+  if (decimals === null) throw new Error('UNSUPPORTED_CURRENCY');
+  return decimals;
+}
+
+/** The contract of a coin other than USDC on `networkId`, if it lives there. */
+export const coinToken = (networkId: string, symbol: string) =>
+  walletNetwork(networkId).tokens?.find((token) => token.symbol === symbol)?.address;
+
+/** The networks of this app the intent can be paid on. */
+export const payableNetworks = (settings: ClientSettings, intent: Intent) =>
+  settings.networks.filter((id) => (intent.networks ?? settings.networks).includes(id));
+
+/** Flow's authorization to pay an intent from `network`, and what it costs there in its coin. */
 export interface Plan {
   network: string;
   total: bigint;
@@ -54,16 +74,21 @@ export interface Plan {
 export const readCheckout = (settings: ClientSettings, id: string, signal?: AbortSignal) =>
   api<Intent>(settings.apiOrigin, `/checkout/v1/${id}`, { signal });
 
-async function authorize(settings: ClientSettings, id: string, payer: Address, network: string) {
+async function authorize(
+  settings: ClientSettings,
+  intent: Intent,
+  payer: Address,
+  network: string,
+) {
   const authorization = await api<{
     total: string;
     payment: Record<string, string | number>;
     signature: Hex;
-  }>(settings.apiOrigin, `/checkout/v1/${id}/authorize`, { body: { payer, network } });
+  }>(settings.apiOrigin, `/checkout/v1/${intent.id}/authorize`, { body: { payer, network } });
   const { payment } = authorization;
   return {
     network,
-    total: parseUnits(authorization.total, 6),
+    total: parseUnits(authorization.total, intentDecimals(intent)),
     signature: authorization.signature,
     payment: {
       ...(payment as unknown as Payment),
@@ -138,35 +163,41 @@ async function settle(settings: ClientSettings, id: string, network: string, has
 }
 
 /**
- * How the GatoPago account pays `intent`: from the home network when it holds the total, otherwise
- * from the network holding the most (the router crosses to the merchant with CCTP). The network is
- * chosen here, with the checkout's fee and Circle's, and Flow is asked once: it authorizes one
- * network at a time.
+ * How the GatoPago account pays `intent`, given what it holds of the intent's coin on each network
+ * (`balanceOn`): in USDC, from the home network when it holds the total, otherwise from the network
+ * holding the most (the router crosses to the merchant with CCTP); in another coin, from its own
+ * network. The network is chosen here, with the checkout's fee and Circle's, and Flow is asked once:
+ * it authorizes one network at a time.
  */
 export async function planAccountPayment(
   settings: ClientSettings,
   session: Session,
   intent: Intent,
-  balances: Record<string, bigint | null>,
+  balanceOn: (networkId: string) => bigint | null | undefined,
 ): Promise<Plan> {
-  const amount = parseUnits(intent.amount, 6);
-  const fee = parseUnits(intent.fee ?? '0', 6);
+  const decimals = intentDecimals(intent);
+  const amount = parseUnits(intent.amount, decimals);
+  const fee = parseUnits(intent.fee ?? '0', decimals);
+  const usdc = intent.currency === 'USDC';
   const home = walletNetwork(settings.homeNetwork);
-  const networks = [
-    settings.homeNetwork,
-    ...settings.networks
-      .filter((id) => id !== settings.homeNetwork)
-      .sort((a, b) => ((balances[b] ?? 0n) > (balances[a] ?? 0n) ? 1 : -1)),
-  ];
+  const networks = payableNetworks(settings, intent).sort((a, b) =>
+    usdc && a === settings.homeNetwork
+      ? -1
+      : usdc && b === settings.homeNetwork
+        ? 1
+        : (balanceOn(b) ?? 0n) > (balanceOn(a) ?? 0n)
+          ? 1
+          : -1,
+  );
   for (const network of networks) {
-    const balance = balances[network] ?? 0n;
+    const balance = balanceOn(network) ?? 0n;
     if (balance < amount + fee) continue;
     const crossing =
-      network === settings.homeNetwork
+      !usdc || network === settings.homeNetwork
         ? 0n
         : await crosschainFee(walletNetwork(network), home, amount);
     if (balance < amount + fee + crossing) continue;
-    const plan = await authorize(settings, intent.id, session.wallet.address, network);
+    const plan = await authorize(settings, intent, session.wallet.address, network);
     if (balance < plan.total) throw new Error('INSUFFICIENT_FUNDS');
     return plan;
   }
@@ -210,14 +241,14 @@ export async function payWithBrowserWallet(
   if (sent) return settle(settings, intent.id, sent.network, sent.hash);
   const provider = (window as { ethereum?: EIP1193Provider }).ethereum;
   if (!provider) throw new Error('NO_BROWSER_WALLET');
-  const { chain, usdc } = walletNetwork(network);
+  const { chain } = walletNetwork(network);
   const wallet = createWalletClient({ chain, transport: custom(provider) });
   const [payer] = await wallet.requestAddresses();
   await wallet.switchChain({ id: chain.id }).catch(async () => {
     await wallet.addChain({ chain });
     await wallet.switchChain({ id: chain.id });
   });
-  const plan = await authorize(settings, intent.id, payer, network);
+  const plan = await authorize(settings, intent, payer, network);
   const client = publicClient(settings, network);
   // Wallets may cap the fee right at the current base fee and fail as soon as it rises; this
   // allows it to double before inclusion (EIP-1559: only the actual fee is paid).
@@ -233,7 +264,12 @@ export async function payWithBrowserWallet(
   const permit = await wallet
     .signTypedData({
       account: payer,
-      ...(await paymentPermit(client, target, { owner: payer, value: plan.total, deadline })),
+      ...(await paymentPermit(client, target, {
+        token: plan.payment.token,
+        owner: payer,
+        value: plan.total,
+        deadline,
+      })),
     })
     .catch((error: unknown) => {
       if (
@@ -254,7 +290,7 @@ export async function payWithBrowserWallet(
     const approval = await wallet.writeContract({
       ...(await fees()),
       account: payer,
-      address: usdc,
+      address: plan.payment.token,
       abi: erc20Abi,
       functionName: 'approve',
       args: [target.paymentRouter, plan.total],
@@ -280,7 +316,7 @@ export async function payWithBrowserWallet(
 export const createCharge = (
   settings: ClientSettings,
   session: Session,
-  charge: { amount: string; description?: string },
+  charge: { amount: string; currency: string; description?: string },
   key: string,
 ) =>
   flowApi<Intent>(settings, session, 'payment_intents', {

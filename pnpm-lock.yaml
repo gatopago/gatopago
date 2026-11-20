@@ -18,8 +18,8 @@ importers:
         specifier: file:vendor/gatopago-brand-3.2.0.tgz
         version: file:vendor/gatopago-brand-3.2.0.tgz
       '@gatopago/shared':
-        specifier: file:vendor/gatopago-shared-6.24.0.tgz
-        version: file:vendor/gatopago-shared-6.24.0.tgz(@category-labs/mera@0.2.0(viem@2.55.19(typescript@6.0.3)(zod@4.5.4)))(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)(zod@4.5.4)
+        specifier: file:vendor/gatopago-shared-6.25.0.tgz
+        version: file:vendor/gatopago-shared-6.25.0.tgz(@category-labs/mera@0.2.0(viem@2.55.19(typescript@6.0.3)(zod@4.5.4)))(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)(zod@4.5.4)
       firebase:
         specifier: ^12.19.0
         version: 12.19.0
@@ -666,9 +666,9 @@ packages:
     resolution: {integrity: sha512-9ScKf37QVJvZdDn2lsultKgXC1rcSuVCte1njOVTSyKVoaFUVmDPVe41OEqAfJg60SamdIKInjPWbEjosdfAFw==, tarball: file:vendor/gatopago-brand-3.2.0.tgz}
     version: 3.2.0
 
-  '@gatopago/shared@file:vendor/gatopago-shared-6.24.0.tgz':
-    resolution: {integrity: sha512-BCvS5KZzlVQcX3HhN1Wuru1tQg/AeyYeLtjh/DmUFDGwGHNMRH5gZbhwZqVyPheRikqEZ3OoT1vM0GofdKbgtQ==, tarball: file:vendor/gatopago-shared-6.24.0.tgz}
-    version: 6.24.0
+  '@gatopago/shared@file:vendor/gatopago-shared-6.25.0.tgz':
+    resolution: {integrity: sha512-yW90RRYf4LYqZPY2baSlX2YN3gAdyTWpyyVFvQVTVo/wu3p3fhNCM0ab8EabmCUNX6m+KeHj877fAXq/H/IXsQ==, tarball: file:vendor/gatopago-shared-6.25.0.tgz}
+    version: 6.25.0
     engines: {node: '>=24'}
     peerDependencies:
       '@category-labs/mera': 0.2.0
@@ -3304,7 +3304,7 @@ snapshots:
 
   '@gatopago/brand@file:vendor/gatopago-brand-3.2.0.tgz': {}
 
-  '@gatopago/shared@file:vendor/gatopago-shared-6.24.0.tgz(@category-labs/mera@0.2.0(viem@2.55.19(typescript@6.0.3)(zod@4.5.4)))(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)(zod@4.5.4)':
+  '@gatopago/shared@file:vendor/gatopago-shared-6.25.0.tgz(@category-labs/mera@0.2.0(viem@2.55.19(typescript@6.0.3)(zod@4.5.4)))(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)(zod@4.5.4)':
     dependencies:
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0

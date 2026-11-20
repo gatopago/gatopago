@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { formatUnits, parseUnits } from 'viem';
+import { walletAssets } from '@gatopago/shared/assets';
 import type { ClientSettings } from '../lib/settings';
 import { copyText } from '../lib/useCopy';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { MeliSprite } from '../marketing/MeliSprite';
-import { networkName, USDC_DECIMALS } from '../wallet/account';
-import { formatUsdc } from '../wallet/balances';
-import { createCharge, listCharges, type Intent } from '../wallet/flow';
+import { networkName } from '../wallet/account';
+import { formatAmount } from '../wallet/balances';
+import { createCharge, intentDecimals, listCharges, type Intent } from '../wallet/flow';
 import { useFailureMessage } from '../wallet/messages';
 import { exactUnits, tooPrecise } from '../lib/amount';
 import type { Session } from '../wallet/session';
@@ -21,14 +22,26 @@ import { BackHeader, MoneyPanel, SectionLabel, TransactionActions } from './Prim
 import { AmountInput } from './NormalizedInput';
 import { RowSkeletonList } from './Skeleton';
 import { TokenIcon } from './TokenIcon';
+import { TokenSelect } from './TokenSelect';
 import { useTranslations, useLocale } from 'next-intl';
 
-/** What the result screen shows: a Flow charge, or the profile link for an open amount. */
-type Link = { url: string; amount: bigint | null; description: string };
+/**
+ * What the result screen shows: a Flow charge, or the profile link for an open amount, with the coin
+ * it is paid in and the network that receives it.
+ */
+type Link = {
+  url: string;
+  amount: bigint | null;
+  currency: string;
+  decimals: number;
+  network: string;
+  description: string;
+};
 
 /**
- * `/charge`, V2's Create link: a fixed amount becomes a GatoPago Flow charge (`/pay/:id`); an open
- * amount shares the member's `@username` page, where the payer chooses how much.
+ * `/charge`, V2's Create link: a fixed amount becomes a GatoPago Flow charge (`/pay/:id`), in USDC or
+ * another coin of the networks (AUSD, paid and received on its own network); an open amount shares
+ * the member's `@username` page, where the payer chooses how much in USDC.
  */
 export function ChargeScreen({
   settings,
@@ -41,6 +54,17 @@ export function ChargeScreen({
   const locale = useLocale();
   const t = useTranslations('Charge');
   const { profile } = useProfile();
+  // USDC, or a coin of a network that is not a test token nor a network's own coin (AUSD).
+  const coins = walletAssets(settings.networks).filter(
+    (asset) =>
+      asset.symbol === 'USDC' ||
+      (!asset.test && asset.holdings.every(({ token }) => token !== null)),
+  );
+  const [symbol, setSymbol] = useState('USDC');
+  const coin = coins.find((asset) => asset.symbol === symbol) ?? coins[0];
+  const usdc = coin.symbol === 'USDC';
+  // USDC is received on the home network; another coin, on its own.
+  const receivesOn = usdc ? settings.homeNetwork : coin.holdings[0].networkId;
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
@@ -71,12 +95,20 @@ export function ChargeScreen({
     return () => controller.abort();
   }, [settings, session, link, revision]);
 
-  // Empty or zero asks the payer for the amount, on purpose; more than USDC's 6 decimals is a
-  // mistake to fix, never an open link.
-  const precise = !tooPrecise(amount, USDC_DECIMALS);
+  // Empty or zero asks the payer for the amount, on purpose (in USDC, on the profile page); more
+  // decimals than the coin has is a mistake to fix, never an open link.
+  const precise = !tooPrecise(amount, coin.decimals);
   const value =
-    precise && /^(\d+\.?\d*|\.\d+)$/.test(amount) ? exactUnits(amount, USDC_DECIMALS) : 0n;
-  const open = value === 0n && precise;
+    precise && /^(\d+\.?\d*|\.\d+)$/.test(amount) ? exactUnits(amount, coin.decimals) : 0n;
+  const open = value === 0n && precise && usdc;
+  const linkFor = (url: string, linkAmount: bigint | null, text: string): Link => ({
+    url,
+    amount: linkAmount,
+    currency: coin.symbol,
+    decimals: coin.decimals,
+    network: receivesOn,
+    description: text,
+  });
   const shareText = (url: string) => t('payMeGatopago', { url });
 
   function create() {
@@ -84,12 +116,13 @@ export function ChargeScreen({
     if (!precise) return;
     if (open) {
       if (!profile?.username) return;
-      setLink({ url: `${settings.webOrigin}/@${profile.username}`, amount: null, description });
+      setLink(linkFor(`${settings.webOrigin}/@${profile.username}`, null, description));
       return;
     }
     setBusy(true);
     const charge = {
       amount,
+      currency: coin.symbol,
       ...(description.trim() ? { description: description.trim() } : {}),
     };
     const draft = JSON.stringify(charge);
@@ -97,7 +130,7 @@ export function ChargeScreen({
     createCharge(settings, session, charge, attempt.current.key)
       .then((intent) => {
         attempt.current = null;
-        setLink({ url: intent.checkout_url, amount: value, description: description.trim() });
+        setLink(linkFor(intent.checkout_url, value, description.trim()));
         setRevision((current) => current + 1);
       })
       .catch((failure: unknown) => setError(messageFor(failure)))
@@ -109,9 +142,17 @@ export function ChargeScreen({
       setPaid(intent);
       return;
     }
+    const decimals = intentDecimals(intent);
     setLink({
       url: intent.checkout_url,
-      amount: parseUnits(intent.amount, USDC_DECIMALS),
+      amount: parseUnits(intent.amount, decimals),
+      currency: intent.currency,
+      decimals,
+      network:
+        intent.currency === 'USDC'
+          ? settings.homeNetwork
+          : (coins.find((asset) => asset.symbol === intent.currency)?.holdings[0].networkId ??
+            settings.homeNetwork),
       description: intent.description ?? '',
     });
   }
@@ -165,8 +206,8 @@ export function ChargeScreen({
             </div>
             {link.amount ? (
               <p className="type-mono relative z-1 mb-2 text-[34px] font-bold leading-none">
-                {formatUsdc(link.amount, locale)}
-                <span className="ml-1.5 text-[18px] text-text-muted">USDC</span>
+                {formatAmount(link.amount, link.decimals, locale, 2)}
+                <span className="ml-1.5 text-[18px] text-text-muted">{link.currency}</span>
               </p>
             ) : (
               <p className="relative z-1 mb-2 font-display text-[24px] text-cat-300">
@@ -179,7 +220,7 @@ export function ChargeScreen({
               </p>
             ) : null}
             <p className="relative z-1 mt-5 text-[12px] text-text-faint">
-              {t('paidUsdc', { homeNetwork: networkName(settings.homeNetwork) })}
+              {t('paidIn', { symbol: link.currency, network: networkName(link.network) })}
             </p>
           </MoneyPanel>
         </div>
@@ -219,7 +260,7 @@ export function ChargeScreen({
                 void exportLink(() =>
                   downloadCard(
                     card.current,
-                    `gatopago-cobro-${link.amount ? formatUnits(link.amount, USDC_DECIMALS) : 'abierto'}-USDC.png`,
+                    `gatopago-cobro-${link.amount ? formatUnits(link.amount, link.decimals) : 'abierto'}-${link.currency}.png`,
                   ),
                 )
               }
@@ -269,11 +310,29 @@ export function ChargeScreen({
           onChange={setAmount}
           className="amount-input tabular w-full max-w-[260px] bg-transparent text-center font-display leading-none text-text placeholder:text-text-faint"
         />
-        <span className="mt-3 inline-flex items-center gap-2 text-[13px] font-semibold">
-          <TokenIcon symbol="USDC" size={22} />
-          USDC
-        </span>
-        <p className="mt-3 text-center text-[12px] text-text-faint">{t('leave0PayerChooses')}</p>
+        {coins.length > 1 ? (
+          <div className="mt-3">
+            <TokenSelect
+              value={coin.symbol}
+              label={t('currency')}
+              options={coins.map((asset) => ({
+                value: asset.symbol,
+                symbol: asset.symbol,
+                label:
+                  asset.symbol === 'USDC' ? asset.name : networkName(asset.holdings[0].networkId),
+              }))}
+              onChange={setSymbol}
+            />
+          </div>
+        ) : (
+          <span className="mt-3 inline-flex items-center gap-2 text-[13px] font-semibold">
+            <TokenIcon symbol="USDC" size={22} />
+            USDC
+          </span>
+        )}
+        {usdc ? (
+          <p className="mt-3 text-center text-[12px] text-text-faint">{t('leave0PayerChooses')}</p>
+        ) : null}
       </MoneyPanel>
       <MoneyPanel className="mb-5">
         <label htmlFor="charge-reference" className="mb-2 block text-[13px] text-text-muted">
@@ -297,7 +356,7 @@ export function ChargeScreen({
       ) : null}
       {!precise ? (
         <p role="alert" className="mb-4 text-center text-[13px] text-danger">
-          {t('usdcDecimals')}
+          {t('tooManyDecimals', { symbol: coin.symbol, decimals: coin.decimals })}
         </p>
       ) : null}
       {open && profile && !profile.username ? (
@@ -314,7 +373,7 @@ export function ChargeScreen({
       <div className="pt-5">
         <button
           type="button"
-          disabled={busy || !precise || (open && !profile?.username)}
+          disabled={busy || !precise || (value === 0n && !open) || (open && !profile?.username)}
           className="btn btn-primary btn-block"
           onClick={create}
         >
@@ -360,7 +419,13 @@ export function ChargeScreen({
                   >
                     <div className="min-w-0">
                       <p className="truncate text-[14px]">
-                        {formatUsdc(parseUnits(intent.amount, USDC_DECIMALS), locale)} USDC
+                        {formatAmount(
+                          parseUnits(intent.amount, intentDecimals(intent)),
+                          intentDecimals(intent),
+                          locale,
+                          2,
+                        )}{' '}
+                        {intent.currency}
                       </p>
                       <p className="truncate text-[12px] text-text-faint">
                         {new Date(intent.created_at * 1000).toLocaleDateString(locale, {
@@ -403,9 +468,9 @@ export function ChargeScreen({
           onClose={() => setPaid(null)}
           receipt={{
             kind: 'received',
-            amount: parseUnits(paid.amount, USDC_DECIMALS),
-            currency: 'USDC',
-            decimals: USDC_DECIMALS,
+            amount: parseUnits(paid.amount, intentDecimals(paid)),
+            currency: paid.currency,
+            decimals: intentDecimals(paid),
             counterparty: paid.payment.payer,
             reference: paid.description,
             hash: paid.payment.transaction_hash,
@@ -413,12 +478,15 @@ export function ChargeScreen({
             date: (paid.payment.paid_at ?? paid.created_at) * 1000,
           }}
           action={
-            <NavigationLink
-              href={`/team?${new URLSearchParams({ split: paid.amount, reference: paid.description ?? '' })}`}
-              className="btn-text mt-2 w-full text-[#fff8f0]"
-            >
-              {t('splitPaymentAmongSeveral')}
-            </NavigationLink>
+            // Paying a team splits USDC from the home network.
+            paid.currency !== 'USDC' ? undefined : (
+              <NavigationLink
+                href={`/team?${new URLSearchParams({ split: paid.amount, reference: paid.description ?? '' })}`}
+                className="btn-text mt-2 w-full text-[#fff8f0]"
+              >
+                {t('splitPaymentAmongSeveral')}
+              </NavigationLink>
+            )
           }
         />
       ) : null}

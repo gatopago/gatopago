@@ -77,6 +77,7 @@ export async function DevelopersDocs({
   -H "Idempotency-Key: order-1042" \\
   -d '{
     "amount": "18.00",
+    "currency": "USDC",
     "description": "${t('order')}",
     "metadata": { "order_id": "1042" },
     "expires_in": 3600

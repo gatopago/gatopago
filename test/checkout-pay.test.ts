@@ -12,7 +12,8 @@ const fake = vi.hoisted(() => ({
   authorize: vi.fn(),
 }));
 // Circle's fee to cross from another network: 0.1 USDC.
-vi.mock('@gatopago/shared/crosschain', () => ({ crosschainFee: async () => 100_000n }));
+const crosschainFee = vi.hoisted(() => vi.fn(async () => 100_000n));
+vi.mock('@gatopago/shared/crosschain', () => ({ crosschainFee }));
 vi.mock('../src/wallet/operations', () => ({ send: fake.send }));
 vi.mock('../src/wallet/account', () => ({
   publicClient: () => ({
@@ -55,7 +56,7 @@ vi.mock('../src/wallet/api', async (original) => ({
 
 const settings = { apiOrigin: 'https://api.gatopago.com' } as ClientSettings;
 const session = {} as Session;
-const intent = { id: 'pi_1' } as Intent;
+const intent = { id: 'pi_1', currency: 'USDC' } as Intent;
 const plan = { network: 'eip155:421614' } as Plan;
 
 beforeEach(() => {
@@ -91,13 +92,38 @@ describe('choosing the network an account pays from', () => {
         amount: '17.5',
         fee: '0.5',
       },
-      { 'eip155:421614': 17_900_000n, 'eip155:43113': 30_000_000n },
+      (id) => ({ 'eip155:421614': 17_900_000n, 'eip155:43113': 30_000_000n })[id],
     );
     expect(fake.authorize).toHaveBeenCalledOnce();
     expect(fake.authorize).toHaveBeenCalledWith({
       payer: payer.wallet.address,
       network: 'eip155:43113',
     });
+  });
+
+  it('pays another coin on its own network, where it never crosses', async () => {
+    const { planAccountPayment } = await import('../src/wallet/flow');
+    crosschainFee.mockClear();
+    const networks = {
+      homeNetwork: 'eip155:421614',
+      networks: ['eip155:421614', 'eip155:43113', 'eip155:10143'],
+    };
+    const payer = {
+      wallet: { address: '0x2222222222222222222222222222222222222222' },
+    } as unknown as Session;
+    // AUSD lives on Monad: the USDC elsewhere does not count, and nothing crosses.
+    await planAccountPayment(
+      { ...settings, ...networks },
+      payer,
+      { ...intent, amount: '17.5', fee: '0.5', currency: 'AUSD', networks: ['eip155:10143'] },
+      (id) => ({ 'eip155:421614': 90_000_000n, 'eip155:10143': 18_000_000n })[id],
+    );
+    expect(fake.authorize).toHaveBeenCalledOnce();
+    expect(fake.authorize).toHaveBeenCalledWith({
+      payer: payer.wallet.address,
+      network: 'eip155:10143',
+    });
+    expect(crosschainFee).not.toHaveBeenCalled();
   });
 });
 

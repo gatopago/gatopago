@@ -192,11 +192,12 @@
     }
   },
   "Charge": {
+    "currency": "Currency",
     "payMeGatopago": "Pay me with GatoPago: {url}",
     "couldntExport": "Couldn't export",
     "paymentLink": "Your payment link",
     "openAmount": "Open amount",
-    "paidUsdc": "Paid in USDC on {homeNetwork}",
+    "paidIn": "Paid in {symbol} on {network}",
     "linkCopied": "Link copied",
     "share": "Share",
     "downloadQr": "Download QR",
@@ -210,7 +211,7 @@
     "leave0PayerChooses": "Leave it at 0 and the payer chooses the amount.",
     "noteOptional": "Note (optional)",
     "eGLogoDesign": "E.g. Logo design",
-    "usdcDecimals": "USDC takes up to 6 decimals.",
+    "tooManyDecimals": "{symbol} allows up to {decimals} decimals.",
     "withoutAmountLinkUses": "Without an amount, the link uses your username. <link>Choose it</link>",
     "creating": "Creating…",
     "createLinkWithoutAmount": "Create link without an amount",
