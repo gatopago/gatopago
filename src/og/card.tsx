@@ -14,7 +14,7 @@ import { formatUsdc, type PaymentPreview, type ProfilePreview } from './data';
 export const OG_SIZE = { width: 1200, height: 630 } as const;
 
 /** Cards that do not depend on data: built once, with the site. */
-export const OG_PAGES = ['home', 'developers', 'demo'] as const;
+export const OG_PAGES = ['home', 'developers', 'cascabel', 'demo'] as const;
 export type OgPage = (typeof OG_PAGES)[number];
 
 const ink = '#0B0B0F';
@@ -225,23 +225,15 @@ export function pageImage(locale: Locale, page: OgPage) {
       amount: '18.00',
       concept: (locale === 'en' ? english : spanish).Demo.order,
     });
-  const copy =
-    page === 'home'
-      ? {
-          kicker: t('home.kicker'),
-          lead: t('home.titleLead'),
-          accent: t('home.titleAccent'),
-          copy: t('home.copy'),
-        }
-      : {
-          kicker: t('developers.kicker'),
-          lead: t('developers.titleLead'),
-          accent: t('developers.titleAccent'),
-          copy: t('developers.copy'),
-        };
+  const copy = {
+    kicker: t(`${page}.kicker`),
+    lead: t(`${page}.titleLead`),
+    accent: t(`${page}.titleAccent`),
+    copy: t(`${page}.copy`),
+  };
   return render(
     locale,
-    page === 'home' ? 'courier' : 'cart',
+    ({ home: 'courier', developers: 'cart', cascabel: 'qr' } as const)[page],
     t('site'),
     <Stack>
       <Kicker>{copy.kicker}</Kicker>

@@ -97,6 +97,9 @@ describe('shared-link previews', () => {
     expect(
       JSON.stringify((await staticMetadata('docs')(params('es'))).openGraph?.images),
     ).toContain('/og/es/developers');
+    expect(
+      JSON.stringify((await staticMetadata('cascabel')(params('en'))).openGraph?.images),
+    ).toContain('/og/en/cascabel');
     const demo = await staticMetadata('demo')(params('es'));
     expect(demo.openGraph?.title).toBe('Café Norte te cobra 18,00 USDC');
     expect(JSON.stringify(demo.openGraph?.images)).toContain('/og/es/demo');
@@ -109,6 +112,7 @@ describe('shared-link previews', () => {
     const cards = [
       await pageImage('es', 'home'),
       await pageImage('en', 'developers'),
+      await pageImage('es', 'cascabel'),
       await pageImage('es', 'demo'),
       await paymentImage('es', await paymentPreview(intent.id)),
       await paymentImage('en', null),
@@ -120,7 +124,7 @@ describe('shared-link previews', () => {
       expect(await pngSize(card)).toEqual({ width: 1200, height: 630 });
     }
     // A missing charge is retried soon; a real one is kept, since its amount never changes.
-    expect(cards[3].headers.get('cache-control')).toContain('s-maxage=2592000');
-    expect(cards[4].headers.get('cache-control')).toContain('max-age=60');
+    expect(cards[4].headers.get('cache-control')).toContain('s-maxage=2592000');
+    expect(cards[5].headers.get('cache-control')).toContain('max-age=60');
   }, 60_000);
 });

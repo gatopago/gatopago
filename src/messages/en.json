@@ -1437,7 +1437,7 @@
       "items": [
         [
           "Non-custodial",
-          "The money goes straight from the payer to your treasury. GatoPago never holds it, so it fits your license."
+          "The money goes straight from the payer to your treasury. GatoPago never holds it."
         ],
         ["No gas", "You don't need AVAX or ETH on every network: Cascabel pays the network fees."],
         [
@@ -1452,14 +1452,14 @@
     },
     "avalanche": {
       "kicker": "Why Avalanche",
-      "title": "The network we feature for settlement",
+      "title": "The network we chose for settlement",
       "items": [
         "Circle's USDC and Tether's USDT, issued natively",
-        "Uniswap v4 and LFJ to convert between currencies",
+        "Uniswap v4 and LFJ, with liquidity to convert between currencies",
         "Aave so a treasury can earn",
         "Transactions confirmed in seconds"
       ],
-      "note": "Cascabel also collects on Arbitrum and Monad."
+      "note": "Today Cascabel collects USDC on Avalanche, Arbitrum and Monad. Conversion and yield are in progress."
     },
     "final": {
       "eyebrow": "Beta on testnet",
@@ -1515,6 +1515,12 @@
       "titleLead": "Money without borders.",
       "titleAccent": "Always yours.",
       "copy": "A digital-dollar account only you control. Sign in with your fingerprint."
+    },
+    "cascabel": {
+      "kicker": "Cascabel by GatoPago",
+      "titleLead": "Stablecoins for",
+      "titleAccent": "your payments platform.",
+      "copy": "Digital-dollar collections by API, straight to your treasury."
     },
     "developers": {
       "kicker": "GatoPago for developers",

@@ -72,7 +72,7 @@ export const staticMetadata =
           title,
           description,
           path: getPathname({ href: `/${page}`, locale: lang }),
-          image: `/og/${lang}/developers`,
+          image: `/og/${lang}/${page === 'docs' ? 'developers' : page}`,
         }),
       };
     }

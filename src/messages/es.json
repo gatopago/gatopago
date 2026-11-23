@@ -1434,7 +1434,7 @@
       "items": [
         [
           "Sin custodia",
-          "El dinero va directo de quien paga a tu tesorería. GatoPago nunca lo tiene, así que encaja con tu licencia."
+          "El dinero va directo de quien paga a tu tesorería. GatoPago nunca lo tiene."
         ],
         [
           "Sin gas",
@@ -1452,14 +1452,14 @@
     },
     "avalanche": {
       "kicker": "Por qué Avalanche",
-      "title": "La red que destacamos para liquidar",
+      "title": "La red que elegimos para liquidar",
       "items": [
         "USDC de Circle y USDT de Tether, emitidos de forma nativa",
-        "Uniswap v4 y LFJ para convertir entre monedas",
+        "Uniswap v4 y LFJ, con liquidez para convertir entre monedas",
         "Aave para que una tesorería rinda",
         "Transacciones que se confirman en segundos"
       ],
-      "note": "Cascabel también cobra en Arbitrum y Monad."
+      "note": "Hoy Cascabel cobra USDC en Avalanche, Arbitrum y Monad. La conversión y el rendimiento están en construcción."
     },
     "final": {
       "eyebrow": "Beta en testnet",
@@ -1515,6 +1515,12 @@
       "titleLead": "Dinero sin fronteras.",
       "titleAccent": "Siempre tuyo.",
       "copy": "Una cuenta en dólares digitales que solo tú controlas. Entras con tu huella."
+    },
+    "cascabel": {
+      "kicker": "Cascabel, de GatoPago",
+      "titleLead": "Stablecoins para",
+      "titleAccent": "tu plataforma de pagos.",
+      "copy": "Cobros en dólares digitales por API, directo a tu tesorería."
     },
     "developers": {
       "kicker": "GatoPago para developers",
