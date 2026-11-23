@@ -1,18 +1,14 @@
 import {
   createEd25519SigningSession,
   createSecp256k1SigningSession,
+  deriveEvmPrivateKey,
   getPasskeyPrfOutput,
   type Ed25519SigningSession,
   type Secp256k1SigningSession,
 } from '@category-labs/mera';
 import { toViemAccount } from '@category-labs/mera/viem';
 import { bytesToHex, isAddressEqual, type Address, type LocalAccount } from 'viem';
-import {
-  meraEvmKey,
-  meraSeed,
-  PASSKEY_PROMPT_MS,
-  stellarKeyFromSeed,
-} from '@gatopago/shared/passkey';
+import { meraSeed, PASSKEY_PROMPT_MS, stellarKeyFromSeed } from '@gatopago/shared/passkey';
 import type { StellarKey } from '@gatopago/shared/stellar';
 import type { ClientSettings } from '../lib/settings';
 import { currentSession, subscribeSession } from './session';
@@ -72,14 +68,15 @@ export async function openMeraSession(
 ): Promise<LocalAccount> {
   endMeraSession();
   const started = endings;
-  const seed = meraSeed(prfOutput);
+  const privateKey = deriveEvmPrivateKey({ prfOutput, accountIndex: 0 });
+  // Mera derives no Stellar key: it comes from the same recipe's seed, by SEP-5.
+  const seed = settings.stellar ? meraSeed(prfOutput) : null;
   prfOutput.fill(0);
   try {
-    const privateKey = meraEvmKey(seed);
     const session = createSecp256k1SigningSession({ privateKey });
     privateKey.fill(0);
     let stellar: Ed25519SigningSession | null = null;
-    if (settings.stellar) {
+    if (seed) {
       const stellarKey = await stellarKeyFromSeed(seed);
       stellar = createEd25519SigningSession({ privateKey: stellarKey });
       stellarKey.fill(0);
@@ -101,7 +98,7 @@ export async function openMeraSession(
     };
     return account;
   } finally {
-    seed.fill(0);
+    seed?.fill(0);
   }
 }
 
@@ -176,20 +173,20 @@ export async function withMeraKeys<T>(
   prfOutput: Uint8Array,
   run: (keys: MeraKeys) => Promise<T>,
 ): Promise<T> {
-  const seed = meraSeed(prfOutput);
+  const privateKey = deriveEvmPrivateKey({ prfOutput, accountIndex: 0 });
+  const seed = settings.stellar ? meraSeed(prfOutput) : null;
   prfOutput.fill(0);
-  const privateKey = meraEvmKey(seed);
   const evm = createSecp256k1SigningSession({ privateKey });
   privateKey.fill(0);
   let stellar: Ed25519SigningSession | null = null;
   try {
-    if (settings.stellar) {
+    if (seed) {
       const stellarKey = await stellarKeyFromSeed(seed);
       stellar = createEd25519SigningSession({ privateKey: stellarKey });
       stellarKey.fill(0);
     }
   } finally {
-    seed.fill(0);
+    seed?.fill(0);
   }
   try {
     return await run({
@@ -197,7 +194,7 @@ export async function withMeraKeys<T>(
       stellar: stellar && {
         type: 'ed25519',
         publicKey: bytesToHex(stellar.publicKey),
-        signMessage: (message) => stellar!.signMessage(message),
+        signMessage: async (message) => stellar!.signMessage(message),
       },
     });
   } finally {
@@ -217,6 +214,6 @@ export async function meraStellarKey(
   return {
     type: 'ed25519',
     publicKey: bytesToHex(stellar.publicKey),
-    signMessage: (message) => stellar.signMessage(message),
+    signMessage: async (message) => stellar.signMessage(message),
   };
 }

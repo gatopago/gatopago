@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { privateKeyToAddress } from 'viem/accounts';
-import { meraEvmKey, meraSeed } from '@gatopago/shared/passkey';
+import { deriveEvmPrivateKey } from '@category-labs/mera';
 import type { ClientSettings } from '../src/lib/settings';
 import type { Session } from '../src/wallet/session';
 
@@ -36,7 +36,7 @@ const settings = {
   stellar: null,
 } as unknown as ClientSettings;
 const owner = privateKeyToAddress(
-  `0x${Buffer.from(meraEvmKey(meraSeed(new Uint8Array(32).fill(7)))).toString('hex')}`,
+  `0x${Buffer.from(deriveEvmPrivateKey({ prfOutput: new Uint8Array(32).fill(7), accountIndex: 0 })).toString('hex')}`,
 );
 
 const session = {

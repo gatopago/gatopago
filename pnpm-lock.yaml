@@ -14,8 +14,8 @@ importers:
   .:
     dependencies:
       '@category-labs/mera':
-        specifier: 0.2.0
-        version: 0.2.0(viem@2.55.19(typescript@6.0.3)(zod@4.6.7))
+        specifier: 0.4.0
+        version: 0.4.0(viem@2.55.19(typescript@6.0.3)(zod@4.6.7))
       '@fontsource-variable/recursive':
         specifier: 5.3.0
         version: 5.3.0
@@ -23,8 +23,8 @@ importers:
         specifier: file:vendor/gatopago-brand-3.2.0.tgz
         version: file:vendor/gatopago-brand-3.2.0.tgz
       '@gatopago/shared':
-        specifier: file:vendor/gatopago-shared-6.26.0.tgz
-        version: file:vendor/gatopago-shared-6.26.0.tgz(@category-labs/mera@0.2.0(viem@2.55.19(typescript@6.0.3)(zod@4.6.7)))(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)(zod@4.6.7)
+        specifier: file:vendor/gatopago-shared-6.27.0.tgz
+        version: file:vendor/gatopago-shared-6.27.0.tgz(@category-labs/mera@0.4.0(viem@2.55.19(typescript@6.0.3)(zod@4.6.7)))(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)(zod@4.6.7)
       firebase:
         specifier: ^12.19.0
         version: 12.19.0
@@ -184,13 +184,15 @@ packages:
   '@cacheable/utils@2.5.0':
     resolution: {integrity: sha512-buipgOVDkkPXNR5+xBpDw7Zk2n1EvU7qBJCNUcL7rhQ//kfpOXPAvQ511Os0vpLYJ1pZnvudNytkQt2hst3wqA==}
 
-  '@category-labs/mera@0.2.0':
-    resolution: {integrity: sha512-cdBTSy1NvHJn+GqbAnSREeAx2QD+OuQM+vU2O/HDB+8Ya9/+lyVGklJzvSw6NJxzxoee9lpEcPS7/AvbAD4xsA==}
-    engines: {node: '>=24'}
+  '@category-labs/mera@0.4.0':
+    resolution: {integrity: sha512-BqnA8etu5xnTm2NlSO1dsK/ycWLDw7H6zZ+mRh2raoXnPQxX+LRBhsB6sNzMhOLbaQkFx5J1BHYf/vO8daPbPg==}
     peerDependencies:
-      react-native-passkey: 3.6.1
+      '@wagmi/core': ^3.0.0
+      react-native-passkey: 3.6.2
       viem: ^2.28.0
     peerDependenciesMeta:
+      '@wagmi/core':
+        optional: true
       react-native-passkey:
         optional: true
       viem:
@@ -671,12 +673,12 @@ packages:
     resolution: {integrity: sha512-9ScKf37QVJvZdDn2lsultKgXC1rcSuVCte1njOVTSyKVoaFUVmDPVe41OEqAfJg60SamdIKInjPWbEjosdfAFw==, tarball: file:vendor/gatopago-brand-3.2.0.tgz}
     version: 3.2.0
 
-  '@gatopago/shared@file:vendor/gatopago-shared-6.26.0.tgz':
-    resolution: {integrity: sha512-IP/kAyTUyP9ws+SOVhe1ncA+H8snOrwUp/OP2m3AJvvohGzVa7T5RTcYGdgi6i5lFfAwGTIhugVdOYth5hkYjw==, tarball: file:vendor/gatopago-shared-6.26.0.tgz}
-    version: 6.26.0
+  '@gatopago/shared@file:vendor/gatopago-shared-6.27.0.tgz':
+    resolution: {integrity: sha512-uvEPdz+/KvxBduvvWGTXdBbKvRQwr+AWTVTM2PL1R3xjeWIk2VXniw6Kc+vIQIUw2nZhs9EDw8GEFwfhY8mfig==, tarball: file:vendor/gatopago-shared-6.27.0.tgz}
+    version: 6.27.0
     engines: {node: '>=24'}
     peerDependencies:
-      '@category-labs/mera': 0.2.0
+      '@category-labs/mera': 0.4.0
     peerDependenciesMeta:
       '@category-labs/mera':
         optional: true
@@ -967,8 +969,8 @@ packages:
     resolution: {integrity: sha512-gbKGcRUYIjA3/zCCNaWDciTMFI0dCkvou3TL8Zmy5Nc7sJ47a0jtOeZoTaMxkuqRo9cRhjOdZJXegxYE5FN/xw==}
     engines: {node: ^14.21.3 || >=16}
 
-  '@noble/curves@2.2.0':
-    resolution: {integrity: sha512-T/BoHgFXirb0ENSPBquzX0rcjXeM6Lo892a2jlYJkqk83LqZx0l1Of7DzlKJ6jkpvMrkHSnAcgb5JegL8SeIkQ==}
+  '@noble/curves@2.4.0':
+    resolution: {integrity: sha512-P4/62zrgfH33CneE3Dn4WhJVA22YUU0eR51wKIan4NVRvwsA0YnPTwWGpNbpuacSujmSFLvyzpyuR30+fbq2Ew==}
     engines: {node: '>= 20.19.0'}
 
   '@noble/ed25519@3.2.0':
@@ -977,10 +979,6 @@ packages:
   '@noble/hashes@1.8.0':
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
     engines: {node: ^14.21.3 || >=16}
-
-  '@noble/hashes@2.2.0':
-    resolution: {integrity: sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg==}
-    engines: {node: '>= 20.19.0'}
 
   '@noble/hashes@2.4.0':
     resolution: {integrity: sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA==}
@@ -1215,14 +1213,20 @@ packages:
   '@scure/base@1.2.6':
     resolution: {integrity: sha512-g/nm5FgUa//MCj1gV09zTJTaM6KBAHqLN907YVQqf7zC49+DcO4B1so4ZX07Ef10Twr6nuqYEH9GEggFXA4Fmg==}
 
-  '@scure/base@2.2.0':
-    resolution: {integrity: sha512-b8XEupJibegiXV+tDUseI8oLQc8ei3d/4Jkb2RpbHh3MfE054ov3uIz2dhFkB3FI8iwYkEh0gGCApkrYggkPNg==}
+  '@scure/base@2.4.0':
+    resolution: {integrity: sha512-thZ1TuJwFwBblOhgsjDKvvGirBxNp+wSvY/DR6tJBJOTDhdAAcHJ8Vbr2eFnqaxeca4+t0i9KBf+uHYGWwZORg==}
 
   '@scure/bip32@1.7.0':
     resolution: {integrity: sha512-E4FFX/N3f4B80AKWp5dP6ow+flD1LQZo/w8UnLGYZO674jS6YnYeepycOOksv+vLPSpgN35wgKgy+ybfTb2SMw==}
 
+  '@scure/bip32@2.4.0':
+    resolution: {integrity: sha512-i3DS0CptAocyvqE4n3SUkpzeQK4vJMFwWLofTwRiiKo2aWojBOfyMCgfKw9HVpO6fSY5AK86sHS/Uzn8kK9Few==}
+
   '@scure/bip39@1.6.0':
     resolution: {integrity: sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==}
+
+  '@scure/bip39@2.4.0':
+    resolution: {integrity: sha512-82dxFbZUYboyOf0AXiydsQrFQ5Q4h9mX+O2UkE91ROYmsc0BKMGZLwDmy96Jpa2+vrtoxomjUhy1RPIgH/r2nA==}
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
@@ -2824,11 +2828,13 @@ snapshots:
       hashery: 1.5.1
       keyv: 5.6.0
 
-  '@category-labs/mera@0.2.0(viem@2.55.19(typescript@6.0.3)(zod@4.6.7))':
+  '@category-labs/mera@0.4.0(viem@2.55.19(typescript@6.0.3)(zod@4.6.7))':
     dependencies:
-      '@noble/curves': 2.2.0
-      '@noble/hashes': 2.2.0
-      '@scure/base': 2.2.0
+      '@noble/curves': 2.4.0
+      '@noble/hashes': 2.4.0
+      '@scure/base': 2.4.0
+      '@scure/bip32': 2.4.0
+      '@scure/bip39': 2.4.0
     optionalDependencies:
       viem: 2.55.19(typescript@6.0.3)(zod@4.6.7)
 
@@ -3309,15 +3315,14 @@ snapshots:
 
   '@gatopago/brand@file:vendor/gatopago-brand-3.2.0.tgz': {}
 
-  '@gatopago/shared@file:vendor/gatopago-shared-6.26.0.tgz(@category-labs/mera@0.2.0(viem@2.55.19(typescript@6.0.3)(zod@4.6.7)))(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)(zod@4.6.7)':
+  '@gatopago/shared@file:vendor/gatopago-shared-6.27.0.tgz(@category-labs/mera@0.4.0(viem@2.55.19(typescript@6.0.3)(zod@4.6.7)))(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)(zod@4.6.7)':
     dependencies:
-      '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
       '@stellar/stellar-sdk': 17.2.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
       ox: 0.14.34(typescript@6.0.3)(zod@4.6.7)
       viem: 2.55.19(typescript@6.0.3)(zod@4.6.7)
     optionalDependencies:
-      '@category-labs/mera': 0.2.0(viem@2.55.19(typescript@6.0.3)(zod@4.6.7))
+      '@category-labs/mera': 0.4.0(viem@2.55.19(typescript@6.0.3)(zod@4.6.7))
     transitivePeerDependencies:
       - bufferutil
       - debug
@@ -3531,15 +3536,13 @@ snapshots:
     dependencies:
       '@noble/hashes': 1.8.0
 
-  '@noble/curves@2.2.0':
+  '@noble/curves@2.4.0':
     dependencies:
-      '@noble/hashes': 2.2.0
+      '@noble/hashes': 2.4.0
 
   '@noble/ed25519@3.2.0': {}
 
   '@noble/hashes@1.8.0': {}
-
-  '@noble/hashes@2.2.0': {}
 
   '@noble/hashes@2.4.0': {}
 
@@ -3684,7 +3687,7 @@ snapshots:
 
   '@scure/base@1.2.6': {}
 
-  '@scure/base@2.2.0': {}
+  '@scure/base@2.4.0': {}
 
   '@scure/bip32@1.7.0':
     dependencies:
@@ -3692,10 +3695,20 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
+  '@scure/bip32@2.4.0':
+    dependencies:
+      '@noble/curves': 2.4.0
+      '@noble/hashes': 2.4.0
+      '@scure/base': 2.4.0
+
   '@scure/bip39@1.6.0':
     dependencies:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
+
+  '@scure/bip39@2.4.0':
+    dependencies:
+      '@noble/hashes': 2.4.0
 
   '@standard-schema/spec@1.1.0': {}
 
