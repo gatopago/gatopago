@@ -810,6 +810,7 @@
 }
 
 .consumer-ui .primary-nav__item {
+  isolation: isolate;
   border: 1px solid transparent;
   color: var(--color-text-faint);
   transition:
@@ -830,9 +831,16 @@
 }
 
 .consumer-ui .primary-nav__item.is-active {
-  border-color: var(--color-text);
-  background: var(--color-cat-500);
   color: var(--color-on-cat);
+}
+
+/* The active tab's block, behind its icon and label: it slides between tabs. */
+.consumer-ui .primary-nav__indicator {
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border: 1px solid var(--color-text);
+  background: var(--color-cat-500);
   box-shadow: 3px 3px 0 var(--color-cat-700);
 }
 
@@ -860,10 +868,157 @@
   }
 }
 
-.consumer-ui ::view-transition-old(root),
-.consumer-ui ::view-transition-new(root) {
-  animation-duration: 180ms;
-  animation-timing-function: var(--ease-enter);
+/*
+ * Screen changes with View Transitions (src/consumer/transition.ts). Forward and back, the whole
+ * screen moves: the one you leave goes in 150ms, 12px toward where you came from, and only then
+ * the next one enters, in 280ms from the side it was reached from, so the two never show through
+ * each other. Between tabs the header and the tab bar stay, the content fades in and the tab's
+ * block slides to the new tab. The QR button grows into the camera's frame, and back.
+ */
+.consumer-ui .meli-app-header {
+  view-transition-name: app-header;
+}
+.consumer-ui .primary-nav {
+  view-transition-name: app-tabs;
+}
+.consumer-ui .primary-nav__indicator {
+  view-transition-name: tab-indicator;
+}
+.consumer-ui .scan-target {
+  view-transition-name: scan-target;
+}
+html:has(.consumer-ui)[data-screen-transition] .consumer-ui .screen-enter {
+  animation: none;
+}
+html:has(.consumer-ui)[data-screen-transition='forward']::view-transition-old(*),
+html:has(.consumer-ui)[data-screen-transition='forward']::view-transition-old(*):only-child {
+  animation: screen-leave-left 150ms ease-out both;
+}
+html:has(.consumer-ui)[data-screen-transition='forward']::view-transition-new(*),
+html:has(.consumer-ui)[data-screen-transition='forward']::view-transition-new(*):only-child {
+  animation: screen-forward 280ms cubic-bezier(0.2, 0, 0, 1) 100ms both;
+}
+html:has(.consumer-ui)[data-screen-transition='back']::view-transition-old(*),
+html:has(.consumer-ui)[data-screen-transition='back']::view-transition-old(*):only-child {
+  animation: screen-leave-right 150ms ease-out both;
+}
+html:has(.consumer-ui)[data-screen-transition='back']::view-transition-new(*),
+html:has(.consumer-ui)[data-screen-transition='back']::view-transition-new(*):only-child {
+  animation: screen-back 280ms cubic-bezier(0.2, 0, 0, 1) 100ms both;
+}
+html:has(.consumer-ui)[data-screen-transition='tab']::view-transition-old(root) {
+  animation: none;
+  opacity: 0;
+}
+html:has(.consumer-ui)[data-screen-transition='tab']::view-transition-new(root) {
+  animation: fade-in 150ms ease-out both;
+}
+html:has(.consumer-ui)[data-screen-transition]::view-transition-group(tab-indicator) {
+  animation-duration: 400ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+/* The tabs' icons and labels (named in PrimaryNav) stay above the block, whichever tab it leaves. */
+html:has(.consumer-ui)::view-transition-group(tab-home),
+html:has(.consumer-ui)::view-transition-group(tab-grow),
+html:has(.consumer-ui)::view-transition-group(tab-activity) {
+  z-index: 1;
+}
+html:has(.consumer-ui)[data-screen-transition]::view-transition-group(scan-target) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+html:has(.consumer-ui)[data-screen-transition]::view-transition-old(scan-target) {
+  animation: fade-out 320ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+html:has(.consumer-ui)[data-screen-transition]::view-transition-new(scan-target) {
+  animation: fade-in 320ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+html:has(.consumer-ui)[data-screen-transition='none']::view-transition-group(*),
+html:has(.consumer-ui)[data-screen-transition='none']::view-transition-old(*),
+html:has(.consumer-ui)[data-screen-transition='none']::view-transition-new(*) {
+  animation: none;
+}
+/* Text that changes in place (a balance, "Copied"): it rises 4px into place. */
+.consumer-ui .text-swap {
+  display: inline-block;
+  animation: text-swap 300ms ease-out both;
+}
+@keyframes text-swap {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+  }
+}
+
+/* An icon with two states (the balance's eye): both drawings stay and cross-fade. */
+.consumer-ui .icon-swap {
+  display: inline-grid;
+}
+.consumer-ui .icon-swap > * {
+  grid-area: 1 / 1;
+  transition-property: opacity, scale, filter;
+  transition-duration: 300ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.consumer-ui .icon-swap > :last-child,
+.consumer-ui .icon-swap[data-on='true'] > :first-child {
+  opacity: 0;
+  scale: 0.25;
+  filter: blur(4px);
+}
+.consumer-ui .icon-swap[data-on='true'] > :last-child {
+  opacity: 1;
+  scale: 1;
+  filter: none;
+}
+
+/* A movement that just arrived enters from above and its row glows once. */
+.consumer-ui .activity-row--fresh {
+  animation:
+    row-arrive 300ms ease-out both,
+    row-glow 1600ms ease-out both;
+}
+@keyframes row-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -12px, 0);
+  }
+}
+@keyframes row-glow {
+  from {
+    background-color: var(--color-cat-50);
+  }
+}
+
+/* A success enters in parts, 100ms apart (TxResult). */
+.consumer-ui .stage-in {
+  animation: stage-in 300ms ease-out both;
+  animation-delay: calc(var(--stage, 0) * 100ms);
+}
+@keyframes stage-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translate3d(0, 12px, 0);
+  }
+}
+
+/* A sheet that grows out of the row that opened it skips its own entrance (Sheet.tsx). */
+.consumer-ui .meli-menu-sheet[data-grown]:not([data-leaving]) {
+  animation: none;
+}
+
+@keyframes screen-leave-left {
+  to {
+    opacity: 0;
+    transform: translate3d(-12px, 0, 0);
+  }
+}
+@keyframes screen-leave-right {
+  to {
+    opacity: 0;
+    transform: translate3d(12px, 0, 0);
+  }
 }
 
 .consumer-ui [data-exporting='true'],
@@ -1178,9 +1333,13 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
-  .consumer-ui ::view-transition-old(root),
-  .consumer-ui ::view-transition-new(root) {
+  html:has(.consumer-ui)::view-transition-group(*),
+  html:has(.consumer-ui)::view-transition-old(*),
+  html:has(.consumer-ui)::view-transition-new(*) {
     animation: none !important;
+  }
+  .consumer-ui .stage-in {
+    animation: none;
   }
 }
 

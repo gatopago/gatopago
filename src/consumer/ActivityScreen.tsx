@@ -31,15 +31,38 @@ const icons = {
   swap: <path d="M7 4v16m-4-4 4 4 4-4M17 20V4m-4 4 4-4 4 4" />,
 };
 
+/**
+ * Movements that arrived while the list is on screen (a payment notification, a refresh): they
+ * enter and glow once. The first list a screen shows has none, and older pages loaded below never.
+ */
+function useFreshIds(ids: readonly string[] | undefined) {
+  const [known, setKnown] = useState<ReadonlySet<string> | null>(null);
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set());
+  if (ids && !known) setKnown(new Set(ids));
+  else if (ids && known && ids.some((id) => !known.has(id))) {
+    const firstKnown = ids.findIndex((id) => known.has(id));
+    const newer = ids.filter(
+      (id, index) => !known.has(id) && (firstKnown < 0 || index < firstKnown),
+    );
+    setKnown(new Set([...known, ...ids]));
+    if (newer.length) setFresh(new Set(newer));
+  }
+  return fresh;
+}
+
 /** V2's movement row: who, what, when, and the amount. */
 function ActivityRow({
   movement,
   hidden,
+  fresh = false,
   onOpen,
 }: {
   movement: Movement;
   hidden: boolean;
-  onOpen: () => void;
+  /** Just arrived: it enters from above and glows once. */
+  fresh?: boolean;
+  /** Opens its receipt, which grows from the row (where it is on the screen). */
+  onOpen: (from: DOMRect) => void;
 }) {
   const locale = useLocale();
   const t = useTranslations('Activity');
@@ -54,8 +77,8 @@ function ActivityRow({
   return (
     <button
       type="button"
-      onClick={onOpen}
-      className="activity-row flex w-full items-center gap-3 border-b border-border bg-surface px-3 py-3 text-left last:border-b-0"
+      onClick={(event) => onOpen(event.currentTarget.getBoundingClientRect())}
+      className={`activity-row flex w-full items-center gap-3 border-b border-border bg-surface px-3 py-3 text-left last:border-b-0${fresh ? ' activity-row--fresh' : ''}`}
       aria-label={`${title}, ${detail}, ${date}, ${hidden ? '' : amount} ${movement.currency}`}
     >
       <span
@@ -134,7 +157,8 @@ export function RecentActivity({
   const t = useTranslations('Activity');
   const words = useTranslations('Movements');
   const { movements, error } = useActivity(settings, session);
-  const [open, setOpen] = useState<Movement | null>(null);
+  const [open, setOpen] = useState<{ movement: Movement; from: DOMRect } | null>(null);
+  const fresh = useFreshIds(movements?.map(({ id }) => id));
   if (!movements && !error)
     return (
       <div className="p-3">
@@ -160,11 +184,16 @@ export function RecentActivity({
           key={movement.id}
           movement={movement}
           hidden={hidden}
-          onOpen={() => setOpen(movement)}
+          fresh={fresh.has(movement.id)}
+          onOpen={(from) => setOpen({ movement, from })}
         />
       ))}
       {open ? (
-        <Receipt receipt={movementReceipt(open, words)} onClose={() => setOpen(null)} />
+        <Receipt
+          receipt={movementReceipt(open.movement, words)}
+          from={open.from}
+          onClose={() => setOpen(null)}
+        />
       ) : null}
     </div>
   );
@@ -219,6 +248,7 @@ export function ActivityScreen({
   const router = useRouter();
   const pathname = usePathname();
   const { movements, hasMore, loadingMore, loadMore, error } = useActivity(settings, session);
+  const fresh = useFreshIds(movements?.map(({ id }) => id));
   useLiveBalances(settings, session);
   // Older movements load on their own as the end of the list comes near; the button stays for
   // the keyboard and where the browser cannot tell. Watched again after each page, so a short
@@ -237,7 +267,7 @@ export function ActivityScreen({
     watcher.observe(button);
     return () => watcher.disconnect();
   }, [hasMore, loadingMore, movements?.length]);
-  const [open, setOpen] = useState<Movement | null>(null);
+  const [open, setOpen] = useState<{ movement: Movement; from: DOMRect } | null>(null);
   const [hidden] = useState(balanceHidden);
 
   const pick = <T extends string>(name: string, values: readonly T[]): T | 'all' => {
@@ -349,7 +379,8 @@ export function ActivityScreen({
                 key={movement.id}
                 movement={movement}
                 hidden={hidden}
-                onOpen={() => setOpen(movement)}
+                fresh={fresh.has(movement.id)}
+                onOpen={(from) => setOpen({ movement, from })}
               />
             ))}
           </div>
@@ -367,7 +398,11 @@ export function ActivityScreen({
         </button>
       ) : null}
       {open ? (
-        <Receipt receipt={movementReceipt(open, words)} onClose={() => setOpen(null)} />
+        <Receipt
+          receipt={movementReceipt(open.movement, words)}
+          from={open.from}
+          onClose={() => setOpen(null)}
+        />
       ) : null}
     </>
   );

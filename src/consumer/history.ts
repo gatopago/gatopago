@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useLocale, type Locale } from 'next-intl';
 import { usePathname, useRouter } from '../i18n/navigation';
 import { isReloadBlocked } from '../pwa/reload-guard';
+import { navigateWithTransition } from './transition';
 
 /** How the current screen was reached: it sets the direction of its entrance. */
 type Direction = 'forward' | 'back' | 'tab' | 'none';
@@ -22,6 +23,8 @@ export const switchLanguage = () => {
 };
 let direction: Direction = 'none';
 let next: Direction | null = null;
+/** The screen the app was on before the one on the page. */
+let previous: string | undefined;
 const listeners = new Set<() => void>();
 
 const tabs = new Set(['/app', '/earn', '/statement']);
@@ -51,6 +54,7 @@ export function record(screen: string, traversed = false, locale?: Locale): Dire
     language = locale;
   }
   if (visited.at(-1) === screen) return direction;
+  previous = visited.at(-1);
   const back = traversed
     ? visited.lastIndexOf(screen)
     : visited.at(-2) === screen
@@ -114,14 +118,25 @@ export function useBack(fallback: string) {
     if (leaving.current || isReloadBlocked()) return;
     leaving.current = true;
     setTimeout(() => (leaving.current = false), 600);
-    if (visited.at(-1) === screen && visited.length > 1) router.back();
-    else {
+    navigateWithTransition(() => {
+      if (visited.at(-1) === screen && visited.length > 1) return router.back();
       // Opened directly: the parent replaces it, so the browser's back does not return here.
       visited.splice(0, visited.length);
       next = 'back';
       router.replace(fallback);
-    }
+    });
   }, [router, screen, fallback]);
+}
+
+/**
+ * How the browser animates the change to the screen on the page, once its layout effect recorded
+ * it: between two tabs only their content changes (the header and the tab bar stay), and a tab
+ * reached from any other screen is a way back.
+ */
+export function transitionDirection(): Direction {
+  const screen = visited.at(-1);
+  if (previous && screen && isTab(previous) && isTab(screen)) return 'tab';
+  return direction === 'tab' ? 'back' : direction;
 }
 
 /** Whether this screen is one of the main tabs, which have the account's header and tab bar. */

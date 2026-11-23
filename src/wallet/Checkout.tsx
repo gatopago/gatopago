@@ -39,6 +39,7 @@ import { formatAmount, formatBalance, formatHolding, useBalances } from './balan
 import { useFailureMessage } from './messages';
 import { currentSession, subscribeSession, type Session } from './session';
 import { useTranslations, useLocale } from 'next-intl';
+import { SwapText } from '../consumer/SwapText';
 
 /** `/pay/:id`: a GatoPago Flow payment request, as V2's payment page presented it. */
 export function Checkout({ id, settings }: { id: string; settings: ClientSettings }) {
@@ -307,7 +308,7 @@ function CopyCheckoutLink() {
     <>
       <p className="mb-3 text-center text-[13px] text-text-muted">{t('payingAnotherWalletOpen')}</p>
       <button type="button" className="btn btn-ghost btn-block" onClick={() => copy(location.href)}>
-        {label(t('copyLink'))}
+        <SwapText>{label(t('copyLink'))}</SwapText>
       </button>
     </>
   );

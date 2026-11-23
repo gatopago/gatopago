@@ -6,6 +6,7 @@ import {
   Suspense,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useSyncExternalStore,
   type ReactNode,
@@ -13,7 +14,8 @@ import {
 import { useSearchParams } from 'next/navigation';
 import { usePathname, useRouter } from '../i18n/navigation';
 import { ConsumerFrame } from '../consumer/ConsumerFrame';
-import { useNavigationRecord } from '../consumer/history';
+import { transitionDirection, useNavigationRecord } from '../consumer/history';
+import { finishScreenTransition } from '../consumer/transition';
 import { PullToRefresh } from '../consumer/PullToRefresh';
 import type { ConsumerView } from '../consumer/routes';
 import { ScreenLoading } from '../consumer/Skeleton';
@@ -45,6 +47,13 @@ export function AccountShell({
   // The session lives in this browser: unknown while rendering on the server.
   const session = useSyncExternalStore(subscribeSession, currentSession, () => undefined);
   const direction = useNavigationRecord();
+  const screen = useRef<HTMLDivElement>(null);
+  // After the record's layout effect: the direction is this screen's. When the browser animates
+  // the change, the screen's own CSS entrance stays off, also once the transition is over.
+  useLayoutEffect(() => {
+    if (finishScreenTransition(transitionDirection()) && screen.current)
+      screen.current.style.animation = 'none';
+  }, [pathname]);
   const signedOutOnArrival = useRef<boolean | null>(null);
   useEffect(() => {
     if (session === undefined) return;
@@ -89,7 +98,12 @@ export function AccountShell({
         >
           <PullToRefresh disabled={pathname === '/scan'} />
           {/* Keyed by screen: it slides in from where the member is going while the frame stays. */}
-          <div key={pathname} className="auth-content screen-enter" data-direction={direction}>
+          <div
+            key={pathname}
+            ref={screen}
+            className="auth-content screen-enter"
+            data-direction={direction}
+          >
             {children}
           </div>
         </ConsumerFrame>

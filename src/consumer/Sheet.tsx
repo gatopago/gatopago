@@ -19,6 +19,27 @@ function releasePage() {
 }
 
 /**
+ * The sheet grows out of what opened it: from its place and size to its own, in 350ms. The
+ * content is squeezed on the way, so it only becomes fully visible as the sheet arrives.
+ */
+function growFrom(element: HTMLDialogElement, from: DOMRect) {
+  // Instead of the sheet's own entrance (its exit still runs when it closes). Measured at rest:
+  // without that entrance, or a growth already begun (React runs effects twice in development).
+  element.dataset.grown = '';
+  element.getAnimations().forEach((animation) => animation.cancel());
+  const to = element.getBoundingClientRect();
+  if (!to.width || !to.height) return;
+  const start = `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`;
+  element.animate(
+    [
+      { transformOrigin: 'top left', transform: start, opacity: 0.4 },
+      { transformOrigin: 'top left', transform: 'none', opacity: 1 },
+    ],
+    { duration: 350, easing: 'cubic-bezier(0.2, 0, 0, 1)' },
+  );
+}
+
+/**
  * Native dialog keeps focus inside and opens above the app's animated frame. It leaves with an
  * animation when the member closes it: the backdrop, Escape, or any `[data-sheet-close]` inside.
  */
@@ -28,12 +49,15 @@ export function Sheet({
   onClose,
   busy = false,
   variant = 'sheet',
+  from,
 }: {
   titleId: string;
   children: ReactNode;
   onClose: () => void;
   busy?: boolean;
   variant?: 'sheet' | 'menu' | 'selector' | 'receipt' | 'stage';
+  /** Where it was opened from on the screen (a row): it grows out of it instead of rising. */
+  from?: DOMRect;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [leaving, setLeaving] = useState(false);
@@ -44,6 +68,8 @@ export function Sheet({
     const previousFocus =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
     element?.showModal();
+    if (element && from && !matchMedia('(prefers-reduced-motion: reduce)').matches)
+      growFrom(element, from);
     if (variant === 'selector')
       element?.querySelector<HTMLElement>('[aria-selected="true"]')?.focus();
     holdPage();
@@ -52,7 +78,7 @@ export function Sheet({
       releasePage();
       if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
     };
-  }, [variant]);
+  }, [variant, from]);
   function close() {
     if (busy || leaving) return;
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return onClose();

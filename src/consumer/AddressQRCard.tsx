@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useCopy } from '../lib/useCopy';
 import { shortAddress } from '../wallet/account';
 import { useTranslations } from 'next-intl';
+import { SwapText } from './SwapText';
 
 /**
  * The QR of an address: a payment request for one coin (EIP-681) when Receive chose it: `token` is
@@ -61,7 +62,7 @@ export function AddressQRCard({
       >
         <span className="truncate font-mono text-[13px] text-text">{shortAddress(address)}</span>
         <span className="shrink-0 text-[12px] font-semibold text-cat-300">
-          {label(t('copyAddress'))}
+          <SwapText>{label(t('copyAddress'))}</SwapText>
         </span>
       </button>
     </>

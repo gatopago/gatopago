@@ -100,7 +100,7 @@ function Frame({
               {/* Paying with a QR is the most common way to pay in the region: it gets the top
                   corner on every main tab. Installing the app lives in the menu. */}
               {account ? (
-                <Link href="/scan" className="meli-avatar" aria-label={t('scanQr')}>
+                <Link href="/scan" className="meli-avatar scan-target" aria-label={t('scanQr')}>
                   <ScanIcon />
                 </Link>
               ) : null}

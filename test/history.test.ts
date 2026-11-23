@@ -37,6 +37,20 @@ describe('the record of visited screens', () => {
     expect(record('/app', true, 'en')).toBe('tab');
   });
 
+  it('animates a change between tabs in place, and a tab reached from another screen as back', async () => {
+    const { record, transitionDirection } = await import('../src/consumer/history');
+    record('/app');
+    record('/earn');
+    // Home was the screen before, so the record goes back; on the page, only the tab changes.
+    expect(record('/app')).toBe('back');
+    expect(transitionDirection()).toBe('tab');
+    record('/send');
+    expect(transitionDirection()).toBe('forward');
+    // A link from Send to Activity is a new tab in the record, and a way back on the page.
+    expect(record('/statement')).toBe('tab');
+    expect(transitionDirection()).toBe('back');
+  });
+
   it('goes forward with the browser to a screen no longer in the record', async () => {
     const { record } = await import('../src/consumer/history');
     record('/app');

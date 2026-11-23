@@ -422,10 +422,13 @@ function useReceiptExport() {
 /** The receipt of a movement, opened from the account (Home, Activity). */
 export function Receipt({
   receipt,
+  from,
   onClose,
   action,
 }: {
   receipt: ReceiptData;
+  /** The row it opened from: the receipt grows out of it. */
+  from?: DOMRect;
   onClose: () => void;
   /** What to do next with this money (e.g. split a paid charge). */
   action?: ReactNode;
@@ -435,7 +438,7 @@ export function Receipt({
   const [hidden] = useState(balanceHidden);
   const { busy, error, perform } = useReceiptExport();
   return (
-    <Sheet titleId="receipt-title" onClose={onClose} variant="receipt">
+    <Sheet titleId="receipt-title" onClose={onClose} variant="receipt" from={from}>
       <ReceiptCard ref={card} receipt={receipt} hidden={hidden} />
       <div className="mt-4 flex w-full gap-3">
         <button

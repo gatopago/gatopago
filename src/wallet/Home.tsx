@@ -17,6 +17,7 @@ import type { ClientSettings } from '../lib/settings';
 import { formatBalance, formatHolding, useBalances, useLiveBalances } from './balances';
 import type { Session } from './session';
 import { useTranslations, useLocale } from 'next-intl';
+import { SwapText } from '../consumer/SwapText';
 
 const CardInterestSheet = dynamic(() =>
   import('../consumer/CardInterestSheet').then((m) => m.CardInterestSheet),
@@ -112,17 +113,19 @@ export function Home({ settings, session }: { settings: ClientSettings; session:
           <Skeleton className="h-11 w-44" />
         ) : (
           <p className="balance-amount type-mono break-all font-bold leading-none tracking-[-0.06em]">
+            {!hidden && !native && shownBalance != null ? (
+              <span className="mr-1 text-[0.5em]">$</span>
+            ) : null}
+            {/* The same text in both places, so a new balance (a payment arrived), hiding it or
+                showing it rises into place instead of jumping. */}
             {hidden ? (
-              '••••'
+              <SwapText>••••</SwapText>
             ) : shownBalance != null ? (
-              native ? (
-                formatHolding(shownBalance, asset.decimals, locale)
-              ) : (
-                <>
-                  <span className="mr-1 text-[0.5em]">$</span>
-                  {formatBalance(shownBalance, locale)}
-                </>
-              )
+              <SwapText>
+                {native
+                  ? formatHolding(shownBalance, asset.decimals, locale)
+                  : formatBalance(shownBalance, locale)}
+              </SwapText>
             ) : (
               '—'
             )}

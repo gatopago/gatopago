@@ -14,6 +14,7 @@ import { useFailureMessage } from './messages';
 import type { Session } from './session';
 import { useProfile } from './useProfile';
 import { useTranslations } from 'next-intl';
+import { SwapText } from '../consumer/SwapText';
 
 const UserIcon = () => (
   <svg
@@ -213,7 +214,7 @@ function ProfileEditor({
                 onClick={() => copy(link, 'link')}
                 className="btn btn-primary btn-sm shrink-0"
               >
-                {label(t('copy'), 'link')}
+                <SwapText>{label(t('copy'), 'link')}</SwapText>
               </button>
             </div>
           ) : (
@@ -265,7 +266,7 @@ function ProfileEditor({
               onClick={() => copy(session.wallet.address, 'address')}
               className="btn btn-ghost btn-sm flex-1"
             >
-              {label(t('copy'), 'address')}
+              <SwapText>{label(t('copy'), 'address')}</SwapText>
             </button>
             {explorer ? (
               <a

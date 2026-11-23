@@ -136,18 +136,18 @@ export function SecurityIcon() {
     </Icon>
   );
 }
+/** Both drawings stay on the page and cross-fade (`.icon-swap` in consumer.css). */
 export function EyeIcon({ hidden }: { hidden: boolean }) {
   return (
-    <Icon size={18}>
-      {hidden ? (
+    <span className="icon-swap" data-on={hidden}>
+      <Icon size={18}>
+        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+        <circle cx="12" cy="12" r="3" />
+      </Icon>
+      <Icon size={18}>
         <path d="M9.9 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a16.9 16.9 0 0 1-3.3 4.1M6.6 6.6A16.8 16.8 0 0 0 2 12s3.5 7 10 7a10.3 10.3 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18" />
-      ) : (
-        <>
-          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-          <circle cx="12" cy="12" r="3" />
-        </>
-      )}
-    </Icon>
+      </Icon>
+    </span>
   );
 }
 

@@ -262,7 +262,7 @@ export default function ScanScreen({
       ) : (
         <div className="mx-auto flex w-full max-w-[340px] flex-1 flex-col items-center">
           <div
-            className={`relative mb-6 aspect-square w-full overflow-hidden border-2 ${error && !camera ? 'border-danger bg-surface shadow-[6px_6px_0_var(--color-danger)]' : 'border-text bg-black shadow-[7px_7px_0_var(--color-cat-700)]'}`}
+            className={`scan-target relative mb-6 aspect-square w-full overflow-hidden border-2 ${error && !camera ? 'border-danger bg-surface shadow-[6px_6px_0_var(--color-danger)]' : 'border-text bg-black shadow-[7px_7px_0_var(--color-cat-700)]'}`}
           >
             <video
               ref={video}

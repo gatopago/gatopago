@@ -12,6 +12,7 @@ import { Panel } from './Primitives';
 import { CatGlyph } from '../marketing/CatGlyph';
 import { ScreenLoading } from './Skeleton';
 import { useTranslations } from 'next-intl';
+import { SwapText } from './SwapText';
 
 /** `/@username`: who receives payments to this username, and where. */
 export function PublicUsername({
@@ -75,7 +76,7 @@ export function PublicUsername({
                 className="auth-secondary btn btn-ghost btn-block"
                 onClick={() => copy(recipient.address)}
               >
-                {label(t('copyAddress'))}
+                <SwapText>{label(t('copyAddress'))}</SwapText>
               </button>
               {failed() ? (
                 <p role="alert" className="mt-3 text-[12px] text-danger">
