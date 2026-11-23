@@ -8,6 +8,7 @@ const fake = vi.hoisted(() => ({ served: 1, applied: 1 as number | null }));
 vi.mock('../src/wallet/api', () => ({
   api: async () => ({
     approvals: Array.from({ length: fake.served }, (_, sequence) => ({ sequence })),
+    changes: [],
   }),
 }));
 vi.mock('../src/wallet/account', () => ({ publicClient: () => ({}) }));

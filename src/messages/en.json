@@ -51,7 +51,8 @@
     "PAYMENT_PENDING": "Your payment is on its way, but we have not confirmed it yet. Try again in a moment: it is the same payment and you are not charged twice.",
     "PAYMENT_REVERTED": "The network rejected the transaction and nothing was charged. You can try paying again.",
     "INVALID_RESPONSE": "We got an incomplete answer from the server. Try again in a moment.",
-    "STELLAR_RECIPIENT_UNAVAILABLE": "That person does not have their Stellar account yet. Try again in a minute or send to their address."
+    "STELLAR_RECIPIENT_UNAVAILABLE": "That person does not have their Stellar account yet. Try again in a minute or send to their address.",
+    "CANCEL_PENDING": "The cancellation did not reach all your networks. Try again."
   },
   "Settings": {
     "title": "Settings",
@@ -667,14 +668,19 @@
     "howKeysWork": "How keys work",
     "removeKey": "Remove this key",
     "aboutRemoveKeyAccount": "You are about to remove the key …{value} from your account.",
-    "onceConfirmActiveKey": "Once you confirm with an active key, this key can no longer authorize movements.",
+    "onceConfirmActiveKey": "It is removed in 48 hours. Until then, any of your keys can cancel it here.",
     "removing": "Removing…",
     "confirmRemove": "Confirm and remove",
     "cancel": "Cancel",
     "couldNotCheck": "Could not check {network}",
     "stillApply": "Still to apply on {network}",
     "apply": "Apply",
-    "keysSummary": "{count, plural, one {# key} other {# keys}} · {backedUp, select, true {backed up} other {no backup}}"
+    "keysSummary": "{count, plural, one {# key} other {# keys}} · {backedUp, select, true {backed up} other {no backup}}",
+    "scheduled": "Scheduled changes",
+    "removesKey": "Remove key {value}",
+    "changesContract": "Change your account's contract",
+    "changeAppliesOn": "Applies on {date}",
+    "changeReady": "Ready to apply"
   },
   "Send": {
     "sendMoney": "Send money",

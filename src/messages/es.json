@@ -51,7 +51,8 @@
     "PAYMENT_PENDING": "Tu pago está en camino, pero todavía no lo confirmamos. Reintenta en un momento: es el mismo pago y no se cobra dos veces.",
     "PAYMENT_REVERTED": "La red rechazó la transacción y no se cobró nada. Puedes intentar pagar otra vez.",
     "INVALID_RESPONSE": "Recibimos una respuesta incompleta del servidor. Reintenta en un momento.",
-    "STELLAR_RECIPIENT_UNAVAILABLE": "Esa persona todavía no tiene su cuenta en Stellar. Prueba en un minuto o envíale a su dirección."
+    "STELLAR_RECIPIENT_UNAVAILABLE": "Esa persona todavía no tiene su cuenta en Stellar. Prueba en un minuto o envíale a su dirección.",
+    "CANCEL_PENDING": "La cancelación no llegó a todas tus redes. Vuelve a intentarlo."
   },
   "Settings": {
     "title": "Ajustes",
@@ -667,14 +668,19 @@
     "howKeysWork": "Cómo funcionan las llaves",
     "removeKey": "Quitar esta llave",
     "aboutRemoveKeyAccount": "Vas a quitar la llave …{value} de tu cuenta.",
-    "onceConfirmActiveKey": "Después de confirmarlo con una llave activa, esta llave ya no podrá autorizar movimientos.",
+    "onceConfirmActiveKey": "Se quita en 48 horas. Hasta entonces, cualquiera de tus llaves puede cancelarlo aquí.",
     "removing": "Quitando…",
     "confirmRemove": "Confirmar y quitar",
     "cancel": "Cancelar",
     "couldNotCheck": "No pudimos revisar {network}",
     "stillApply": "Falta aplicar en {network}",
     "apply": "Aplicar",
-    "keysSummary": "{count, plural, one {# llave} other {# llaves}} · {backedUp, select, true {con respaldo} other {sin respaldo}}"
+    "keysSummary": "{count, plural, one {# llave} other {# llaves}} · {backedUp, select, true {con respaldo} other {sin respaldo}}",
+    "scheduled": "Cambios programados",
+    "removesKey": "Quitar la llave {value}",
+    "changesContract": "Cambiar el contrato de tu cuenta",
+    "changeAppliesOn": "Se aplica el {date}",
+    "changeReady": "Lista para aplicarse"
   },
   "Send": {
     "sendMoney": "Enviar dinero",

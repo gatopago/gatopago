@@ -3,7 +3,7 @@ import { walletContracts } from '@gatopago/shared/networks';
 import { verifiedOwners } from '@gatopago/shared/wallet';
 import type { ClientSettings } from '../lib/settings';
 import { publicClient } from './account';
-import { api, type Approvals } from './api';
+import { api, type Approvals, type OwnerChange } from './api';
 import { appliedApprovals } from './operations';
 import type { Wallet } from './session';
 
@@ -19,16 +19,20 @@ function seen(wallet: Wallet) {
 }
 
 /**
- * The account's owners now and its approvals, checked here: Wallet Core serves the history, but
- * every approval is verified in order from the account's initial owners (`verifiedOwners`), so it
- * cannot slip in an owner. It cannot hide a later one either: the history may not be shorter than
- * what the home network already applied or this device already saw. Throws `APPROVALS_INVALID`.
+ * The account's owners now, its approvals and the changes they scheduled, checked here: Wallet Core
+ * serves the history, but every approval is verified in order from the account's initial owners
+ * (`verifiedOwners`), so it cannot slip in an owner. It cannot hide a later one either: the history
+ * may not be shorter than what the home network already applied or this device already saw. Throws
+ * `APPROVALS_INVALID`.
  */
 export async function accountOwners(
   settings: ClientSettings,
   wallet: Wallet,
-): Promise<{ owners: Hex[]; approvals: Approvals['approvals'] }> {
-  const { approvals } = await api<Approvals>(settings.apiOrigin, `approvals/${wallet.address}`);
+): Promise<{ owners: Hex[]; approvals: Approvals['approvals']; changes: OwnerChange[] }> {
+  const { approvals, changes } = await api<Approvals>(
+    settings.apiOrigin,
+    `approvals/${wallet.address}`,
+  );
   const [owners, applied] = await Promise.all([
     verifiedOwners(publicClient(settings, settings.homeNetwork), {
       factory: walletContracts.factory,
@@ -44,5 +48,5 @@ export async function accountOwners(
   } catch {
     // Without storage this device only misses the check against what it saw before.
   }
-  return { owners, approvals };
+  return { owners, approvals, changes };
 }

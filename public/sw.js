@@ -162,8 +162,9 @@ self.addEventListener('fetch', (event) => {
   if (canCacheAsset(request, url)) event.respondWith(cacheAsset(request, event));
 });
 
-// Payment notifications: FCM delivers a Web Push with `data` only (title, body, link); this worker
-// shows it and tells open windows to read balances and activity again. No Firebase code runs here.
+// Notifications: FCM delivers a Web Push with `data` only (title, body, link); this worker shows it.
+// For a payment it also tells open windows to read balances and activity again; a security one
+// (a key change scheduled) only links to Security. No Firebase code runs here.
 self.addEventListener('push', (event) => {
   let data;
   try {
@@ -171,13 +172,14 @@ self.addEventListener('push', (event) => {
   } catch {
     data = {};
   }
-  if (data.type !== 'movement') return;
+  if (data.type !== 'movement' && data.type !== 'security') return;
   event.waitUntil(
     Promise.all([
-      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
-        for (const window of windows) window.postMessage({ type: 'GATOPAGO_MOVEMENT' });
-      }),
-      // One notification per movement: the same one sent again replaces it instead of adding one.
+      data.type === 'movement' &&
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+          for (const window of windows) window.postMessage({ type: 'GATOPAGO_MOVEMENT' });
+        }),
+      // One notification per movement or change: sent again, it replaces itself instead of adding one.
       self.registration.showNotification(data.title || 'GatoPago', {
         body: data.body || '',
         icon: '/apple-touch-icon.png',

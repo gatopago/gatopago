@@ -1,5 +1,6 @@
 import type { Hex } from 'viem';
 import type { ClientSettings } from '../lib/settings';
+import type { OwnerChange } from './api';
 import { appliedApprovals } from './operations';
 import { accountOwners } from './owners';
 import type { Session } from './session';
@@ -16,13 +17,17 @@ export type KeysState = {
   applied: Record<string, number | null | 'unread'>;
   /** Signer changes pending on Stellar (`stellarSignerChanges`), `null` when it is off. */
   stellar: number | 'unused' | null;
+  /** Removals and upgrades waiting their two days on some network, which any key can cancel. */
+  changes: OwnerChange[];
+  /** When it was read (Unix seconds): what was due then. */
+  readAt: number;
 };
 
 /** Reads the keys: one network or Stellar out of reach hides neither the keys nor the others. */
 export async function readKeys(settings: ClientSettings, session: Session): Promise<KeysState> {
   const { wallet } = session;
   // Verified here: the owners decide which keys Stellar signs with, and Wallet Core serves them.
-  const [{ owners, approvals }, applied] = await Promise.all([
+  const [{ owners, approvals, changes }, applied] = await Promise.all([
     accountOwners(settings, wallet),
     Promise.all(
       settings.networks.map((id) =>
@@ -35,5 +40,7 @@ export async function readKeys(settings: ClientSettings, session: Session): Prom
     total: approvals.length,
     applied: Object.fromEntries(settings.networks.map((id, i) => [id, applied[i]])),
     stellar: await stellarSignerChanges(settings, session, owners).catch(() => null),
+    changes,
+    readAt: Math.floor(Date.now() / 1000),
   };
 }

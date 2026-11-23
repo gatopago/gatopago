@@ -3,7 +3,7 @@ import type { ClientSettings } from '../src/lib/settings';
 import type { Session } from '../src/wallet/session';
 
 vi.mock('../src/wallet/owners', () => ({
-  accountOwners: async () => ({ owners: ['0x01'], approvals: [] }),
+  accountOwners: async () => ({ owners: ['0x01'], approvals: [], changes: [] }),
 }));
 vi.mock('../src/wallet/operations', () => ({
   appliedApprovals: async (_settings: unknown, _address: string, id: string) => {
@@ -25,6 +25,8 @@ describe("the account's keys", () => {
       total: 0,
       applied: { 'eip155:421614': 0, 'eip155:43113': 'unread' },
       stellar: null,
+      changes: [],
+      readAt: expect.any(Number),
     });
   });
 });

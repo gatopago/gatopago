@@ -31,6 +31,17 @@ export interface Recipient {
 export interface Approvals {
   initial_owners: Hex[] | null;
   approvals: { sequence: number; call: Hex; signature: Hex }[];
+  /** Changes approvals scheduled (removing keys, upgrading), per network, until applied or cancelled. */
+  changes: OwnerChange[];
+}
+
+export interface OwnerChange {
+  network: string;
+  id: Hex;
+  sequence: number;
+  call: Hex;
+  /** Unix seconds from which anyone can apply it; until then any key can cancel it. */
+  ready_at: number;
 }
 
 /**

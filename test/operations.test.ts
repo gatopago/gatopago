@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HttpRequestError, RpcRequestError } from 'viem';
+import { encodeFunctionData, HttpRequestError, RpcRequestError, type Hex } from 'viem';
 import { entryPoint09Address, UserOperationReceiptNotFoundError } from 'viem/account-abstraction';
 import type { ClientSettings } from '../src/lib/settings';
-import type { Session } from '../src/wallet/session';
+import type { Session, Wallet } from '../src/wallet/session';
+import { gatopagoAccountAbi, keyOwner } from '@gatopago/shared/wallet';
 
 // The bundler and the account are simulated: what matters is what the browser remembers.
 const fake = vi.hoisted(() => ({
@@ -21,7 +22,7 @@ vi.mock('../src/wallet/account', () => ({
   }),
   publicClient: () => ({ getCode: async () => undefined }),
 }));
-vi.mock('../src/wallet/api', () => ({ api: async () => ({ approvals: [] }) }));
+vi.mock('../src/wallet/api', () => ({ api: async () => ({ approvals: [], changes: [] }) }));
 vi.mock('../src/wallet/activity', () => ({ invalidateActivity: () => {} }));
 vi.mock('viem/account-abstraction', async (original) => ({
   ...(await original<object>()),
@@ -181,5 +182,33 @@ describe('an operation in flight', () => {
     await expect(send(settings, session, network, calls)).rejects.toThrow('OPERATION_REVERTED');
     expect(blocked).toBe(true);
     expect(isReloadBlocked()).toBe(false);
+  });
+});
+
+describe('a due owner change', () => {
+  it('is applied by the app only when it removes another key, on its network, once due', async () => {
+    const { changesToApply } = await import('../src/wallet/operations');
+    const wallet = { owner: '0x1111111111111111111111111111111111111111' } as unknown as Wallet;
+    const other = keyOwner('0x3333333333333333333333333333333333333333');
+    const call = (functionName: 'removeOwners' | 'upgradeToAndCall', args: unknown[]) =>
+      encodeFunctionData({ abi: gatopagoAccountAbi, functionName, args } as never);
+    const change = (id: string, data: Hex, network = 'eip155:421614', ready_at = 100) => ({
+      network,
+      id: id as Hex,
+      sequence: 1,
+      call: data,
+      ready_at,
+    });
+    const changes = [
+      change('0x01', call('removeOwners', [[other]])),
+      change('0x02', call('removeOwners', [[other]]), 'eip155:43113'),
+      change('0x03', call('removeOwners', [[other]]), 'eip155:421614', 200),
+      // Removing the key this device signs with, or upgrading, waits for the person.
+      change('0x04', call('removeOwners', [[keyOwner(wallet.owner)]])),
+      change('0x05', call('upgradeToAndCall', [sender, '0x'])),
+    ];
+    expect(changesToApply(wallet, changes, 'eip155:421614', 150).map(({ id }) => id)).toEqual([
+      '0x01',
+    ]);
   });
 });

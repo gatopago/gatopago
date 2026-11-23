@@ -2,33 +2,40 @@
 
 import { useEffect, useState } from 'react';
 import { useAction } from './useAction';
-import { encodeFunctionData, type Hex } from 'viem';
-import { gatopagoAccountAbi, keyOwner, ownersAfter, signApproval } from '@gatopago/shared/wallet';
+import { decodeFunctionData, encodeFunctionData, type Hex } from 'viem';
+import {
+  approvedOwners,
+  cancelChangeCall,
+  gatopagoAccountAbi,
+  keyOwner,
+  signApproval,
+} from '@gatopago/shared/wallet';
 import { NavigationLink } from '../consumer/NavigationLink';
 import { BackHeader } from '../consumer/Primitives';
 import { Sheet } from '../consumer/Sheet';
 import { ScreenLoading } from '../consumer/Skeleton';
 import { StageOverlay } from '../consumer/StageOverlay';
 import type { ClientSettings } from '../lib/settings';
-import { gatopagoAccount, networkName, publicClient } from './account';
-import { applyApprovals } from './operations';
-import { api } from './api';
+import { gatopagoAccount, networkName } from './account';
+import { applyApprovals, changesToApply, send } from './operations';
+import { api, type OwnerChange } from './api';
 import { readKeys, type KeysState } from './keys';
 import { useFailureMessage } from './messages';
 import { addOwnerCall, newBackupKey } from './passkey';
-import { saveSession, type Session } from './session';
+import type { Session } from './session';
 import { approveStellarKey, registerStellarKey, syncStellarSigners } from './stellar';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { BusinessAccess } from '../consumer/BusinessAccess';
 
 /**
  * `/settings/security`, as V2's security center: the passkeys that own the account. Adding or
- * removing one is an approval signed once and applied on every network: now where the account
- * exists, later where it is first used.
+ * removing one is an approval signed once and applied at once on every network. A removal waits two
+ * days on each, listed here, where any key cancels it.
  */
 export function Security({ settings, session }: { settings: ClientSettings; session: Session }) {
   const messageFor = useFailureMessage();
   const t = useTranslations('Security');
+  const locale = useLocale();
   const { wallet } = session;
   const current = keyOwner(wallet.owner).toLowerCase();
   const [state, setState] = useState<KeysState | null>(null);
@@ -59,43 +66,31 @@ export function Security({ settings, session }: { settings: ClientSettings; sess
   }
 
   /**
-   * Signs `call` as the next approval and stores it. It is applied on the home network, where
-   * sign-in checks the owners (deploying the account if needed, so a new key works from day one),
-   * wherever else the account exists, or on every network when removing a key, so the removed key
-   * cannot use a network first.
+   * Signs `call` as the next approval, stores it and applies it on every network at once, deploying
+   * the account where it does not exist yet: an approval left for later could be taken there first
+   * by a stolen key. A network that fails gets it again before its next operation.
    */
-  async function approve(call: Hex, everywhere: boolean) {
+  async function approve(call: Hex) {
     const account = await gatopagoAccount(settings, wallet, settings.homeNetwork);
     const signature = await signApproval(account, BigInt(state!.total), call);
-    const { session: renewed } = await api<{ session?: { token: string; expires_at: number } }>(
-      settings.apiOrigin,
-      `approvals/${wallet.address}`,
-      { token: session.token, body: { call, signature, initial_owners: wallet.initialOwners } },
-    );
-    // Removing a key ends every earlier session (one may be that key's): this device goes on with
-    // the new one. Without one, it removed its own key and its session ended with it.
-    const active = renewed
-      ? { ...session, token: renewed.token, expiresAt: renewed.expires_at }
-      : session;
-    if (renewed) saveSession(active);
-    // Each network on its own: one that fails does not stop the others, and it applies the change
-    // before its next operation anyway.
-    const applyOn = async (id: string) => {
-      if (
-        everywhere ||
-        id === settings.homeNetwork ||
-        (await publicClient(settings, id).getCode({ address: wallet.address }))
-      )
-        await applyApprovals(settings, active, id);
-    };
+    await api(settings.apiOrigin, `approvals/${wallet.address}`, {
+      token: session.token,
+      body: { call, signature, initial_owners: wallet.initialOwners },
+    });
     const pending: string[] = [];
-    for (const id of settings.networks) await applyOn(id).catch(() => pending.push(id));
-    // A removed key must not keep signing on Stellar either; added ones are synced from the list.
-    if (everywhere)
-      await syncStellarSigners(settings, active, ownersAfter(state!.owners, [call])).catch(() =>
-        pending.push('stellar'),
-      );
+    for (const id of settings.networks)
+      await applyApprovals(settings, session, id).catch(() => pending.push(id));
     if (pending.length) throw new Error('APPROVAL_PENDING');
+  }
+
+  /** Cancels a scheduled change on every network where it waits: one operation on each. */
+  async function cancel(change: ScheduledChange) {
+    const pending: string[] = [];
+    for (const id of change.networks)
+      await send(settings, session, id, [cancelChangeCall(wallet.address, change.id)]).catch(() =>
+        pending.push(id),
+      );
+    if (pending.length) throw new Error('CANCEL_PENDING');
   }
 
   /**
@@ -114,7 +109,7 @@ export function Security({ settings, session }: { settings: ClientSettings; sess
       );
       const call = addOwnerCall(backup.owner);
       // Still pending on some networks: the key is approved, and it completes there later.
-      const pending = await approve(call, false).then(
+      const pending = await approve(call).then(
         () => false,
         (failure: unknown) => {
           if (failure instanceof Error && failure.message === 'APPROVAL_PENDING') return true;
@@ -123,7 +118,7 @@ export function Security({ settings, session }: { settings: ClientSettings; sess
       );
       if (backup.result) {
         await registerStellarKey(settings, session, backup.result);
-        await syncStellarSigners(settings, session, ownersAfter(state!.owners, [call])).catch(
+        await syncStellarSigners(settings, session, approvedOwners(state!.owners, [call])).catch(
           () => undefined,
         );
       }
@@ -134,13 +129,18 @@ export function Security({ settings, session }: { settings: ClientSettings; sess
   const backedUp = keyCount > 1;
   const removing = dialog && typeof dialog === 'object' ? dialog.remove : null;
   // Where a key change is still to be applied: networks behind the latest approval, or that could
-  // not be asked, and Stellar.
+  // not be asked, or with a removal due, and Stellar.
   const behind = state
     ? settings.networks.filter((id) => {
         const applied = state.applied[id];
-        return applied === 'unread' || (applied !== null && applied < state.total);
+        return (
+          applied === 'unread' ||
+          (applied !== null && applied < state.total) ||
+          changesToApply(wallet, state.changes, id, state.readAt).length > 0
+        );
       })
     : [];
+  const scheduled = state ? scheduledChanges(state.changes) : [];
   const stellarBehind =
     state && settings.stellar && typeof state.stellar === 'number' && state.stellar > 0;
   return (
@@ -242,6 +242,48 @@ export function Security({ settings, session }: { settings: ClientSettings; sess
                 })}
               </div>
 
+              {scheduled.length ? (
+                <>
+                  <h3 className="meli-kicker mb-3 px-1">{t('scheduled')}</h3>
+                  <div className="meli-paper-card mb-3 divide-y divide-border">
+                    {scheduled.map((change) => (
+                      <div
+                        key={change.id}
+                        className="flex min-h-14 items-center justify-between gap-3 px-4 py-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-[14px]">
+                            {change.removes
+                              ? t('removesKey', { value: change.removes })
+                              : t('changesContract')}
+                          </p>
+                          <p className="text-[12px] text-text-faint">
+                            {change.readyAt <= state.readAt
+                              ? t('changeReady')
+                              : t('changeAppliesOn', {
+                                  date: new Date(change.readyAt * 1000).toLocaleString(locale, {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  }),
+                                })}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => perform(() => cancel(change))}
+                          className="min-h-11 shrink-0 px-1 text-[13px] text-danger underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {t('cancel')}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+
               {behind.length || stellarBehind ? (
                 <div className="mb-6 divide-y divide-border border border-pending bg-pending/8">
                   {behind.map((id) => (
@@ -312,7 +354,6 @@ export function Security({ settings, session }: { settings: ClientSettings; sess
                     functionName: 'removeOwners',
                     args: [[removing]],
                   }),
-                  true,
                 ),
               )
             }
@@ -332,6 +373,42 @@ export function Security({ settings, session }: { settings: ClientSettings; sess
       ) : null}
     </>
   );
+}
+
+/** A change scheduled on one or more networks (the same approval on each), as Security lists it. */
+type ScheduledChange = {
+  id: Hex;
+  networks: string[];
+  /** When the last network lets it apply. */
+  readyAt: number;
+  /** The keys it removes (their last characters), or null for an upgrade. */
+  removes: string | null;
+};
+
+function scheduledChanges(changes: readonly OwnerChange[]): ScheduledChange[] {
+  const byId = new Map<Hex, ScheduledChange>();
+  for (const change of changes) {
+    const known = byId.get(change.id);
+    if (known) {
+      known.networks.push(change.network);
+      known.readyAt = Math.max(known.readyAt, change.ready_at);
+      continue;
+    }
+    const { functionName, args } = decodeFunctionData({
+      abi: gatopagoAccountAbi,
+      data: change.call,
+    });
+    byId.set(change.id, {
+      id: change.id,
+      networks: [change.network],
+      readyAt: change.ready_at,
+      removes:
+        functionName === 'removeOwners'
+          ? (args[0] as readonly Hex[]).map((owner) => `…${owner.slice(-8)}`).join(', ')
+          : null,
+    });
+  }
+  return [...byId.values()];
 }
 
 /** A network where the latest key change is still to be applied, with the way to apply it. */
