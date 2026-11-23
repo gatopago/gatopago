@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from '../i18n/navigation';
 import type { Locale, Messages } from 'next-intl';
 import { CatGlyph } from './CatGlyph';
+import { MarketingNav } from './MarketingNav';
 import { MeliSprite } from './MeliSprite';
 import { LandingInteractions } from './LandingInteractions';
 import './docs.css';
@@ -50,8 +51,6 @@ function Leg({ label, value, children }: { label: string; value: string; childre
  * model and keeps apart what works today from what is being built (`Cascabel` of the catalog).
  */
 export function CascabelPage({ lang, copy: t }: { lang: Locale; copy: Messages['Cascabel'] }) {
-  const otherLocale = lang === 'es' ? 'en' : 'es';
-  const localeLabel = lang === 'es' ? 'EN' : 'ES';
   const sections = [
     ['#how', t.nav.how],
     ['#today', t.nav.today],
@@ -64,66 +63,14 @@ export function CascabelPage({ lang, copy: t }: { lang: Locale; copy: Messages['
       </a>
 
       <div className="meli-landing" data-locale={lang}>
-        <header className="meli-nav-shell" data-nav-shell>
-          <nav className="meli-nav" aria-label={t.nav.aria}>
-            <Link className="meli-brand" href="/" aria-label={t.nav.home}>
-              <CatGlyph className="meli-brand__glyph" decorative />
-              <span className="meli-brand__word">GatoPago</span>
-              <span className="meli-brand__alpha">Business</span>
-            </Link>
-
-            <div className="meli-nav__links" data-nav-menu>
-              {sections.map(([href, label]) => (
-                <a key={href} href={href}>
-                  {label}
-                </a>
-              ))}
-              <Link href="/docs">{t.nav.docs}</Link>
-            </div>
-
-            <div className="meli-nav__actions">
-              <Link
-                className="meli-locale"
-                href="/cascabel"
-                locale={otherLocale}
-                aria-label={t.nav.language}
-                data-locale-link
-              >
-                {localeLabel}
-              </Link>
-              <a className="meli-button meli-button--brand meli-nav__cta" href={CONTACT}>
-                {t.nav.contact}
-                <span aria-hidden="true">↗</span>
-              </a>
-              <button
-                className="meli-menu-button"
-                type="button"
-                aria-expanded="false"
-                aria-controls="meli-mobile-menu"
-                aria-label={t.nav.menuOpen}
-                data-menu-button
-                data-open-label={t.nav.menuOpen}
-                data-close-label={t.nav.menuClose}
-              >
-                <span></span>
-                <span></span>
-                <span></span>
-              </button>
-            </div>
-          </nav>
-
-          <div className="meli-mobile-menu" id="meli-mobile-menu" data-mobile-menu hidden>
-            {sections.map(([href, label]) => (
-              <a key={href} href={href}>
-                {label}
-              </a>
-            ))}
-            <Link href="/docs">{t.nav.docs}</Link>
-            <a className="meli-button meli-button--brand" href={CONTACT}>
-              {t.nav.contact} <span aria-hidden="true">↗</span>
-            </a>
-          </div>
-        </header>
+        <MarketingNav
+          lang={lang}
+          labels={t.nav}
+          badge="Business"
+          localeHref="/cascabel"
+          links={[...sections, ['/docs', t.nav.docs]]}
+          cta={{ href: CONTACT, label: t.nav.contact, external: true }}
+        />
 
         <main id="main-content">
           <section className="meli-hero meli-section--ink" id="hero" aria-labelledby="hero-title">

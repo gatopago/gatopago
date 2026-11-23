@@ -1,6 +1,7 @@
 import { getPathname, Link } from '../i18n/navigation';
 import type { Locale, Messages } from 'next-intl';
 import { CatGlyph } from './CatGlyph';
+import { MarketingNav } from './MarketingNav';
 import { MeliSprite } from './MeliSprite';
 import { LandingInteractions } from './LandingInteractions';
 import { API_RESPONSE, apiExample } from './apiExample';
@@ -22,76 +23,21 @@ export function Landing({ lang, copy: t }: { lang: Locale; copy: Messages['Landi
       </a>
 
       <div className="meli-landing" data-locale={lang}>
-        <header className="meli-nav-shell" data-nav-shell>
-          <nav className="meli-nav" aria-label={t.nav.aria}>
-            <Link className="meli-brand" href="/" aria-label={t.nav.home}>
-              <CatGlyph className="meli-brand__glyph" decorative />
-              <span className="meli-brand__word">GatoPago</span>
-              <span className="meli-brand__alpha">Beta</span>
-            </Link>
-
-            <div className="meli-nav__links" data-nav-menu>
-              <a href="#cycle">{t.nav.cycle}</a>
-              <a href="#account">{t.nav.account}</a>
-              <a href="#grow">{t.nav.grow}</a>
-              <a href="#control">{t.nav.control}</a>
-              <a href="#card">{t.nav.card}</a>
-              <a href="#api">{t.nav.developers}</a>
-            </div>
-
-            <div className="meli-nav__actions">
-              <Link
-                className="meli-locale"
-                href="/"
-                locale={otherLocale}
-                aria-label={t.nav.language}
-                data-locale-link
-              >
-                {localeLabel}
-              </Link>
-              <Link
-                className="meli-button meli-button--brand meli-nav__cta"
-                href={appHref}
-                prefetch={false}
-                data-cta="nav"
-              >
-                {t.nav.open}
-                <span aria-hidden="true">↗</span>
-              </Link>
-              <button
-                className="meli-menu-button"
-                type="button"
-                aria-expanded="false"
-                aria-controls="meli-mobile-menu"
-                aria-label={t.nav.menuOpen}
-                data-menu-button
-                data-open-label={t.nav.menuOpen}
-                data-close-label={t.nav.menuClose}
-              >
-                <span></span>
-                <span></span>
-                <span></span>
-              </button>
-            </div>
-          </nav>
-
-          <div className="meli-mobile-menu" id="meli-mobile-menu" data-mobile-menu hidden>
-            <a href="#cycle">{t.nav.cycle}</a>
-            <a href="#account">{t.nav.account}</a>
-            <a href="#grow">{t.nav.grow}</a>
-            <a href="#control">{t.nav.control}</a>
-            <a href="#card">{t.nav.card}</a>
-            <a href="#api">{t.nav.developers}</a>
-            <Link
-              className="meli-button meli-button--brand"
-              href={appHref}
-              prefetch={false}
-              data-cta="mobile-nav"
-            >
-              {t.nav.open} <span aria-hidden="true">↗</span>
-            </Link>
-          </div>
-        </header>
+        <MarketingNav
+          lang={lang}
+          labels={t.nav}
+          badge="Beta"
+          localeHref="/"
+          links={[
+            ['#cycle', t.nav.cycle],
+            ['#account', t.nav.account],
+            ['#grow', t.nav.grow],
+            ['#control', t.nav.control],
+            ['#card', t.nav.card],
+            ['#api', t.nav.developers],
+          ]}
+          cta={{ href: appHref, label: t.nav.open, tracked: true }}
+        />
 
         <main id="main-content">
           <section className="meli-hero meli-section--ink" id="hero" aria-labelledby="hero-title">
