@@ -4,7 +4,6 @@ import dynamic from 'next/dynamic';
 import { lazy } from 'react';
 import type { ClientSettings } from '../lib/settings';
 import type { Session } from '../wallet/session';
-import { MoveMenu } from './MoveMenu';
 import type { ConsumerView } from './routes';
 import { ScreenLoading } from './Skeleton';
 
@@ -69,8 +68,6 @@ export function ConsumerContent({
   switch (view) {
     case 'account':
       return <Home {...props} />;
-    case 'move':
-      return <MoveMenu />;
     case 'send':
       return <Send {...props} />;
     case 'team':

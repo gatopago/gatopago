@@ -144,6 +144,10 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
   );
   const [coin, setCoin] = useState('USDC');
   const chosen = others.find((asset) => asset.symbol === coin);
+  // Only coins there is something of: an empty one cannot pay anyone.
+  const payable = others.filter(
+    (asset) => asset.symbol === coin || (holding(asset.holdings[0]) ?? 0n) > 0n,
+  );
   const symbol = chosen?.symbol ?? 'USDC';
   const decimals = chosen?.decimals ?? USDC_DECIMALS;
   const [mode, setMode] = useState<Mode>(params.get('split') ? 'shares' : 'amounts');
@@ -197,12 +201,15 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
   const network = walletNetwork(networkId);
   // Savings (Aave) hold USDC only.
   const canSave = !chosen && Boolean(network.aave);
+  // Paying from Grow is offered only when there is something in it.
+  const savings = saved[networkId];
+  const canPayFromSavings = canSave && typeof savings === 'bigint' && savings > 0n;
   // Shares split money that arrived: it is available, and savings only receive.
-  const from: Source = canSave && mode === 'amounts' ? source : 'available';
+  const from: Source = canPayFromSavings && mode === 'amounts' ? source : 'available';
   const funds = chosen
     ? holding(chosen.holdings[0])
     : from === 'savings'
-      ? saved[networkId]
+      ? savings
       : balances[networkId];
   const typed = mode === 'shares' ? [splitting] : team.map(({ amount }) => amount);
   const precision = typed.some((value) => tooPrecise(value, decimals))
@@ -333,7 +340,7 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
   if (receipt)
     return (
       <>
-        <BackHeader title={title} to="/move" />
+        <BackHeader title={title} to="/send" />
         <ReceiptScreen receipt={receipt}>
           <ConfirmDetails rows={breakdown(receipt.review)} />
           <NavigationLink href={'/app'} className="btn btn-ghost btn-block mt-4">
@@ -348,7 +355,7 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
 
   return (
     <>
-      <BackHeader title={title} to="/move" />
+      <BackHeader title={title} to="/send" />
       <StageOverlay label={busy && !review && !receipt ? t('preparingPayments') : null} />
       <p className="mb-4 text-[14px] leading-relaxed text-text-muted">
         {t('paySeveralPeopleOnce')}
@@ -385,7 +392,7 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
               value={splitting}
               disabled={busy}
               onChange={setSplitting}
-              className="meli-field tabular h-12 text-[15px] placeholder:text-text-faint"
+              className="meli-field tabular h-12 placeholder:text-text-faint"
             />
             <p className="mt-2 text-[12px] leading-relaxed text-text-muted">
               {t('examplePaymentJustReceived')}
@@ -509,7 +516,7 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
                   value={member.who}
                   disabled={busy}
                   onChange={(event) => update(member.id, { who: event.target.value.trim() })}
-                  className="meli-field h-12 min-w-0 flex-1 text-[14px] placeholder:text-text-faint"
+                  className="meli-field h-12 min-w-0 flex-1 placeholder:text-text-faint"
                 />
                 <div className="relative w-24 shrink-0">
                   <AmountInput
@@ -524,7 +531,7 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
                     onChange={(next) =>
                       update(member.id, { [mode === 'shares' ? 'share' : 'amount']: next })
                     }
-                    className={`meli-field tabular h-12 w-full text-right text-[14px] placeholder:text-text-faint ${mode === 'shares' ? '!pr-7' : ''}`}
+                    className={`meli-field tabular h-12 w-full text-right placeholder:text-text-faint ${mode === 'shares' ? '!pr-7' : ''}`}
                   />
                   {mode === 'shares' ? (
                     <span
@@ -591,7 +598,7 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
                   maxLength={40}
                   placeholder={t('eGSuppliers')}
                   onChange={(event) => setNaming(event.target.value)}
-                  className="meli-field h-11 basis-full text-[14px] placeholder:text-text-faint"
+                  className="meli-field h-11 basis-full placeholder:text-text-faint"
                 />
                 <button
                   type="button"
@@ -629,7 +636,7 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
                   value={saveShare}
                   disabled={busy}
                   onChange={setSaveShare}
-                  className="meli-field tabular h-12 w-full !pr-7 text-right text-[14px] placeholder:text-text-faint"
+                  className="meli-field tabular h-12 w-full !pr-7 text-right placeholder:text-text-faint"
                 />
                 <span
                   aria-hidden="true"
@@ -648,19 +655,19 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
             value={reference}
             disabled={busy}
             onChange={(event) => setReference(event.target.value)}
-            className="meli-field mt-4 h-12 text-[14px] placeholder:text-text-faint"
+            className="meli-field mt-4 h-12 placeholder:text-text-faint"
           />
         </MoneyPanel>
         <MoneyPanel className="mb-5">
           <div className="mb-3 flex items-center justify-between gap-3">
             <p className="text-[13px] font-semibold">{t('pay')}</p>
-            {others.length > 0 ? (
+            {payable.length > 0 ? (
               <TokenSelect
                 value={symbol}
                 label={t('currency')}
                 options={[
                   { value: 'USDC', symbol: 'USDC', label: 'USD Coin' },
-                  ...others.map((asset) => ({
+                  ...payable.map((asset) => ({
                     value: asset.symbol,
                     symbol: asset.symbol,
                     label: asset.name,
@@ -671,7 +678,7 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
               />
             ) : null}
           </div>
-          {canSave && mode === 'amounts' ? (
+          {canPayFromSavings && mode === 'amounts' ? (
             <div className="seg-track seg-track-block mb-3">
               {(['available', 'savings'] as const).map((option) => (
                 <button
@@ -691,7 +698,7 @@ export function TeamScreen({ settings, session }: { settings: ClientSettings; se
             {from === 'savings' ? t('whatGrowKeepsEarning') : t('fromAvailable', { symbol })}
             {typeof funds === 'bigint' ? ` (${formatBalance(funds, locale)} ${symbol})` : null}.
           </p>
-          {from === 'available' && !chosen ? (
+          {from === 'available' && !chosen && typeof funds === 'bigint' && sum > funds ? (
             <ElsewhereNote settings={settings} session={session} className="mt-2" />
           ) : null}
         </MoneyPanel>

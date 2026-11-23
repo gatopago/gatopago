@@ -3,10 +3,12 @@ import type { ReactNode } from 'react';
 function Icon({
   children,
   size = 20,
+  strokeWidth = 2,
   className,
 }: {
   children: ReactNode;
   size?: number;
+  strokeWidth?: number;
   className?: string;
 }) {
   return (
@@ -18,7 +20,7 @@ function Icon({
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
@@ -31,6 +33,31 @@ export function SendIcon() {
   return (
     <Icon>
       <path d="M12 20V6m-6 6 6-6 6 6" />
+    </Icon>
+  );
+}
+export function ReceiveIcon() {
+  return (
+    <Icon>
+      <path d="M12 4v14m-6-6 6 6 6-6" />
+    </Icon>
+  );
+}
+export function GroupIcon() {
+  return (
+    <Icon>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 19c0-3 3-5 6-5s6 2 6 5" />
+      <path d="M16 11a3 3 0 1 0 0-6" />
+      <path d="M21 19c0-2-1.5-3.6-4-4.4" />
+    </Icon>
+  );
+}
+export function CardIcon() {
+  return (
+    <Icon>
+      <rect x="3" y="6" width="18" height="12" rx="1" />
+      <path d="M3 10h18M7 15h4" />
     </Icon>
   );
 }
@@ -49,17 +76,26 @@ export function RequestIcon() {
     </Icon>
   );
 }
+/** A choice that is selected, or a step that is done. */
+export function CheckIcon({
+  size = 18,
+  strokeWidth = 2.5,
+  className,
+}: {
+  size?: number;
+  strokeWidth?: number;
+  className?: string;
+}) {
+  return (
+    <Icon size={size} strokeWidth={strokeWidth} className={className}>
+      <path d="m5 12 4 4L19 6" />
+    </Icon>
+  );
+}
 export function SwapIcon() {
   return (
     <Icon size={18}>
       <path d="M7 4v16m-4-4 4 4 4-4M17 20V4m-4 4 4-4 4 4" />
-    </Icon>
-  );
-}
-export function MoveIcon() {
-  return (
-    <Icon>
-      <path d="M7 7h11m-3-3 3 3-3 3M17 17H6m3-3-3 3 3 3" />
     </Icon>
   );
 }

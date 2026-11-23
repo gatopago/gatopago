@@ -95,7 +95,7 @@ function ActivityRow({
         className={`type-mono shrink-0 text-right text-[14px] font-semibold ${hidden ? 'text-text-faint' : received ? 'text-growth' : 'text-text'}`}
       >
         {hidden ? '••••' : `${received ? '+' : '−'}${amount}`}
-        <span className="block text-[10px] font-normal text-text-faint">{movement.currency}</span>
+        <span className="block text-[12px] font-normal text-text-faint">{movement.currency}</span>
       </span>
     </button>
   );
@@ -317,7 +317,7 @@ export function ActivityScreen({
                 name={name}
                 value={value}
                 onChange={(event) => setFilter({ [name]: event.target.value })}
-                className="w-full bg-transparent text-[13px] text-text scheme-light"
+                className="w-full bg-transparent text-[16px] text-text scheme-light"
               />
             </label>
           ))}

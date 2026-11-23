@@ -6,7 +6,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { consumerRoutes, safeNext } from '../src/consumer/routes';
 import { parseConsumerQr, qrReviewPath, reviewedRecipient } from '../src/consumer/qr';
 import { RecoveryScreen } from '../src/consumer/AccountScreens';
-import { MoveMenu } from '../src/consumer/MoveMenu';
 import { withTexts } from './translations';
 
 vi.mock('../src/marketing/MeliSprite', () => ({
@@ -58,12 +57,11 @@ describe('Next migration inventory', () => {
     expect(consumerRoutes).not.toHaveProperty('/pay/demo-cafe-norte');
     expect(parseConsumerQr('/pay/demo-cafe-norte', 'https://gatopago.com')).toBeNull();
   });
-  it('offers the V2 Move choices, paying a team and moving between networks', () => {
-    const html = renderToStaticMarkup(withTexts(createElement(MoveMenu)));
-    // One view for everyone: USDC lives on the home network, and between networks brings it there.
-    for (const path of ['/move?flow=receive', '/send', '/team', '/swap', '/crosschain'])
-      expect(html).toContain(`href="${path.replace('&', '&amp;')}"`);
-    expect(html.match(/meli-path-card-app/g)).toHaveLength(5);
+  it('reaches every way to move money without a Move menu', () => {
+    // Home opens send, receive and swap; send opens group payment; bringing USDC home opens between networks.
+    expect(consumerRoutes).not.toHaveProperty('/move');
+    for (const path of ['/send', '/receive', '/team', '/swap', '/crosschain', '/charge'])
+      expect(consumerRoutes).toHaveProperty(path);
   });
   it('explains permanent loss of access without presenting a recovery form', () => {
     for (const english of [true, false]) {

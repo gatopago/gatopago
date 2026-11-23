@@ -7,21 +7,15 @@ import { NavigationLink as Link } from './NavigationLink';
 import Screen from './Screen';
 import { PrimaryNav } from './PrimaryNav';
 import { CatGlyph } from '../marketing/CatGlyph';
-import { PwaControls } from '../pwa/PwaControls';
-import { ChevronDownIcon } from './Icons';
 import { MenuSheet } from './MenuSheet';
-import dynamic from 'next/dynamic';
+import { ScanIcon } from './Icons';
 import { walletNetwork } from '@gatopago/shared/networks';
 import { useProfile } from '../wallet/useProfile';
 import { useTopLevel } from './history';
 import { useLocale, useTranslations } from 'next-intl';
 
-const AccountDetails = dynamic(() =>
-  import('./AccountDetailsSheet').then((m) => m.AccountDetailsSheet),
-);
-
 /**
- * The page around every screen. The account's header and tab bar belong to its four main tabs;
+ * The page around every screen. The account's header and tab bar belong to its three main tabs;
  * the screens opened from them (send, settings…) get the whole height and a back button.
  * `access` is sign-in, `public` a page anyone opens (a checkout, a profile).
  */
@@ -29,12 +23,12 @@ type FrameProps = {
   children: ReactNode;
   navigation?: boolean;
   presentation?: 'account' | 'access' | 'public';
-  account?: { address: string; networks: readonly string[]; businessOrigin: string };
+  account?: { networks: readonly string[]; businessOrigin: string };
 };
 
 export function ConsumerFrame(props: FrameProps) {
-  // Only the account has main tabs, and telling them apart reads the query (`/move?flow=receive`
-  // is not one): pages without an account skip it, so they can be prerendered.
+  // Only the account has main tabs, and telling them apart reads the address: pages without an
+  // account skip it, so they can be prerendered.
   return (props.presentation ?? 'account') === 'account' ? (
     <AccountFrame {...props} />
   ) : (
@@ -56,7 +50,6 @@ function Frame({
   const t = useTranslations('ConsumerFrame');
   const locale = useLocale();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const { profile } = useProfile();
   const access = presentation === 'access';
   const accountHeader = presentation === 'account' && top;
@@ -71,14 +64,11 @@ function Frame({
         <strong className="block truncate font-display text-[15px]">
           {profile?.username ? `@${profile.username}` : 'GatoPago'}
         </strong>
-        <small className="mt-0.5 flex items-center gap-1.5 truncate whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.08em] text-text-faint">
-          {t('personalAccount')}
-          {testnet ? (
-            <span aria-hidden="true" className="hidden min-[390px]:inline">
-              · Testnet
-            </span>
-          ) : null}
-        </small>
+        {testnet ? (
+          <small className="mt-0.5 block font-mono text-[11px] uppercase tracking-[0.08em] text-text-faint">
+            Testnet
+          </small>
+        ) : null}
       </span>
     </>
   );
@@ -94,28 +84,31 @@ function Frame({
           </header>
         ) : accountHeader ? (
           <header className="meli-app-header">
+            {/* Your name opens your profile: the address and QR live in Receive. */}
             {account ? (
-              <button
-                type="button"
+              <Link
+                href="/profile"
                 className="meli-identity interactive-surface"
-                onClick={() => setDetailsOpen(true)}
-                aria-label={t('myAccount')}
-                aria-haspopup="dialog"
-                aria-expanded={detailsOpen}
+                aria-label={t('myProfile')}
               >
                 {identity}
-                <ChevronDownIcon size={14} />
-              </button>
+              </Link>
             ) : (
               <span className="meli-identity">{identity}</span>
             )}
             <div className="flex items-center gap-2">
-              <PwaControls compact />
+              {/* Paying with a QR is the most common way to pay in the region: it gets the top
+                  corner on every main tab. Installing the app lives in the menu. */}
+              {account ? (
+                <Link href="/scan" className="meli-avatar" aria-label={t('scanQr')}>
+                  <ScanIcon />
+                </Link>
+              ) : null}
               {account ? (
                 <button
                   type="button"
                   onClick={() => setMenuOpen(true)}
-                  className="meli-avatar"
+                  className="meli-square-action h-11 w-11"
                   aria-label={t('openMenu')}
                   aria-haspopup="dialog"
                   aria-expanded={menuOpen}
@@ -142,9 +135,6 @@ function Frame({
       {tabs ? <PrimaryNav /> : null}
       {menuOpen && account ? (
         <MenuSheet businessOrigin={account.businessOrigin} onClose={() => setMenuOpen(false)} />
-      ) : null}
-      {detailsOpen && account ? (
-        <AccountDetails address={account.address} onClose={() => setDetailsOpen(false)} />
       ) : null}
     </div>
   );

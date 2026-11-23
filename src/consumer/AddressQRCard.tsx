@@ -39,7 +39,11 @@ export function AddressQRCard({
   const { copy, label } = useCopy();
   return (
     <>
-      <div className="mb-5 flex justify-center" role="img" aria-label={addressLabel ?? t('address')}>
+      <div
+        className="mb-5 flex justify-center"
+        role="img"
+        aria-label={addressLabel ?? t('address')}
+      >
         <div className="border-2 border-text bg-white p-3 shadow-[6px_6px_0_var(--color-cat-700)]">
           <QRCodeSVG
             value={qrValue(address, chainId, token, amount)}

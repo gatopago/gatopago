@@ -29,6 +29,7 @@ import {
   type ReceiptData,
 } from '../consumer/PaymentSheets';
 import { NavigationLink } from '../consumer/NavigationLink';
+import { GroupIcon, ScanIcon } from '../consumer/Icons';
 import { CrosschainTimeline } from '../consumer/CrosschainTimeline';
 import { StageOverlay } from '../consumer/StageOverlay';
 import type { Session } from './session';
@@ -142,6 +143,10 @@ export function Send({ settings, session }: { settings: ClientSettings; session:
     chosen ? formatHolding(value, places, locale) : formatBalance(value, locale);
   const [amount, setAmount] = useState('');
   const precision = tooPrecise(amount, decimals) ? messageFor(new Error('TOO_MANY_DECIMALS')) : '';
+  // USDC that arrived on another network is offered only when what is typed needs it.
+  const typed =
+    !precision && /^(\d+\.?\d*|\.\d+)$/.test(amount) ? exactUnits(amount, decimals) : 0n;
+  const short = typeof total === 'bigint' && typed > total;
   const [review, setReview] = useState<Review | null>(null);
   const [sent, setSent] = useState<{ hash: string; review: Review } | null>(null);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
@@ -311,7 +316,7 @@ export function Send({ settings, session }: { settings: ClientSettings; session:
 
   return (
     <>
-      <BackHeader title={t('sendMoney')} to="/move" />
+      <BackHeader title={t('sendMoney')} to="/app" />
       <StageOverlay label={busy && !review && !sent ? t('preparingTransfer') : null} />
       {(error || precision) && !review ? (
         <p className="auth-error" role="alert">
@@ -374,13 +379,19 @@ export function Send({ settings, session }: { settings: ClientSettings; session:
                 <TokenSelect
                   value={symbol}
                   label={t('currency')}
+                  // USDC, and only the coins there is something of (or the one a QR asked for).
                   options={[
-                    { value: 'USDC', symbol: 'USDC', label: networkName(settings.homeNetwork) },
-                    ...others.map((asset) => ({
-                      value: asset.symbol,
-                      symbol: asset.symbol,
-                      label: networkName(asset.holdings[0].networkId),
-                    })),
+                    { value: 'USDC', symbol: 'USDC', label: 'USD Coin' },
+                    ...others
+                      .filter(
+                        (asset) =>
+                          asset.symbol === coin || (assetBalance(asset, holding) ?? 0n) > 0n,
+                      )
+                      .map((asset) => ({
+                        value: asset.symbol,
+                        symbol: asset.symbol,
+                        label: asset.name,
+                      })),
                   ]}
                   onChange={setCoin}
                   disabled={busy}
@@ -421,12 +432,23 @@ export function Send({ settings, session }: { settings: ClientSettings; session:
               {t('available')}: {typeof total === 'bigint' ? balanceText(total, decimals) : '—'}{' '}
               {symbol}
             </p>
-            {chosen ? null : (
+            {!chosen && short ? (
               <ElsewhereNote settings={settings} session={session} className="mt-1 text-center" />
-            )}
+            ) : null}
           </MoneyPanel>
           <MoneyPanel className="mb-5">
-            <p className="mb-3 text-[13px] font-semibold">{t('whom')}</p>
+            {/* Scanning lives here, where a QR is used: it fills who receives (and the amount, if
+                the QR has one). */}
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-[13px] font-semibold">{t('whom')}</p>
+              <NavigationLink
+                href="/scan"
+                className="-my-3 flex items-center gap-1.5 py-3 text-[13px] font-semibold text-cat-700"
+              >
+                <ScanIcon />
+                {t('scanQr')}
+              </NavigationLink>
+            </div>
             <div className="seg-track seg-track-block mb-4">
               {(['username', 'address'] as const).map((type) => (
                 <button
@@ -464,7 +486,7 @@ export function Send({ settings, session }: { settings: ClientSettings; session:
                   value={recipient}
                   disabled={busy}
                   onChange={setRecipient}
-                  className="meli-field h-12 text-[15px] placeholder:text-text-faint !pl-8"
+                  className="meli-field h-12 placeholder:text-text-faint !pl-8"
                 />
               ) : (
                 <input
@@ -477,7 +499,7 @@ export function Send({ settings, session }: { settings: ClientSettings; session:
                   value={recipient}
                   disabled={busy}
                   onChange={(event) => setRecipient(event.target.value.trim())}
-                  className="meli-field h-12 text-[15px] placeholder:text-text-faint font-mono text-[13px]"
+                  className="meli-field h-12 placeholder:text-text-faint font-mono"
                 />
               )}
             </div>
@@ -511,6 +533,14 @@ export function Send({ settings, session }: { settings: ClientSettings; session:
                 className="mt-4"
               />
             ) : null}
+            {/* Paying several people is a way of sending: one confirmation, all or none. */}
+            <NavigationLink
+              href="/team"
+              className="mt-4 flex min-h-11 items-center gap-2 border-t border-border pt-3 text-[13px] font-semibold text-cat-700"
+            >
+              <GroupIcon />
+              {t('payGroup')}
+            </NavigationLink>
           </MoneyPanel>
           <TransactionActions>
             <button

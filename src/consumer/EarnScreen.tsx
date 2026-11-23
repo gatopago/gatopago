@@ -204,7 +204,7 @@ export function EarnScreen({ settings, session }: { settings: ClientSettings; se
           className="tabular mb-2 w-full bg-transparent font-display text-[34px] leading-none text-text placeholder:text-text-faint"
         />
         {/* Below the amount: "Available" stays next to the field it describes. */}
-        {action === 'deposit' ? (
+        {action === 'deposit' && typeof available === 'bigint' && value > available ? (
           <ElsewhereNote settings={settings} session={session} className="mb-3" />
         ) : null}
         {(error || precision) && !review ? (

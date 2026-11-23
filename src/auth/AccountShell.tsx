@@ -83,7 +83,6 @@ export function AccountShell({
         <ConsumerFrame
           navigation
           account={{
-            address: session.wallet.address,
             networks: settings.networks,
             businessOrigin: settings.businessOrigin,
           }}

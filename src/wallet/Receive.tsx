@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { faucetCall, walletAssets } from '@gatopago/shared/assets';
 import { walletNetwork } from '@gatopago/shared/networks';
 import { AddressQRCard } from '../consumer/AddressQRCard';
-import { BackHeader, MoneyPanel, NoticeCard } from '../consumer/Primitives';
+import { RequestIcon } from '../consumer/Icons';
+import { BackHeader, MoneyPanel, NoticeCard, OptionCard } from '../consumer/Primitives';
 import { SelectMenu } from '../consumer/SelectMenu';
 import { TokenSelect } from '../consumer/TokenSelect';
 import type { ClientSettings } from '../lib/settings';
@@ -18,10 +19,11 @@ import { useTranslations } from 'next-intl';
 import { NetworkIcon } from '../consumer/TokenIcon';
 
 /**
- * `/receive`, as in V2: coin, QR and the warnings a wallet or exchange needs. The coin comes first:
- * each one lives on its own network (AVAX on Avalanche…), so choosing it chooses the network. Only
- * USDC can arrive on several, so it alone asks which one: the home network comes chosen, and
- * Stellar shows its own address when it is on. On testnets, a coin with a faucet can be requested.
+ * `/receive`: every way to get money on one screen. Asking for an amount opens a payment link;
+ * below it, the account's QR is ready for a wallet or an exchange, with USDC on the home network.
+ * Only when someone sends another coin or uses another network do the coin and network choices
+ * open: each coin lives on its own network (AVAX on Avalanche…), and only USDC can arrive on
+ * several. On testnets, a coin with a faucet can be requested.
  */
 export function Receive({ settings, session }: { settings: ClientSettings; session: Session }) {
   const messageFor = useFailureMessage();
@@ -29,6 +31,7 @@ export function Receive({ settings, session }: { settings: ClientSettings; sessi
   useLiveBalances(settings, session);
   const [symbol, setSymbol] = useState('USDC');
   const [usdcNetwork, setUsdcNetwork] = useState(settings.homeNetwork);
+  const [choosing, setChoosing] = useState(false);
   const [requested, setRequested] = useState<'busy' | 'done' | string | null>(null);
   // Stellar receives at the account's own Stellar address, from Wallet Core: `undefined` while
   // asking, `null` when Stellar is off. A failed request says so and can be retried; it never
@@ -78,48 +81,70 @@ export function Receive({ settings, session }: { settings: ClientSettings; sessi
 
   return (
     <>
-      <BackHeader title={t('receive')} to="/move?flow=receive" />
-      <p className="mb-5 text-[14px] leading-relaxed text-text-muted">{t('chooseCoinThenShare')}</p>
-      {/* The coin, then its network on a row of its own: the same layout for every coin. */}
-      <div className="mb-5 flex flex-col items-start gap-2">
-        <TokenSelect
-          value={coin.symbol}
-          label={t('currency')}
-          options={coins.map((item) => ({
-            value: item.symbol,
-            symbol: item.symbol,
-            label: item.symbol === 'USDC' ? item.name : networkName(item.holdings[0].networkId),
-          }))}
-          onChange={(value) => {
-            setSymbol(value);
-            setRequested(null);
-          }}
-        />
-        {usdc ? (
-          <SelectMenu
-            label={t('network')}
-            showLabel={false}
-            value={onStellar ? stellarId! : held.networkId}
-            options={[...settings.networks, ...(stellarId ? [stellarId] : [])].map((id) => ({
-              value: id,
-              label: networkName(id),
-              description: id === settings.homeNetwork ? t('recommendedMainNetwork') : undefined,
-              network: id,
+      <BackHeader title={t('receive')} to="/app" />
+      <OptionCard
+        href="/charge"
+        title={t('requestAmount')}
+        description={t('requestAmountHint')}
+        icon={<RequestIcon />}
+      />
+      <h2 className="mt-7 mb-1 text-[15px] font-semibold">{t('shareAccount')}</h2>
+      <p className="mb-4 text-[14px] leading-relaxed text-text-muted">{t('shareAccountHint')}</p>
+      {choosing ? (
+        // The coin, then its network on a row of its own: the same layout for every coin.
+        <div className="mb-5 flex flex-col items-start gap-2">
+          <TokenSelect
+            value={coin.symbol}
+            label={t('currency')}
+            options={coins.map((item) => ({
+              value: item.symbol,
+              symbol: item.symbol,
+              label: item.symbol === 'USDC' ? item.name : networkName(item.holdings[0].networkId),
             }))}
-            onChange={(id) => {
-              setUsdcNetwork(id);
+            onChange={(value) => {
+              setSymbol(value);
               setRequested(null);
             }}
-            className="w-full"
           />
-        ) : (
-          // A coin of one network: the same row as USDC's choice, with nothing to choose.
-          <p className="flex h-12 w-full items-center gap-2 border border-border px-3.5 text-[14px] text-text-muted">
-            <NetworkIcon id={networkId} size={22} />
-            <span className="truncate">{t('on', { network })}</span>
-          </p>
-        )}
-      </div>
+          {usdc ? (
+            <SelectMenu
+              label={t('network')}
+              showLabel={false}
+              value={onStellar ? stellarId! : held.networkId}
+              options={[...settings.networks, ...(stellarId ? [stellarId] : [])].map((id) => ({
+                value: id,
+                label: networkName(id),
+                description: id === settings.homeNetwork ? t('recommendedMainNetwork') : undefined,
+                network: id,
+              }))}
+              onChange={(id) => {
+                setUsdcNetwork(id);
+                setRequested(null);
+              }}
+              className="w-full"
+            />
+          ) : (
+            // A coin of one network: the same row as USDC's choice, with nothing to choose.
+            <p className="flex h-12 w-full items-center gap-2 border border-border px-3.5 text-[14px] text-text-muted">
+              <NetworkIcon id={networkId} size={22} />
+              <span className="truncate">{t('on', { network })}</span>
+            </p>
+          )}
+        </div>
+      ) : (
+        <p className="mb-4 flex items-center justify-between gap-3 text-[13px] text-text-muted">
+          <span className="min-w-0 truncate">
+            {t('receivingAs', { symbol: coin.symbol, network })}
+          </span>
+          <button
+            type="button"
+            onClick={() => setChoosing(true)}
+            className="-my-3 shrink-0 py-3 font-semibold text-cat-700 underline underline-offset-2"
+          >
+            {t('otherCoinOrNetwork')}
+          </button>
+        </p>
+      )}
       <MoneyPanel className="mb-4">
         {onStellar && !stellar ? (
           stellarFailed ? (

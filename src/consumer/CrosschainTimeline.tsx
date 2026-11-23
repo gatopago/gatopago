@@ -5,6 +5,7 @@ import { crosschainStatus, type CrosschainStage } from '@gatopago/shared/crossch
 import { cctpNetwork, networkName } from '../wallet/account';
 import type { StellarDelivery } from '../wallet/stellar';
 import { useTranslations } from 'next-intl';
+import { CheckIcon } from './Icons';
 
 type StepState = 'waiting' | 'active' | 'done' | 'error';
 
@@ -44,18 +45,7 @@ function Step({
         }`}
       >
         {state === 'done' ? (
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
+          <CheckIcon size={12} strokeWidth={3} />
         ) : state === 'error' ? (
           <span className="text-[13px] leading-none">!</span>
         ) : (

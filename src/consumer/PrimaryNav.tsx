@@ -2,12 +2,11 @@
 
 import { NavigationLink as Link } from './NavigationLink';
 import { usePathname } from '../i18n/navigation';
-import { ActivityIcon, GrowIcon, HomeIcon, MoveIcon } from './Icons';
+import { ActivityIcon, GrowIcon, HomeIcon } from './Icons';
 import { useTranslations } from 'next-intl';
 
 const destinations = [
   { href: '/app', key: 'home', icon: HomeIcon },
-  { href: '/move', key: 'move', icon: MoveIcon },
   { href: '/earn', key: 'grow', icon: GrowIcon },
   { href: '/statement', key: 'activity', icon: ActivityIcon },
 ] as const;
@@ -20,12 +19,10 @@ export function PrimaryNav() {
       aria-label={t('mainNavigation')}
       className="primary-nav fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[480px] px-2 pt-2 pb-[max(0.65rem,env(safe-area-inset-bottom))]"
     >
-      <div className="grid grid-cols-4 gap-1">
+      <div className="grid grid-cols-3 gap-1">
         {destinations.map((item) => {
-          const active =
-            pathname === item.href ||
-            (item.href === '/move' && ['/send', '/team', '/receive', '/scan'].includes(pathname));
-          const className = `primary-nav__item relative flex min-h-13 flex-col items-center justify-center gap-1 text-[10px] font-semibold ${active ? 'is-active' : ''}`;
+          const active = pathname === item.href;
+          const className = `primary-nav__item relative flex min-h-13 flex-col items-center justify-center gap-1 text-[12px] font-semibold ${active ? 'is-active' : ''}`;
           const content = (
             <>
               <item.icon />

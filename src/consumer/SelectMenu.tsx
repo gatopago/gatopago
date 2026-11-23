@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useRef, useState } from 'react';
-import { ChevronDownIcon } from './Icons';
+import { CheckIcon, ChevronDownIcon } from './Icons';
 import { Sheet } from './Sheet';
 import { NetworkIcon } from './TokenIcon';
 import { moveOptionFocus } from './listbox';
@@ -106,7 +106,7 @@ export function SelectMenu({
                       </span>
                     ) : null}
                   </span>
-                  {isSelected ? <Check /> : null}
+                  {isSelected ? <CheckIcon className="shrink-0 text-cat-300" /> : null}
                 </button>
               );
             })}
@@ -116,18 +116,3 @@ export function SelectMenu({
     </div>
   );
 }
-
-const Check = () => (
-  <svg
-    aria-hidden="true"
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.5"
-    className="shrink-0 text-cat-300"
-  >
-    <path d="m5 12 4 4L19 6" />
-  </svg>
-);

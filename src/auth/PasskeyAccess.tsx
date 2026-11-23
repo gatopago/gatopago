@@ -11,6 +11,7 @@ import { PixelRail } from '../consumer/PixelRail';
 import { StageOverlay } from '../consumer/StageOverlay';
 import { MeliSprite } from '../marketing/MeliSprite';
 import { useTranslations } from 'next-intl';
+import { CheckIcon } from '../consumer/Icons';
 
 /**
  * Sign-in and sign-up with a passkey: one button for each. The account is owned by the key Mera
@@ -187,7 +188,7 @@ export function PasskeyAccess({
         <form onSubmit={register} className="flex flex-col items-center text-center">
           <MeliSprite variant="head-focused" className="mb-4 w-24" loading="eager" />
           <div className="mb-5 w-full max-w-[300px]" aria-label={t('accountCreationProgress')}>
-            <div className="grid grid-cols-3 gap-2 text-[10px] font-semibold uppercase tracking-[0.08em]">
+            <div className="grid grid-cols-3 gap-2 text-[11px] font-semibold uppercase tracking-[0.08em]">
               <span className="text-growth">{t('details')}</span>
               <span className="text-cat-300">{t('key')}</span>
               <span className="text-text-faint">{t('ready')}</span>
@@ -222,7 +223,7 @@ export function PasskeyAccess({
                 value={name}
                 disabled={busy}
                 onChange={(event) => setName(event.target.value)}
-                className="meli-field h-12 text-[15px]"
+                className="meli-field h-12"
               />
             </label>
             <label className="block text-[12px] text-text-muted">
@@ -238,7 +239,7 @@ export function PasskeyAccess({
                   disabled={busy || created !== null}
                   aria-describedby="username-help"
                   onChange={setUsername}
-                  className="min-w-0 flex-1 bg-transparent text-[15px] text-text"
+                  className="min-w-0 flex-1 bg-transparent text-[16px] text-text"
                 />
               </span>
               <span id="username-help" className="mt-1.5 block text-[11px] text-text-faint">
@@ -275,7 +276,7 @@ export function PasskeyAccess({
                     disabled={busy}
                     onChange={(event) => setInvite(event.target.value)}
                     placeholder={t('inviteCode')}
-                    className="min-w-0 flex-1 bg-transparent text-center text-[13px] tracking-wide text-text placeholder:text-text-faint"
+                    className="min-w-0 flex-1 bg-transparent text-center text-[16px] tracking-wide text-text placeholder:text-text-faint"
                   />
                 </span>
               </label>
@@ -316,19 +317,7 @@ function Reassurance({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-center gap-3 text-left">
       <span className="flex h-7 w-7 shrink-0 items-center justify-center border border-growth bg-growth/12 text-growth">
-        <svg
-          aria-hidden="true"
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
+        <CheckIcon size={14} strokeWidth={3} />
       </span>
       <span className="text-[14px] text-text-muted">{children}</span>
     </div>

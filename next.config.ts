@@ -2,6 +2,7 @@ import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 import { settings } from './src/lib/settings';
 import { pwaHeaders } from './src/pwa/manifest';
+import { version } from './package.json';
 
 // Read at build: a missing or invalid setting fails it.
 void settings;
@@ -19,6 +20,8 @@ const privateHeaders = ['/login', '/app', '/approve', '/settings/:path*'].map((s
 
 const config: NextConfig = {
   agentRules: false,
+  // The app's version, shown in Settings: which one a phone runs, for testing and support.
+  env: { GATOPAGO_APP_VERSION: version },
   logging: { browserToTerminal: false, serverFunctions: false },
   poweredByHeader: false,
   // The shared-link cards (`/og/…`) read their fonts and the cat from the repo at run time.

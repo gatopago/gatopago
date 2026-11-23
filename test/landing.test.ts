@@ -33,7 +33,11 @@ describe('Complete product landing', () => {
       expect(html).toContain(
         lang === 'es' ? 'GatoPago no puede mover tus fondos' : 'GatoPago cannot move your funds',
       );
-      expect(html).toContain(lang === 'es' ? 'las cubre GatoPago' : 'GatoPago covers the fee');
+      expect(html).toContain(
+        lang === 'es'
+          ? 'GatoPago paga la comisión de cada envío'
+          : 'GatoPago pays the fee of each transfer',
+      );
       for (const id of ['problem', 'cycle', 'account', 'receive', 'grow', 'control', 'card', 'api'])
         expect(html).toContain(`id="${id}"`);
       // Product copy without technical jargon: no networks, protocols or wallet terms.

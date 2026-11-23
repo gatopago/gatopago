@@ -52,7 +52,7 @@ describe('shared-link previews', () => {
     const es = await preview('es');
     expect(es.openGraph?.title).toBe('Café Norte te cobra 1280,50 USDC');
     expect(es.openGraph?.description).toBe(
-      '2 cafés + pan de queso · Paga con GatoPago o con cualquier wallet.',
+      '2 cafés + pan de queso · Paga con GatoPago o con USDC desde tu wallet en Arbitrum, Avalanche o Monad.',
     );
     expect(es.robots).toEqual({ index: false, follow: false });
     expect(JSON.stringify(es.openGraph?.images)).toContain(`/og/es/pay/${intent.id}`);

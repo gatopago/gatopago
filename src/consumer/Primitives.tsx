@@ -141,7 +141,8 @@ export function NoticeCard({
   );
 }
 
-const tones = {
+/** The tinted squares behind icons: option rows and settings sections share them. */
+export const tones = {
   brand: 'bg-cat-500/12 text-cat-300',
   growth: 'bg-growth/12 text-growth',
   info: 'bg-info/12 text-info',
@@ -150,7 +151,7 @@ const tones = {
   neutral: 'bg-surface-3 text-text-muted',
 } as const;
 
-/** V2's tappable option row (Move, Send's "other options", Security). */
+/** V2's tappable option row (Receive, Security). */
 export function OptionCard({
   href,
   title,

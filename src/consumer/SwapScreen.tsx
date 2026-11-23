@@ -27,6 +27,7 @@ import { AmountInput } from './NormalizedInput';
 import { TokenSelect } from './TokenSelect';
 import { TxResult } from './TxResult';
 import { useTranslations, useLocale } from 'next-intl';
+import { SwapIcon } from './Icons';
 
 /** Price tolerance applied to every quote (0.5 %). */
 const SLIPPAGE_BPS = 50;
@@ -100,7 +101,7 @@ export function SwapScreen({ settings, session }: { settings: ClientSettings; se
   if (!network.uniswap)
     return (
       <>
-        <BackHeader title={t('swap')} to="/move" />
+        <BackHeader title={t('swap')} to="/app" />
         <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
           <CatGlyph className="mb-5 w-12 opacity-40" decorative />
           <p className="mb-1 text-[15px]">{t('swapsNotAvailableYet')}</p>
@@ -114,7 +115,7 @@ export function SwapScreen({ settings, session }: { settings: ClientSettings; se
   if (done)
     return (
       <>
-        <BackHeader title={t('swap')} to="/move" />
+        <BackHeader title={t('swap')} to="/app" />
         <TxResult
           state="success"
           lead={t('doneReceivedAbout')}
@@ -152,7 +153,7 @@ export function SwapScreen({ settings, session }: { settings: ClientSettings; se
 
   return (
     <>
-      <BackHeader title={t('swap')} to="/move" />
+      <BackHeader title={t('swap')} to="/app" />
       <MoneyPanel className="mb-2">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-[13px] text-text-muted">{t('youSwap')}</span>
@@ -182,7 +183,7 @@ export function SwapScreen({ settings, session }: { settings: ClientSettings; se
             label={t('currencySwap')}
           />
         </div>
-        {tokenIn === 'usdc' ? (
+        {tokenIn === 'usdc' && typeof balanceIn === 'bigint' && amountIn > balanceIn ? (
           <ElsewhereNote settings={settings} session={session} className="mt-3" />
         ) : null}
       </MoneyPanel>
@@ -197,22 +198,7 @@ export function SwapScreen({ settings, session }: { settings: ClientSettings; se
           aria-label={t('flip')}
           className="meli-square-action h-10 w-10 bg-surface text-text"
         >
-          <svg
-            aria-hidden="true"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="m7 4 0 16" />
-            <path d="m3 8 4-4 4 4" />
-            <path d="m17 20 0-16" />
-            <path d="m13 16 4 4 4-4" />
-          </svg>
+          <SwapIcon />
         </button>
       </div>
 

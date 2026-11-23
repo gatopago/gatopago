@@ -2,9 +2,10 @@
 
 import { walletAssets } from '@gatopago/shared/assets';
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { walletNetwork } from '@gatopago/shared/networks';
-import { EyeIcon, RefreshIcon, RequestIcon, ScanIcon, SendIcon, SwapIcon } from '../consumer/Icons';
+import { EyeIcon, ReceiveIcon, SendIcon, SwapIcon } from '../consumer/Icons';
 import { RecentActivity } from '../consumer/ActivityScreen';
 import { ElsewhereNote } from '../consumer/ElsewhereNote';
 import { MeliSprite } from '../marketing/MeliSprite';
@@ -13,7 +14,6 @@ import { TokenSelect } from '../consumer/TokenSelect';
 import { Skeleton } from '../consumer/Skeleton';
 import { NavigationLink } from '../consumer/NavigationLink';
 import type { ClientSettings } from '../lib/settings';
-import { networkName } from './account';
 import { formatBalance, formatHolding, useBalances, useLiveBalances } from './balances';
 import type { Session } from './session';
 import { useTranslations, useLocale } from 'next-intl';
@@ -25,7 +25,7 @@ const CardInterestSheet = dynamic(() =>
 export function Home({ settings, session }: { settings: ClientSettings; session: Session }) {
   const locale = useLocale();
   const t = useTranslations('Home');
-  const { balances, saved, holding, refreshing, refresh } = useBalances(settings, session);
+  const { saved, holding, refresh } = useBalances(settings, session);
   useLiveBalances(settings, session);
   const home = settings.homeNetwork;
   const [hidden, setHidden] = useState(balanceHidden);
@@ -48,13 +48,13 @@ export function Home({ settings, session }: { settings: ClientSettings; session:
       : item.holdings.map((held) => ({ item, held })),
   );
   const [currency, setCurrency] = useState(`${home}/USDC`);
-  const [cardOpen, setCardOpen] = useState(false);
-  const [cardSaved, setCardSaved] = useState(false);
+  // GatoPago Card's waiting list opens from the menu (`/app?card`), not from a banner: the address
+  // says whether it is open, so the menu opens it on this screen too.
+  const cardOpen = useSearchParams().has('card');
   const { item: asset, held } =
     coins.find(({ item, held }) => `${held.networkId}/${item.symbol}` === currency) ?? coins[0];
   const native = asset.symbol !== 'USDC';
   const shownBalance = holding(held);
-  const loaded = balances[home] !== undefined;
   const format = (item: (typeof assets)[number], value: bigint | null | undefined) => {
     if (hidden) return '••••';
     if (typeof value !== 'bigint') return '—';
@@ -62,25 +62,24 @@ export function Home({ settings, session }: { settings: ClientSettings; session:
       ? formatBalance(value, locale)
       : formatHolding(value, item.decimals, locale);
   };
-  // USDC first, then the coins the account holds, then the empty ones, quieter.
+  // USDC, then only the coins the account holds: GatoPago pays the network fee, so a gas coin or a
+  // test token with nothing in it is not worth a row. Each coin says its name, never its network.
   const tokens = coins
+    .filter(({ item, held }) => {
+      const value = holding(held);
+      return item.symbol === 'USDC' || (typeof value === 'bigint' && value > 0n);
+    })
     .map(({ item, held }) => ({
       value: `${held.networkId}/${item.symbol}`,
       symbol: item.symbol,
-      label: networkName(held.networkId),
+      label: item.name,
       balance: format(item, holding(held)),
-      muted: holding(held) === 0n,
     }))
-    .sort(
-      (a, b) =>
-        Number(a.symbol !== 'USDC') - Number(b.symbol !== 'USDC') ||
-        Number(a.muted) - Number(b.muted),
-    );
+    .sort((a, b) => Number(a.symbol !== 'USDC') - Number(b.symbol !== 'USDC'));
   const actions = [
-    { href: '/charge', label: t('request'), icon: RequestIcon },
     { href: '/send', label: t('send'), icon: SendIcon },
+    { href: '/receive', label: t('receive'), icon: ReceiveIcon },
     { href: '/swap', label: t('swap'), icon: SwapIcon },
-    { href: '/scan', label: t('scan'), icon: ScanIcon },
   ];
   return (
     <>
@@ -89,7 +88,7 @@ export function Home({ settings, session }: { settings: ClientSettings; session:
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2
             id="available-heading"
-            className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted"
+            className="font-mono text-[11px] uppercase tracking-[0.12em] text-text-muted"
           >
             {t('available')}
           </h2>
@@ -129,30 +128,17 @@ export function Home({ settings, session }: { settings: ClientSettings; session:
             )}
           </p>
         )}
-        <div className="mt-3 flex items-center justify-between gap-3 text-[12px] text-text-faint">
-          {/* The selector already says the coin and its network. Only a coin that is not your dollar
-              balance needs a word, and a test token says it is worth nothing. */}
-          <span className="min-w-0 truncate">
+        {/* Only a coin that is not your dollar balance needs a word, and a test token says it is
+            worth nothing. The balance refreshes on its own and with a pull, so no button. */}
+        {native ? (
+          <p className="mt-3 truncate text-[12px] text-text-faint">
             {asset.test
               ? t('testToken')
-              : native
-                ? held.token !== null
-                  ? t('keptApartUsdc')
-                  : t('notCountedDollarBalance')
-                : null}
-          </span>
-          <button
-            type="button"
-            disabled={refreshing}
-            onClick={refresh}
-            aria-label={t('refreshBalance')}
-            className="balance-refresh -mr-2 flex h-9 shrink-0 items-center gap-1.5 px-2 disabled:cursor-wait"
-            data-busy={refreshing || !loaded}
-          >
-            <RefreshIcon />
-            <span>{!loaded || refreshing ? t('refreshing') : t('refresh')}</span>
-          </button>
-        </div>
+              : held.token !== null
+                ? t('keptApartUsdc')
+                : t('notCountedDollarBalance')}
+          </p>
+        ) : null}
         {growing ? (
           <NavigationLink
             href={'/earn'}
@@ -222,29 +208,14 @@ export function Home({ settings, session }: { settings: ClientSettings; session:
           <MeliSprite variant="body-sleeping" className="w-20 translate-y-2" />
         </NavigationLink>
       )}
-      <button
-        type="button"
-        onClick={() => setCardOpen(true)}
-        className="meli-ink-card interactive-surface relative mt-6 w-full overflow-hidden p-4 pr-28 text-left"
-      >
-        <span className="meli-kicker mb-2 block !text-cat-500">GatoPago Card</span>
-        <strong className="block font-display text-[18px] leading-tight font-normal">
-          {t('payBalanceAnywhere')}
-        </strong>
-        <span className="mt-1.5 block text-[12px] leading-snug text-[rgb(255_248_240/.64)]">
-          {cardSaved ? t('thanksListTapChange') : t('designingTellHowWould')}
-        </span>
-        <MeliSprite
-          variant="body-peek-card"
-          className="pointer-events-none absolute -right-6 -bottom-4 w-28"
-        />
-      </button>
       {cardOpen ? (
         <CardInterestSheet
           settings={settings}
           session={session}
-          onClose={() => setCardOpen(false)}
-          onSaved={() => setCardSaved(true)}
+          // Next follows this change: `?card` leaves the address and the sheet closes.
+          onClose={() =>
+            window.history.replaceState(window.history.state, '', window.location.pathname)
+          }
         />
       ) : null}
     </>

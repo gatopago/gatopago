@@ -576,7 +576,7 @@
   gap: 8px;
   color: var(--color-cat-700);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-variation-settings: var(--recursive-mono);
   font-weight: 720;
   letter-spacing: 0.12em;
@@ -689,9 +689,18 @@
   color: var(--color-cat-500);
 }
 
+/* In the menu, installing the app is a full-width row, not a corner button. */
+.consumer-ui .meli-menu-install .pwa-controls {
+  text-align: start;
+}
+
+.consumer-ui .meli-menu-install .pwa-button {
+  width: 100%;
+}
+
 .consumer-ui .meli-quick-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
 }
 
@@ -781,6 +790,8 @@
 .consumer-ui .meli-field {
   min-height: 52px;
   width: 100%;
+  /* Below 16px, iOS Safari zooms the whole page while you type. */
+  font-size: 16px;
   border: 2px solid var(--color-text);
   background: var(--color-surface);
   color: var(--color-text);
@@ -1133,7 +1144,7 @@
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 11px;
   font-variation-settings: var(--recursive-mono);
   font-weight: 680;
   letter-spacing: 0.06em;

@@ -3,6 +3,7 @@
 import { CatGlyph } from '../marketing/CatGlyph';
 import {
   BusinessIcon,
+  CardIcon,
   ChevronIcon,
   ContactsIcon,
   ProfileIcon,
@@ -12,6 +13,7 @@ import {
 } from './Icons';
 import { NavigationLink } from './NavigationLink';
 import { Sheet } from './Sheet';
+import { PwaControls } from '../pwa/PwaControls';
 import { useTranslations } from 'next-intl';
 
 export function MenuSheet({
@@ -70,6 +72,17 @@ export function MenuSheet({
           </NavigationLink>
         ))}
       </nav>
+      {/* GatoPago Card does not exist yet: its waiting list lives here, not on the home screen. */}
+      <NavigationLink href="/app?card" onClick={onClose} className="meli-menu-row">
+        <span className="meli-menu-row__icon" data-tone="brand">
+          <CardIcon />
+        </span>
+        <span>
+          GatoPago Card
+          <small className="block text-[12px] text-text-faint">{t('cardWaitlist')}</small>
+        </span>
+        <ChevronIcon />
+      </NavigationLink>
       <a
         href={businessOrigin}
         target="_blank"
@@ -99,6 +112,10 @@ export function MenuSheet({
         <span>{t('support')}</span>
         <ChevronIcon />
       </a>
+      {/* Gone once the app is installed (opened from the home screen). */}
+      <div className="meli-menu-install mt-3 px-2">
+        <PwaControls />
+      </div>
     </Sheet>
   );
 }

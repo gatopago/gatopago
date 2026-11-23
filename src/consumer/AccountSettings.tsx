@@ -166,6 +166,9 @@ export function AccountSettings({
         >
           {t('signOut')}
         </button>
+        <p className="text-center font-mono text-[12px] text-text-faint">
+          {t('version', { version: process.env.GATOPAGO_APP_VERSION ?? '' })}
+        </p>
       </div>
     </>
   );

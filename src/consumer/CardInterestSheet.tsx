@@ -44,12 +44,10 @@ export function CardInterestSheet({
   settings,
   session,
   onClose,
-  onSaved,
 }: {
   settings: ClientSettings;
   session: Session;
   onClose: () => void;
-  onSaved: () => void;
 }) {
   const messageFor = useFailureMessage();
   const t = useTranslations('CardInterestSheet');
@@ -81,10 +79,7 @@ export function CardInterestSheet({
       token: session.token,
       body: answers,
     })
-      .then(() => {
-        onSaved();
-        onClose();
-      })
+      .then(onClose)
       .catch((failure: unknown) => setError(`${t('couldNotSaveAnswers')} ${messageFor(failure)}`))
       .finally(() => setSaving(false));
   }
@@ -135,7 +130,7 @@ export function CardInterestSheet({
               maxLength={80}
               value={answers.country}
               onChange={(event) => setAnswers({ ...answers, country: event.target.value })}
-              className="meli-field h-12 text-[15px]"
+              className="meli-field h-12"
               placeholder={t('eGBolivia')}
             />
           </label>

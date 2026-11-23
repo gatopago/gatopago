@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { tones } from './Primitives';
 
 export function SettingsSection({
   title,
@@ -9,18 +10,10 @@ export function SettingsSection({
 }: {
   title?: string;
   icon?: ReactNode;
-  tone?: 'brand' | 'growth' | 'info' | 'pending' | 'danger' | 'neutral';
+  tone?: keyof typeof tones;
   id?: string;
   children: ReactNode;
 }) {
-  const tones = {
-    brand: 'bg-cat-500/12 text-cat-300',
-    growth: 'bg-growth/12 text-growth',
-    info: 'bg-info/12 text-info',
-    pending: 'bg-pending/12 text-pending',
-    danger: 'bg-danger/12 text-danger',
-    neutral: 'bg-surface-3 text-text-muted',
-  } as const;
   return (
     <section id={id} className="mb-6 scroll-mt-4">
       {title ? (

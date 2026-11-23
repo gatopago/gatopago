@@ -3,17 +3,17 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { crosschainFee } from '@gatopago/shared/crosschain';
 import type { ClientSettings } from '../lib/settings';
-import { cctpNetwork, networkName } from '../wallet/account';
+import { cctpNetwork } from '../wallet/account';
 import { formatBalance, useBalances } from '../wallet/balances';
 import type { Session } from '../wallet/session';
 import { NavigationLink } from './NavigationLink';
-import { NetworkIcon } from './TokenIcon';
 import { useTranslations, useLocale } from 'next-intl';
 
 /**
- * USDC lives on the home network: what arrived on another one (or on Stellar) is said here, with
- * the way to bring it, one network at a time. Circle charges each crossing, so an amount that does
- * not cover its fee is only mentioned.
+ * USDC lives on the home network: what arrived on another one (or on Stellar) is said here in one
+ * line, without naming networks, with the way to bring it. The link brings the largest amount
+ * first; what is left shows again after. Circle charges each crossing, so an amount that does not
+ * cover its fee is only mentioned.
  */
 export function ElsewhereNote({
   settings,
@@ -38,45 +38,16 @@ export function ElsewhereNote({
     })
     .sort(([, a], [, b]) => (b > a ? 1 : -1));
   if (!elsewhere.length) return null;
-
-  if (elsewhere.length === 1) {
-    const [[id, amount]] = elsewhere;
-    return (
-      <p className={`text-[12px] leading-relaxed text-text-muted ${className}`}>
-        {t('alsoUsdc', { amount: formatBalance(amount, locale), id: networkName(id) })}{' '}
-        {/* Inline, but with a finger-sized target: the padding grows the tap area, not the line. */}
-        <BringLink from={id} home={home} amount={amount} className="-my-3 inline-block py-3">
-          {t('bring')}
-        </BringLink>
-      </p>
-    );
-  }
-  // Several networks: one row each, with how much and a link that brings only its own.
   const total = elsewhere.reduce((sum, [, amount]) => sum + amount, 0n);
+  const [[largest, amount]] = elsewhere;
   return (
-    <div className={`text-[12px] leading-relaxed text-text-muted ${className}`}>
-      <p>{t('alsoUsdcOtherNetworks', { total: formatBalance(total, locale) })}</p>
-      <ul>
-        {elsewhere.map(([id, amount]) => (
-          <li key={id} className="flex min-h-11 items-center justify-between gap-3">
-            <span className="flex min-w-0 items-center gap-2">
-              <NetworkIcon id={id} size={18} />
-              <span className="truncate">
-                {t('amountOn', { amount: formatBalance(amount, locale), network: networkName(id) })}
-              </span>
-            </span>
-            <BringLink
-              from={id}
-              home={home}
-              amount={amount}
-              className="flex min-h-11 shrink-0 items-center px-1"
-            >
-              {t('bringShort')}
-            </BringLink>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <p className={`text-[12px] leading-relaxed text-text-muted ${className}`}>
+      {t('arrived', { amount: formatBalance(total, locale) })}{' '}
+      {/* Inline, but with a finger-sized target: the padding grows the tap area, not the line. */}
+      <BringLink from={largest} home={home} amount={amount} className="-my-3 inline-block py-3">
+        {t('bring')}
+      </BringLink>
+    </p>
   );
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useRef, useState } from 'react';
-import { ChevronDownIcon } from './Icons';
+import { CheckIcon, ChevronDownIcon } from './Icons';
 import { Sheet } from './Sheet';
 import { TokenIcon } from './TokenIcon';
 import { useTranslations } from 'next-intl';
@@ -89,20 +89,7 @@ export function TokenSelect({
                     {item.balance !== undefined ? ` · ${item.balance} ${item.symbol}` : ''}
                   </span>
                 </span>
-                {item.value === value ? (
-                  <svg
-                    aria-hidden="true"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    className="shrink-0 text-cat-300"
-                  >
-                    <path d="m5 12 4 4L19 6" />
-                  </svg>
-                ) : null}
+                {item.value === value ? <CheckIcon className="shrink-0 text-cat-300" /> : null}
               </button>
             ))}
           </div>

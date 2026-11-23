@@ -8,9 +8,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { AccountSettings } from '../src/consumer/AccountSettings';
 import { withTexts } from './translations';
 import { PrimaryNav } from '../src/consumer/PrimaryNav';
-import { MoveMenu } from '../src/consumer/MoveMenu';
+import { Receive } from '../src/wallet/Receive';
 
-let searchParams = new URLSearchParams();
+const searchParams = new URLSearchParams();
 vi.mock('next/navigation', async (original) => ({
   ...(await original<typeof import('next/navigation')>()),
   usePathname: () => '/send',
@@ -23,21 +23,51 @@ vi.mock('../src/marketing/MeliSprite', () => ({
 }));
 
 describe('Consumer presentation migration', () => {
-  it('restores the four V2 navigation sections', () => {
+  it('keeps three navigation sections: the home actions replace Move', () => {
     const html = renderToStaticMarkup(withTexts(createElement(PrimaryNav), 'en'));
     expect(html).toContain('href="/en/app"');
-    expect(html).toContain('href="/en/move"');
-    expect(html).toContain('href="/en/statement"');
-    expect(html).toContain('aria-current="page"');
     expect(html).toContain('href="/en/earn"');
+    expect(html).toContain('href="/en/statement"');
+    expect(html).not.toContain('/move');
+    expect(html.match(/primary-nav__item/g)).toHaveLength(3);
   });
-  it('opens receiving from Move with a request or the account', () => {
-    searchParams = new URLSearchParams('flow=receive');
-    const html = renderToStaticMarkup(withTexts(createElement(MoveMenu)));
-    searchParams = new URLSearchParams();
+  it('receives on one screen: a payment link, or the QR on the home network', () => {
+    const html = renderToStaticMarkup(
+      withTexts(
+        createElement(Receive, {
+          settings: {
+            webOrigin: 'https://gatopago.com',
+            apiOrigin: 'https://api.gatopago.com',
+            businessOrigin: 'https://business.gatopago.com',
+            networks: ['eip155:421614', 'eip155:43113'],
+            homeNetwork: 'eip155:421614',
+            rpcUrls: {},
+            turnstileSiteKey: '1x00000000000000000000AA',
+            meraSessionMinutes: 15,
+            passkeyRpId: 'localhost',
+            stellar: null,
+            push: null,
+          },
+          session: {
+            token: 'session',
+            expiresAt: 4102444800,
+            userId: 'usr_test',
+            wallet: {
+              credentialId: 'credential',
+              owner: '0x3333333333333333333333333333333333333333',
+              address: '0x75464f762bc50d0A0B127ab5a085504BF102Bb88',
+              initialOwners: [],
+            },
+          },
+        }),
+      ),
+    );
     expect(html).toContain('href="/charge"');
-    expect(html).toContain('href="/receive"');
-    expect(html).toContain('Recibir dinero');
+    expect(html).toContain('Cobrar un monto');
+    // The QR is ready for USDC on the home network; other coins and networks wait behind a button.
+    expect(html).toContain('USDC por Arbitrum Sepolia');
+    expect(html).toContain('Otra moneda o red');
+    expect(html).not.toContain('Avalanche Fuji');
     expect(html).toContain('aria-label="Volver"');
   });
   it('retains deterministic Next settings destinations in both languages', () => {

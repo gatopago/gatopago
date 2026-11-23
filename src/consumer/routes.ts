@@ -1,6 +1,5 @@
 export const consumerRoutes = {
   '/app': 'account',
-  '/move': 'move',
   '/send': 'send',
   '/team': 'team',
   '/scan': 'scan',

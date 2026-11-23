@@ -3,13 +3,13 @@
     "CANCELLED": "Confirmation was cancelled on your device. You can try again.",
     "PASSKEY_EXISTS": "This manager already has a GatoPago key. Use another manager or a security key.",
     "PASSKEY_WITHOUT_PRF": "This device or this key does not work with GatoPago. Use your phone, with the key saved in iCloud or Google, or a security key.",
-    "ACCOUNT_NOT_FOUND": "That key does not belong to a GatoPago account. If you are new, create an account.",
+    "ACCOUNT_NOT_FOUND": "That key does not belong to a GatoPago account. If you don't have one yet, create it.",
     "INVITE_REQUIRED": "You need an invitation to create an account.",
     "INVITE_INVALID": "This invitation is unavailable. Check the code.",
     "TURNSTILE_FAILED": "We could not validate the security check. Try again.",
     "TURNSTILE_UNAVAILABLE": "The security check did not finish. Check your connection and try again.",
     "USERNAME_TAKEN": "That username is taken.",
-    "SELF_CONTACT": "You can't add yourself.",
+    "SELF_CONTACT": "You cannot add your own username.",
     "INVALID_SOCIAL_URL": "Use an https link from Instagram, X, Telegram, TikTok or Facebook.",
     "USERNAME_ALREADY_SET": "Your username is already chosen.",
     "INVALID_USERNAME": "Use 3–30 characters: lowercase letters, numbers and underscores, starting with a letter.",
@@ -20,11 +20,11 @@
     "INSUFFICIENT_COIN": "You do not have enough of that coin.",
     "INSUFFICIENT_FUNDS": "Your balance is not enough. If it is spread across networks, gather it in “Between networks”.",
     "AUTHORIZED_ON_OTHER_NETWORK": "This payment was already started on another network. Finish it there, or wait up to 5 minutes to pay from this one.",
-    "INVALID_ADDRESS": "Invalid address: it must be a valid 0x address.",
+    "INVALID_ADDRESS": "That address is not valid. It must start with 0x and have 42 characters.",
     "SELF_TRANSFER": "That is your own account.",
-    "INVALID_STELLAR_ADDRESS": "Invalid Stellar address: it must start with G or C.",
-    "STELLAR_RECIPIENT_CANNOT_RECEIVE": "That Stellar account does not accept USDC yet: it must add USDC (a trustline) first.",
-    "STELLAR_ACCOUNT_INACTIVE": "That Stellar account does not exist or is not active yet: it cannot receive XLM.",
+    "INVALID_STELLAR_ADDRESS": "That Stellar address is not valid. It must start with G or C.",
+    "STELLAR_RECIPIENT_CANNOT_RECEIVE": "That Stellar account does not accept USDC yet. It has to enable it first (trustline).",
+    "STELLAR_ACCOUNT_INACTIVE": "That Stellar account does not exist or is not active yet, so it cannot receive XLM.",
     "STELLAR_SIGNER_PENDING": "This device key does not sign on Stellar yet. Sync it in Security from a device that already does.",
     "APPROVAL_EXPIRED": "The authorization expired. Try again.",
     "NOT_AN_OWNER": "That key does not own your account.",
@@ -36,11 +36,11 @@
     "CCTP_AMOUNT_BELOW_FEE": "The amount is below the cross-network fee.",
     "PAYOUT_SIZE": "Add between 1 and 10 people.",
     "DUPLICATE_RECIPIENT": "Someone appears twice: put their amounts in a single row.",
-    "APPROVAL_PENDING": "The change is saved but still pending on some networks: check each one below. It completes on your next operation there.",
+    "APPROVAL_PENDING": "The change is saved. On some networks it applies with your next operation; you can see which below.",
     "OPERATION_PENDING": "Your previous operation is still in progress. Check Activity in a moment before repeating it.",
     "GROUPS_FULL": "You already have 20 saved groups. Delete one to save another.",
     "PAYMENT_NOT_REGISTERED": "Your payment went through, but we could not tell the merchant. Try again: you will not be charged twice.",
-    "STORAGE_UNAVAILABLE": "Nothing was sent: your browser does not let GatoPago store data on this site, and we need it so a payment never goes out twice. Allow site storage (or leave private browsing) and try again.",
+    "STORAGE_UNAVAILABLE": "Nothing was sent. Your browser does not let GatoPago store data, and without it a transfer could go out twice. Allow site storage or leave private mode, and try again.",
     "PREVIOUS_OPERATION_CONFIRMED": "Your previous operation went through. Check Activity before sending it again.",
     "RATE_LIMITED": "Too many attempts. Wait a moment.",
     "UNAUTHENTICATED": "Your session expired. Sign in again.",
@@ -48,7 +48,7 @@
     "UNKNOWN": "We could not complete this step. Try again.",
     "ALREADY_MEMBER": "This account is already active. Tap Sign in again.",
     "TOO_MANY_DECIMALS": "This amount has more decimals than the coin allows.",
-    "PAYMENT_PENDING": "Your payment is on its way and we could not confirm it yet. Try again in a moment: we follow the same payment, you are not charged again.",
+    "PAYMENT_PENDING": "Your payment is on its way, but we have not confirmed it yet. Try again in a moment: it is the same payment and you are not charged twice.",
     "PAYMENT_REVERTED": "The network rejected the transaction and nothing was charged. You can try paying again.",
     "INVALID_RESPONSE": "We got an incomplete answer from the server. Try again in a moment.",
     "STELLAR_RECIPIENT_UNAVAILABLE": "That person does not have their Stellar account yet. Try again in a minute or send to their address."
@@ -57,14 +57,15 @@
     "title": "Settings",
     "notifications": "Notifications",
     "notificationsOn": "Payment notifications on",
-    "notificationsHelp": "We let you know right away when you receive a payment or a deposit.",
-    "notificationsBlockedApp": "Your browser blocks notifications from gatopago.com, even if your phone allows them. On Android, open the browser you installed the app with (Chrome, Brave or another) › Settings › Site settings › Notifications › gatopago.com › Allow. On iPhone: Settings › Notifications › GatoPago. Back here, you can turn them on.",
-    "notificationsBlockedBrowser": "Your browser blocked notifications for this site. Tap the icon next to the address, open Permissions or Notifications and choose Allow; back here, you can turn them on.",
+    "notificationsHelp": "We let you know when you receive a payment or a deposit.",
+    "notificationsBlockedApp": "Notifications from gatopago.com are blocked in your browser, even if your phone allows them. On Android: open the browser you installed the app with (Chrome, Brave or another) › Settings › Site settings › Notifications › gatopago.com › Allow. On iPhone: Settings › Notifications › GatoPago. Then come back here and turn them on.",
+    "notificationsBlockedBrowser": "Your browser blocked notifications for this site. Tap the icon next to the address, open Permissions or Notifications and choose Allow. Then come back here and turn them on.",
     "notificationsFailed": "We could not turn on notifications on this device. Try again in a moment.",
     "turnOn": "Turn on payment notifications",
     "turning": "Turning on…",
     "language": "Language",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "version": "Version {version}"
   },
   "Auth": {
     "continue": "Continue",
@@ -72,33 +73,28 @@
     "signOut": "Sign out",
     "signGatopago": "Sign in to GatoPago",
     "usePhonesFingerprintFace": "Use your phone’s fingerprint or face. No passwords.",
-    "tagline": "Your dollars already know <accent>how to move.</accent>"
+    "tagline": "Money without borders. <accent>Always yours.</accent>"
   },
   "Turnstile": {
     "checkingSecurity": "Checking security…",
-    "selectCreateAccountRetry": "Select Create account to retry the security check."
-  },
-  "AccountDetailsSheet": {
-    "account": "Your account",
-    "close": "Close",
-    "exchangeHint": "To receive from an exchange, use <link>Receive</link>: it tells you which network to choose."
+    "selectCreateAccountRetry": "Tap Create account to retry the check."
   },
   "AccountScreens": {
     "howKeysWork": "How keys work",
     "frequentlyAskedQuestions": "Frequently asked questions",
     "whatAccessKey": "What is your access key?",
-    "likeHouseKeyBut": "It is like your house key, but digital: your device or password manager keeps it, and you open it with your fingerprint, face or PIN. There is no GatoPago password to steal or forget.",
+    "likeHouseKeyBut": "It is a digital key kept by your phone or your password manager. You use it with your fingerprint, your face or your PIN, and there is no password anyone can steal.",
     "eachPaymentAuthorizedSignature": "Each payment is authorized with a signature made by that key. You can have several (phone, computer), all with the same authority; losing one does not disable the others.",
     "whatIfILose": "What if I lose my phone?",
-    "ifSavedPasskeyGoogle": "If you saved the passkey in Google Password Manager, it can appear on Android, Chrome and iOS when Google is enabled as a manager. If you saved it in iCloud, it syncs across your Apple devices.",
-    "withoutAnyOtherKey": "Without any other key, access cannot be recovered: nobody, not even GatoPago, can reset it. That is why a backup key matters: <link>add one in Security</link>.",
+    "ifSavedPasskeyGoogle": "If you saved the key in Google Password Manager, it shows up on Android, in Chrome and also on iPhone if you use Google as your manager. If you saved it in iCloud, it is on all your Apple devices.",
+    "withoutAnyOtherKey": "Without another key, nobody can recover access, not even GatoPago. That is why a backup key matters: <link>add it in Security</link>.",
     "whatGatopagoDoMy": "What can GatoPago do with my account?",
-    "gatopagoDoesNotHold": "GatoPago does not hold your keys and cannot sign movements. It only pays the network fee of your operations.",
+    "gatopagoDoesNotHold": "GatoPago does not have your keys and cannot sign for you. It only pays the network fee of your operations.",
     "whatIfGatopagoUnavailable": "What if GatoPago is unavailable?",
     "accountFundsBlockchainNot": "Your account and your funds are on the blockchain, not in GatoPago. Your key keeps signing, and any ERC-4337 service can send your operations, paying their network fee.",
     "stepDevices": "Check your password manager and other devices.",
     "stepOneKey": "One authorized key is enough to spend from and manage the account.",
-    "stepAllLost": "If every authorized key is lost, access is lost permanently. GatoPago, support and email cannot reset it."
+    "stepAllLost": "If you lose all your keys, access is lost permanently. Neither GatoPago nor support can give it back: there is no recovery by email."
   },
   "Activity": {
     "noMovementsYet": "No movements yet",
@@ -151,12 +147,12 @@
     "ifSomeoneAskedScan": "If someone asked you to scan this code, do not approve it: they would see your charges and manage your API keys. Your money stays safe either way.",
     "approve": "Approve",
     "notMe": "It was not me",
-    "keyKeepsAccess": "This key keeps access to Business, also on your other devices with the same key, until you remove it in Security. It cannot move your money."
+    "keyKeepsAccess": "The key keeps access to Business, also on your other devices that have it, until you remove it in Security. That access cannot move your money."
   },
   "CardInterestSheet": {
     "couldNotSaveAnswers": "We could not save your answers.",
     "helpDesignGatopagoCard": "Help us design GatoPago Card",
-    "notAvailableYetAnswers": "It is not available yet. Your answers help us validate demand and design the right product.",
+    "notAvailableYetAnswers": "It does not exist yet. Your answers help us decide how to make it.",
     "close": "Close",
     "loading": "Loading…",
     "countryResidence": "Country of residence",
@@ -229,19 +225,19 @@
     "splitPaymentAmongSeveral": "Split this payment among several people"
   },
   "ConsumerFrame": {
-    "personalAccount": "Personal account",
-    "myAccount": "My account",
-    "openMenu": "Open menu"
+    "openMenu": "Open menu",
+    "myProfile": "My profile",
+    "scanQr": "Scan a QR"
   },
   "Contacts": {
     "contactAdded": "Contact added",
     "couldntRemoveContact": "Couldn't remove the contact",
-    "joinGatopagoDollarsAlready": "Join GatoPago: your dollars already know how to move.",
+    "joinGatopagoDollarsAlready": "Join GatoPago: money without borders, always yours.",
     "inviteLinkCopied": "Invite link copied",
     "contacts": "Contacts",
     "inviteFriends": "Invite your friends",
-    "shareCodeSendEach": "Share your code and send each other money instantly, with no fees.",
-    "noOneJoinedCode": "No one has joined with your code yet. Share it!",
+    "shareCodeSendEach": "Share your code and send each other money with no fees.",
+    "noOneJoinedCode": "Nobody has joined with your code yet.",
     "invite": "Invite",
     "codeCopied": "Code copied",
     "couldNotCopy": "Could not copy",
@@ -260,16 +256,16 @@
     "friendsJoined": "{count, plural, one {# friend} other {# friends}} joined with your invite"
   },
   "CrosschainTimeline": {
-    "sourceNetworkConfirmation": "Source-network confirmation",
-    "sourceTransactionConfirmedOnchain": "The source transaction is confirmed onchain.",
-    "circleAttestation": "Circle attestation",
-    "attestationAvailable": "The attestation is available.",
-    "circleVerifyingCctpMessage": "Circle is verifying the CCTP message.",
-    "delivery": "Delivery on {destination}",
-    "operationNeedsReviewDo": "The operation needs review; do not submit it again.",
-    "usdcArrivedDestinationAddress": "USDC arrived at the destination address.",
-    "leaveScreenProcessingContinue": "You can leave this screen. Processing will continue.",
-    "usdcMintingStartsAfter": "USDC minting starts after the attestation."
+    "sourceNetworkConfirmation": "Departure",
+    "sourceTransactionConfirmedOnchain": "The departure is confirmed.",
+    "circleAttestation": "Circle's check",
+    "attestationAvailable": "Circle has checked it.",
+    "circleVerifyingCctpMessage": "Circle is checking the transfer.",
+    "delivery": "Arrival on {destination}",
+    "operationNeedsReviewDo": "This move needs review. Do not send it again.",
+    "usdcArrivedDestinationAddress": "The USDC arrived.",
+    "leaveScreenProcessingContinue": "You can leave this screen: the move continues on its own.",
+    "usdcMintingStartsAfter": "The USDC arrive as soon as Circle finishes its check."
   },
   "Earn": {
     "grow": "Grow",
@@ -278,7 +274,7 @@
     "withdrawalComplete": "Withdrawal complete",
     "seeBalanceFewSeconds": "You will see it in your balance in a few seconds.",
     "done": "Done",
-    "earnInterestUsdcNot": "Earn interest on the USDC you are not using and withdraw it whenever you want.",
+    "earnInterestUsdcNot": "Earn a yield on the USDC you are not using and withdraw it whenever you want.",
     "inGrow": "In Grow",
     "deposit": "Deposit",
     "withdraw": "Withdraw",
@@ -295,23 +291,20 @@
     "goodKnow": "Good to know",
     "rateVariableNotGuaranteed": "The rate is variable and not guaranteed.",
     "usdcLentThroughAave": "Your USDC is lent through Aave, a public protocol. Like any smart contract, it carries risk.",
-    "withdrawAnytimeLongAave": "You can withdraw anytime, as long as Aave has liquidity (so far it always has, instantly).",
+    "withdrawAnytimeLongAave": "You withdraw whenever you want, as long as Aave has liquidity.",
     "moneyStillYoursGatopago": "The money is still yours: GatoPago never holds it.",
     "confirmDeposit": "Confirm deposit",
     "confirmWithdrawal": "Confirm withdrawal",
     "confirmDevice": "Confirm on your device…",
-    "movesBalanceGrowWhere": "It moves from your balance to Grow, where it starts earning interest. You can withdraw it whenever you want.",
-    "withdrawEverythingGrowInterest": "You withdraw everything in Grow, interest included. The final amount may be a little higher.",
+    "movesBalanceGrowWhere": "It moves from your balance to Grow and starts earning a yield.",
+    "withdrawEverythingGrowInterest": "You withdraw everything in Grow, yield included. The final amount may be a little higher.",
     "movesGrowBackBalance": "It moves from Grow back to your balance, ready to use.",
     "todaysRateYearVariable": "Today’s rate: {rate}% a year. It is variable and not guaranteed.",
     "ratePerYear": "{rate}% a year"
   },
   "ElsewhereNote": {
-    "alsoUsdc": "You also have {amount} USDC on {id}.",
     "bring": "Bring it",
-    "alsoUsdcOtherNetworks": "You also have {total} USDC on other networks:",
-    "bringShort": "Bring",
-    "amountOn": "{amount} on {network}"
+    "arrived": "{amount} USDC arrived on another network."
   },
   "MenuSheet": {
     "profile": "My profile",
@@ -322,27 +315,8 @@
     "support": "Support",
     "security": "Security",
     "contacts": "Contacts and invitations",
-    "settings": "Settings"
-  },
-  "MoveMenu": {
-    "receiveMoney": "Receive money",
-    "askSomeonePayShare": "Ask someone to pay you, or share your details to receive from a wallet or exchange.",
-    "requestPayment": "Request a payment",
-    "createLinkQrAmount": "Create a link or QR with an amount and a note",
-    "receiveMyAccount": "Receive in my account",
-    "addressQrWalletExchange": "Your address and QR, for a wallet or an exchange",
-    "move": "Move",
-    "chooseWhatDoSee": "Choose what to do. You will see every detail before confirming.",
-    "receive": "Receive",
-    "requestPaymentShareAccount": "A payment link or your account",
-    "send": "Send",
-    "usernameWalletExchange": "To a @username, wallet or exchange",
-    "groupPayment": "Group payment",
-    "severalPeopleOnceBalance": "Several people in one payment",
-    "swap": "Swap",
-    "betweenUsdcOtherCoins": "Between USDC and other coins",
-    "betweenNetworks": "Between networks",
-    "moveUsdcOneNetwork": "Move your USDC between networks"
+    "settings": "Settings",
+    "cardWaitlist": "We are designing it. Tell us how you would use it."
   },
   "PaymentSheets": {
     "confirmFingerprintFaceDevice": "Your key signs it. If your signing session expired, we ask for your fingerprint, face or device PIN.",
@@ -377,7 +351,6 @@
   "PrimaryNav": {
     "mainNavigation": "Main navigation",
     "home": "Home",
-    "move": "Move",
     "grow": "Grow",
     "activity": "Activity"
   },
@@ -456,7 +429,7 @@
     "priceTolerance": "Price tolerance",
     "network": "Network",
     "notEnoughBalance": "Not enough balance.",
-    "gatopagoPaysNetworkFee": "GatoPago pays the network fee. You will see the full breakdown before confirming.",
+    "gatopagoPaysNetworkFee": "GatoPago pays the network fee.",
     "findingBestRoute": "Finding the best route…",
     "reviewSwap": "Review swap",
     "priceMoveLittleBefore": "The price can move a little before it runs; you will never get less than the minimum shown.",
@@ -502,7 +475,7 @@
     "currency": "Currency",
     "available": "Available",
     "grow": "In Grow",
-    "whatGrowKeepsEarning": "What is in Grow keeps earning interest: only what the payments add up to leaves it",
+    "whatGrowKeepsEarning": "What is in Grow keeps earning a yield: only what the payments add up to leaves it",
     "fromAvailable": "From the {symbol} you have available",
     "preparing": "Preparing…",
     "reviewSplit": "Review split · {sum} {symbol}",
@@ -534,7 +507,7 @@
     "installGatopago": "Install GatoPago",
     "iphoneIpadOpenSite": "On iPhone or iPad: open this site in Safari, tap Share, then Add to Home Screen. If available, enable Open as Web App.",
     "androidDesktopOpenBrowser": "On Android or desktop: open the browser menu and look for Install app or Add to Home Screen. If unavailable, keep using GatoPago in your browser.",
-    "installingDoesNotCreate": "Installing does not create a wallet, save a passkey or move funds.",
+    "installingDoesNotCreate": "Installing only adds a shortcut. Your account does not change.",
     "got": "Got it"
   },
   "Checkout": {
@@ -566,14 +539,14 @@
     "feesUp": "Fees, up to",
     "whereUsdc": "Where is your USDC?",
     "sourceNetworkUsdc": "Source network of the USDC",
-    "chooseWhereAlreadyUsdc": "Choose where you already have USDC. GatoPago takes care of delivering it to the merchant.",
+    "chooseWhereAlreadyUsdc": "Choose the network where you have USDC. The payment reaches the merchant all the same.",
     "confirmPaymentWallet": "Confirm the payment in your wallet…",
     "dontNeedGatopagoAccount": "You don't need a GatoPago account. You pay directly from your wallet.",
     "connectWalletPay": "Connect wallet and pay",
     "transfer": "Transfer",
     "paymentAddress": "This request's payment address",
     "sendExactly": "Send {amount} {currency} to this address, on {network}.",
-    "transferHint": "It can take one or several transfers. Another coin does not pay this request.",
+    "transferHint": "From an exchange, add its withdrawal fee: the full amount has to arrive. If less arrives, send the rest in another transfer. Another coin does not pay this request.",
     "waitingTransfer": "Waiting for your transfer…",
     "paymentReceived": "Payment received"
   },
@@ -598,21 +571,19 @@
     "reviewMove": "Review move",
     "confirmMove": "Confirm the move",
     "move": "You will move",
-    "usdcLeavesNetworkCircle": "Your USDC leaves this network and Circle delivers it to your same account on the destination. GatoPago covers gas.",
+    "usdcLeavesNetworkCircle": "Your USDC leaves this network and Circle delivers it to your same account at the destination. GatoPago pays the network fee.",
     "confirmAndMove": "Confirm and move",
     "step12Confirm": "Step 1 of 2: confirm the permission for Circle on your device…",
     "step22Confirm": "Step 2 of 2: confirm the move on your device…",
     "confirmDeviceMovingMoney": "Confirm on your device. Moving your money…",
     "circleTransferFee": "Circle transfer fee",
     "receiveElsewhere": "Your balance lives on {homeNetwork}. To receive from another network, share <link>your address</link>: it is the same on every network.",
-    "usdcLeavesWithPermission": "Your USDC leaves this network and Circle delivers it to your same account on the destination. GatoPago covers gas. You will confirm twice: first a permission for Circle to move your USDC on Stellar (it lasts about six months), then the move.",
+    "usdcLeavesWithPermission": "Your USDC leaves this network and Circle delivers it to your same account at the destination. GatoPago pays the network fee. You confirm twice: first a permission for Circle to move your USDC on Stellar (it lasts about six months), then the move.",
     "upTo": "up to {fee} USDC"
   },
   "Home": {
-    "request": "Request",
     "send": "Send",
     "swap": "Swap",
-    "scan": "Scan",
     "myGatopagoAccount": "My GatoPago account",
     "available": "Available",
     "showBalance": "Show balance",
@@ -620,20 +591,15 @@
     "keptApartUsdc": "Kept apart from your USDC",
     "notCountedDollarBalance": "Not counted in your dollar balance",
     "testToken": "A test coin with no value",
-    "refreshBalance": "Refresh balance",
-    "refreshing": "Refreshing",
-    "refresh": "Refresh",
     "alsoGrowing": "Also growing",
     "couldNotReadBalance": "We could not read this balance right now. Your money is safe.",
     "retry": "Retry",
     "recentActivity": "Recent activity",
     "seeAll": "See all",
     "grow": "Grow",
-    "putMoneyNotUsing": "Put the money you are not using to work",
+    "putMoneyNotUsing": "Get a yield on the money you are not using",
     "variableRateAaveWithdraw": "Variable rate with Aave. Withdraw whenever you want.",
-    "payBalanceAnywhere": "Pay with your balance anywhere",
-    "thanksListTapChange": "Thanks! You are on the list. Tap to change your answers.",
-    "designingTellHowWould": "We are designing it. Tell us how you would use it."
+    "receive": "Receive"
   },
   "Profile": {
     "profile": "Profile",
@@ -662,7 +628,6 @@
   },
   "Receive": {
     "receive": "Receive",
-    "chooseCoinThenShare": "Choose the coin, then share your address with the wallet or exchange that sends it.",
     "currency": "Currency",
     "network": "Network",
     "recommendedMainNetwork": "Recommended: your main network",
@@ -675,7 +640,13 @@
     "exchangeWalletSendsChoose": "In the exchange or wallet that sends it, choose {symbol} and the same network you see here, {network}. On another network, the money can be lost.",
     "requesting": "Requesting…",
     "getTest": "Get test {symbol}",
-    "testArrived": "Your test {symbol} arrived."
+    "testArrived": "Your test {symbol} arrived.",
+    "requestAmount": "Request an amount",
+    "requestAmountHint": "Create a link or QR with an amount and a note",
+    "shareAccount": "Your account",
+    "shareAccountHint": "To receive from a wallet or an exchange, share your address or your QR.",
+    "receivingAs": "{symbol} on {network}",
+    "otherCoinOrNetwork": "Another coin or network"
   },
   "Security": {
     "security": "Security",
@@ -739,7 +710,9 @@
     "network": "Network",
     "from": "From",
     "circleTransferFee": "Circle transfer fee",
-    "upTo": "up to {fee} USDC"
+    "upTo": "up to {fee} USDC",
+    "scanQr": "Scan a QR",
+    "payGroup": "Pay several people at once"
   },
   "PasskeyAccess": {
     "creatingAccountConfirmDevice": "Creating your account. Confirm on your device when asked.",
@@ -754,7 +727,7 @@
     "ready": "Ready",
     "almost": "Almost there",
     "fingerprintFaceKeyNo": "Your fingerprint or face will be your key: no passwords and no strange phrases.",
-    "moneyAlwaysYours": "Your money is always yours",
+    "moneyAlwaysYours": "Only you can move your money",
     "oneTouchWhenOpen": "One touch when you open the app, and for {meraSessionMinutes} minutes you pay without confirming each time",
     "noNetworkFeesGatopago": "No network fees: GatoPago pays them",
     "name": "Your name",
@@ -798,7 +771,6 @@
     "contacts": "Contacts · GatoPago",
     "crosschain": "Between networks · GatoPago",
     "earn": "Grow · GatoPago",
-    "move": "Move · GatoPago",
     "profile": "Profile · GatoPago",
     "receive": "Receive · GatoPago",
     "scan": "Scan · GatoPago",
@@ -824,7 +796,7 @@
     "requests": "Café Norte requests",
     "amount": "18.00",
     "order": "2 coffees + cheese bread",
-    "description": "This is how your customers see your payment links. They pay from GatoPago or from any wallet. Create yours from your account.",
+    "description": "This is how your customers see your payment links. They pay from GatoPago or from a wallet with USDC on the Arbitrum, Avalanche or Monad test networks. Create yours from your account.",
     "createAccount": "Create my account"
   },
   "BusinessAccess": {
@@ -865,7 +837,7 @@
     "stepCharge": "Create a charge from your server and send your customer its <code>checkout_url</code>.",
     "stepWebhook": "Register a webhook URL and deliver the order when <code>payment_intent.succeeded</code> arrives.",
     "auth": "Every request carries your key: <code>Authorization: Bearer sk_test_…</code>. It creates charges in your name, so keep it on your server, never in an app or a web page. If it leaks, revoke it in the console and create another.",
-    "fields": "Only <code>amount</code> is required: a decimal in USDC with up to 6 decimals. <code>description</code> (up to 200 characters) is shown to the payer; <code>metadata</code> (up to 20 text values) is for you; <code>expires_in</code> is in seconds, from 5 minutes to 7 days (24 hours by default).",
+    "fields": "Only <code>amount</code> is required: a decimal in the charge’s currency, with up to 6 decimals. <code>currency</code> is <code>USDC</code>, the default, paid from any network and received on the home network, or <code>AUSD</code>, paid and received on Monad. <code>description</code> (up to 200 characters) is shown to the payer; <code>metadata</code> (up to 20 text values) is for you; <code>expires_in</code> is in seconds, from 5 minutes to 7 days (24 hours by default).",
     "request": "Request",
     "response": "Response · 201",
     "retry": "<strong>Retry safely:</strong> with the same Idempotency-Key and the same data you get the same charge back, never a second one. If the response was lost, repeat the request before creating another.",
@@ -923,7 +895,7 @@
     },
     "nav": {
       "aria": "Main navigation",
-      "home": "GatoPago — home",
+      "home": "GatoPago home",
       "cycle": "How it works",
       "account": "The account",
       "grow": "Grow",
@@ -948,23 +920,20 @@
       "napOn": "Nap mode is on",
       "napOff": "We are tracking your money",
       "visualLabel": "GatoPago pixel cat",
-      "visualNote": "Your account moves when you give the signal.",
+      "visualNote": "Your money moves only when you confirm it.",
       "packet": "Payment on the move"
     },
     "signals": [
       ["You are in control", "Only you can move your money. Not even GatoPago."],
       ["No passwords, no odd phrases", "Sign in with your phone’s fingerprint or face."],
-      ["Sending is free", "GatoPago covers the fee on every transfer."],
-      [
-        "No lock-in",
-        "Your money comes and goes whenever you want: to another wallet or an exchange."
-      ]
+      ["Sending is free", "GatoPago pays the fee of each transfer."],
+      ["Come and go as you like", "Send it to another wallet or an exchange."]
     ],
     "problem": {
       "kicker": "The problem",
       "titleLead": "Your money shouldn’t stop",
       "titleAccent": "at the border.",
-      "copy": "A message crosses the world in seconds. Money takes days and loses a part along the way. With GatoPago, your digital dollars arrive in seconds, in full, and stay yours.",
+      "copy": "Sending money between countries still takes days, and part of it stays behind in fees. With GatoPago, a payment to another @username arrives in seconds with no fee, and your dollars stay yours.",
       "moments": [
         [
           "You get paid from abroad",
@@ -972,7 +941,7 @@
         ],
         ["Your family sends you money", "What they send you loses a part along the way."],
         [
-          "You want to save in dollars",
+          "You want to keep your money in dollars",
           "Getting them and keeping them is hard, and the apps that give them to you take control."
         ]
       ]
@@ -980,7 +949,7 @@
     "cycle": {
       "kicker": "A payment’s journey",
       "title": "This is how your money moves.",
-      "accent": "No jargon, step by step.",
+      "accent": "Step by step.",
       "intro": "Tap each step to see what happens to your money.",
       "demo": "Interactive explorer",
       "states": [
@@ -997,23 +966,23 @@
           "number": "02",
           "label": "Available",
           "short": "Ready to send or pay.",
-          "detail": "Your balance is ready to use. You do not need to know anything technical to move it.",
+          "detail": "You see it in dollars, as one number, even if it arrives over different networks.",
           "status": "Balance ready"
         },
         {
           "id": "growing",
           "number": "03",
           "label": "Growing",
-          "short": "Part of it earns interest.",
+          "short": "Part of it earns a yield.",
           "detail": "You choose how much to move and see the rate before confirming. Withdraw it whenever you want.",
-          "status": "Earning interest"
+          "status": "Earning a yield"
         },
         {
           "id": "use",
           "number": "04",
           "label": "Use",
           "short": "Send, pay, or swap.",
-          "detail": "Money moves when you decide. GatoPago prepares the path; you confirm it with your fingerprint.",
+          "detail": "GatoPago prepares the operation and shows you who and how much. Nothing leaves until you confirm it.",
           "status": "You choose the next step"
         }
       ],
@@ -1022,7 +991,7 @@
     "account": {
       "kicker": "The account",
       "greeting": "Hi, Dani",
-      "title": "An account, not a dashboard for experts.",
+      "title": "An account that makes sense.",
       "copy": "Create it in seconds with your phone’s fingerprint or face, and pick your @username to get paid.",
       "concept": "What your account looks like",
       "available": "Available",
@@ -1032,16 +1001,16 @@
       "received": "Payment received",
       "receivedFrom": "from @cafe.norte",
       "productNotes": [
-        "What matters comes first",
-        "Amounts and states that make sense",
-        "Technical detail, only if you look for it"
+        "Your balance, on top",
+        "Each movement with its status",
+        "Technical data, only if you open it"
       ],
       "action": "Create my account"
     },
     "receive": {
       "kicker": "Get paid",
       "title": "Get paid without chasing the payment.",
-      "copy": "Share your @username or create a link with an amount and a note. People pay from GatoPago or from any wallet.",
+      "copy": "Share your @username or create a link with an amount and a note. The link can be paid from GatoPago or from a wallet that holds USDC.",
       "linkLabel": "Payment link",
       "amountLabel": "Total",
       "item": "2 coffees + cheese bread",
@@ -1054,7 +1023,7 @@
       "kicker": "Grow",
       "titleLead": "One part ready.",
       "titleAccent": "Another, growing.",
-      "copy": "Separate the money you will use from the money you want to put to work. Withdraw it whenever you want.",
+      "copy": "Keep the money you will use apart from the money you want to grow. The yield varies, and you can withdraw it anytime.",
       "available": "Available",
       "growing": "Growing",
       "amount": "280.00 USDC",
@@ -1067,9 +1036,9 @@
       "risk": "Before confirming you see today’s rate and its terms. The rate is not guaranteed."
     },
     "control": {
-      "kicker": "Control without friction",
-      "title": "The experience is simple. The control is yours.",
-      "copy": "Your account answers only to you. Not even GatoPago can move your money.",
+      "kicker": "Security",
+      "title": "Simple to use, and only you decide.",
+      "copy": "Your keys are on your devices, not on our servers.",
       "items": [
         [
           "Your fingerprint is your key",
@@ -1077,7 +1046,7 @@
         ],
         [
           "Backup on another device",
-          "Add another phone or computer as a backup and always keep access to your account."
+          "Add another phone or a computer as a backup in case you lose yours."
         ],
         [
           "Everything in sight",
@@ -1085,7 +1054,7 @@
         ]
       ],
       "demo": "Try the confirmation",
-      "demoHint": "This is how an important decision looks in GatoPago."
+      "demoHint": "This is the screen before you send."
     },
     "dialog": {
       "eyebrow": "Preview",
@@ -1097,7 +1066,7 @@
         ["Arrives", "In seconds"],
         ["Fee", "Free"]
       ],
-      "disclaimer": "This is how you review every payment before confirming it.",
+      "disclaimer": "This is an example: no money moves.",
       "cancel": "Go back",
       "confirm": "Got it",
       "close": "Close dialog"
@@ -1134,7 +1103,7 @@
       "items": [
         [
           "What is GatoPago?",
-          "A digital-dollar account only you control, opened with your phone’s fingerprint. Get paid, save and send money with no odd phrases and no fees to send."
+          "A digital-dollar account only you control, opened with your phone's fingerprint. With it you get paid, keep your dollars and send money."
         ],
         [
           "Can I use real money?",
@@ -1142,22 +1111,22 @@
         ],
         [
           "Who controls my money?",
-          "Only you. You confirm every movement yourself, with your fingerprint. GatoPago cannot move your funds."
+          "Only you. You confirm every movement, and GatoPago cannot move your funds."
         ],
         [
           "What if I change phones?",
-          "Your key is saved with your phone’s passwords, so you sign in the same way on the new one. For extra peace of mind, add a backup in Security."
+          "Your key is saved with your phone's passwords (iCloud or Google), so you sign in the same way on the new one. A backup key in Security is still a good idea."
         ],
         [
           "How much does sending cost?",
-          "Nothing. Creating your account and sending money cost you no fees: GatoPago covers them."
+          "Nothing. Creating the account is free and GatoPago pays the fee of each transfer."
         ]
       ]
     },
     "final": {
       "eyebrow": "Your money, with nine lives",
       "title": "Make every payment land on its feet.",
-      "copy": "Create your account in seconds and see how easy moving digital dollars can be.",
+      "copy": "Create your account in seconds and make your first transfer.",
       "primary": "Open GatoPago",
       "secondary": "Back to the journey"
     },
@@ -1491,14 +1460,14 @@
       "title": "Cascabel by GatoPago · Stablecoins for payment platforms",
       "description": "Collections and payouts in digital dollars for payment companies and fintechs: your customers pay with what they have and you get paid the way you want, non-custodial."
     },
-    "privacy": "Privacy Policy — GatoPago",
-    "terms": "Terms of Service — GatoPago",
+    "privacy": "Privacy Policy · GatoPago",
+    "terms": "Terms of Service · GatoPago",
     "demo": "Payment example · GatoPago",
     "pay": {
       "title": "{merchant} is charging you {amount} USDC",
       "titleUnnamed": "You are being charged {amount} USDC",
-      "description": "{concept} · Pay with GatoPago or any wallet.",
-      "descriptionPlain": "Pay with GatoPago or any wallet.",
+      "description": "{concept} · Pay with GatoPago or with USDC from your wallet on Arbitrum, Avalanche or Monad.",
+      "descriptionPlain": "Pay with GatoPago or with USDC from your wallet on Arbitrum, Avalanche or Monad.",
       "fallback": "You got a GatoPago payment link"
     },
     "profile": {
@@ -1511,7 +1480,7 @@
     "site": "gatopago.com",
     "status": "Public beta · test funds",
     "home": {
-      "kicker": "Get paid, save and send digital dollars",
+      "kicker": "Get paid, hold and send digital dollars",
       "titleLead": "Money without borders.",
       "titleAccent": "Always yours.",
       "copy": "A digital-dollar account only you control. Sign in with your fingerprint."
@@ -1532,7 +1501,7 @@
       "label": "Payment link",
       "charges": "is charging you",
       "unnamed": "You are being charged",
-      "payWith": "Pay with GatoPago or any wallet",
+      "payWith": "Pay with GatoPago or your wallet",
       "fallbackTitle": "You got a payment link",
       "fallbackCopy": "Open it to see the amount and pay."
     },

@@ -6,6 +6,9 @@ export default defineConfig({
     // next-intl imports `next/navigation` without an extension, as a bundler resolves it.
     server: { deps: { inline: ['next-intl'] } },
     include: ['test/**/*.test.ts'],
+    // A file's first `await import` loads viem, the SDK and next-intl: about a second on an idle
+    // machine, past vitest's 5 s default when another build or `next dev` is running.
+    testTimeout: 20_000,
     env: {
       GATOPAGO_WEB_ORIGIN: 'https://gatopago.com',
       GATOPAGO_API_ORIGIN: 'https://api.gatopago.com',

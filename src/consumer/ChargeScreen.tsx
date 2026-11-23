@@ -299,7 +299,7 @@ export function ChargeScreen({
   const visible = showAll ? (charges ?? []) : (charges ?? []).slice(0, 5);
   return (
     <>
-      <BackHeader title={t('requestPayment')} to="/move?flow=receive" />
+      <BackHeader title={t('requestPayment')} to="/receive" />
       <MoneyPanel className="mb-5 flex flex-col items-center">
         <p className="mb-3 text-[13px] text-text-muted">{t('howMuch')}</p>
         <AmountInput
@@ -346,7 +346,7 @@ export function ChargeScreen({
           onChange={(event) => setDescription(event.target.value)}
           maxLength={200}
           rows={2}
-          className="meli-field h-auto w-full resize-none py-3 text-[14px] placeholder:text-text-faint"
+          className="meli-field h-auto w-full resize-none py-3 placeholder:text-text-faint"
         />
       </MoneyPanel>
       {error ? (

@@ -173,7 +173,7 @@ function ProfileEditor({
             onChange={(event) => setDisplayName(event.target.value)}
             maxLength={40}
             placeholder={t('name')}
-            className="meli-field mb-3 h-12 text-[14px] placeholder:text-text-faint"
+            className="meli-field mb-3 h-12 placeholder:text-text-faint"
           />
           <Label htmlFor="profile-social">{t('socialLinkOptional')}</Label>
           <input
@@ -185,7 +185,7 @@ function ProfileEditor({
             onChange={(event) => setSocialUrl(event.target.value)}
             maxLength={120}
             placeholder={t('httpsInstagramComYourname')}
-            className="meli-field mb-1.5 h-12 text-[14px] placeholder:text-text-faint"
+            className="meli-field mb-1.5 h-12 placeholder:text-text-faint"
           />
           <p className="mb-3 text-[12px] text-text-faint">{t('instagramXTelegramTiktok')}</p>
           <button
@@ -229,7 +229,7 @@ function ProfileEditor({
                 maxLength={30}
                 value={username}
                 onChange={setUsername}
-                className="min-w-0 flex-1 bg-transparent text-[14px] text-text"
+                className="min-w-0 flex-1 bg-transparent text-[16px] text-text"
               />
             </div>
           )}

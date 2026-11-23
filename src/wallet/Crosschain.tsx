@@ -29,6 +29,7 @@ import {
   stellarBurnsAllowed,
 } from './stellar';
 import { useTranslations, useLocale } from 'next-intl';
+import { SwapIcon } from '../consumer/Icons';
 
 /**
  * A crossing; `calls` burn on an EVM network, `null` when it leaves from Stellar, where
@@ -155,7 +156,7 @@ export function Crosschain({ settings, session }: { settings: ClientSettings; se
 
   return (
     <>
-      <BackHeader title={t('betweenNetworks')} to="/move" />
+      <BackHeader title={t('betweenNetworks')} to="/app" />
       <StageOverlay label={busy && !review && !moved ? t('preparingMove') : null} />
       {(error || precision) && !review ? (
         <p className="auth-error" role="alert">
@@ -262,22 +263,7 @@ export function Crosschain({ settings, session }: { settings: ClientSettings; se
               aria-label={t('flipNetworks')}
               className="meli-square-action h-10 w-10 bg-surface text-text"
             >
-              <svg
-                aria-hidden="true"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m7 4 0 16" />
-                <path d="m3 8 4-4 4 4" />
-                <path d="m17 20 0-16" />
-                <path d="m13 16 4 4 4-4" />
-              </svg>
+              <SwapIcon />
             </button>
           </div>
 

@@ -183,8 +183,8 @@ export function ContactsScreen({
           add();
         }}
       >
-        <div className="flex h-12 min-w-0 flex-1 items-center gap-1.5 border-2 border-text bg-surface px-4">
-          <span className="shrink-0 text-[14px] text-text-faint">@</span>
+        <label className="flex h-12 min-w-0 flex-1 items-center gap-1.5 border-2 border-text bg-surface px-4">
+          <span className="shrink-0 text-[16px] text-text-faint">@</span>
           <UsernameInput
             name="username"
             autoComplete="off"
@@ -193,9 +193,9 @@ export function ContactsScreen({
             onChange={setUsername}
             placeholder={t('username')}
             maxLength={30}
-            className="min-w-0 flex-1 bg-transparent text-[14px] text-text placeholder:text-text-faint"
+            className="h-full min-w-0 flex-1 bg-transparent text-[16px] text-text placeholder:text-text-faint"
           />
-        </div>
+        </label>
         {/* Adding waits for the list: a list read before it would hide the new contact. */}
         <button
           type="submit"

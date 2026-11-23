@@ -24,17 +24,11 @@ let direction: Direction = 'none';
 let next: Direction | null = null;
 const listeners = new Set<() => void>();
 
-const tabs = new Set(['/app', '/move', '/earn', '/statement']);
-/**
- * A tab is told by its path: its filters (`/statement?type=sent`) keep it a tab. Only a subflow
- * inside one (`/move?flow=receive`) is a screen of its own, without the tab bar.
- */
-const isTab = (screen: string) => {
-  const [path, query = ''] = screen.split('?');
-  return tabs.has(path) && !new URLSearchParams(query).has('flow');
-};
+const tabs = new Set(['/app', '/earn', '/statement']);
+/** A tab is told by its path: its filters (`/statement?type=sent`) keep it a tab. */
+const isTab = (screen: string) => tabs.has(screen.split('?')[0]);
 
-/** A screen is its path and its query (`/move?flow=receive`), whatever the language. */
+/** A screen is its path and its query (`/statement?type=sent`), whatever the language. */
 function useScreen() {
   const pathname = usePathname();
   const query = useSearchParams().toString();
